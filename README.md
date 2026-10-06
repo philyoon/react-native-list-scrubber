@@ -155,6 +155,19 @@ hand.)
 - With SectionList, turn off `stickySectionHeadersEnabled`: its native sticky headers only pin headers that
   are already rendered, so they lag behind scrubber jumps.
 
+### Scrolling from code
+
+The hook also moves the list, for a tappable A–Z index or a "jump to today" button:
+
+```tsx
+scrubber.scrollToSection(index); // the start of sections[index] (the hook's sections)
+scrubber.scrollToOffset(y, { animated: true }); // a content offset, clamped to the list
+```
+
+Both scroll on the UI thread without animating by default: a long animated scroll shows blank rows until it
+settles. The screen-reader value follows on its own. To jump by label, find the index first, e.g.
+`sections.findIndex((s) => s.label === 'M')`.
+
 ### Labels that aren't sections
 
 `labelAt(position, scrollOffset)` computes any label on the JS thread, for example "42%". It can lag a frame
@@ -263,6 +276,28 @@ The scrubber needs to know where things are. Lists that measure rows as they ren
 During very fast drags a list can show blank rows for a moment while JS renders them. The scrubber itself
 never waits for that. For FlatList, a small `windowSize` with a large `maxToRenderPerBatch` fills the screen
 fastest after a jump.
+
+## Testing your app
+
+Rendering the real scrubber in Jest needs Reanimated, Worklets and Gesture Handler mocked. To skip that, mock
+the package itself in your Jest setup:
+
+```js
+jest.mock('react-native-list-scrubber', () => require('react-native-list-scrubber/jest'));
+```
+
+The mock loads none of those libraries and has every export, with the same types:
+
+- `ListScrubber` renders only its screen-reader control: role `adjustable`, your `accessibilityLabel`, the
+  first section's label (or "0%") as its value, and test ID `<testID>-a11y`.
+- `PinnedSectionHeader` and `CurrentSectionLabel` show the first section's label, with the real test IDs.
+- `useListScrubber` returns the same shape. Its shared values are plain objects with `get`/`set`. The list
+  handlers record sizes and call your own, and `scrollToSection` / `scrollToOffset` set `scrollY` to where the
+  real hook would scroll.
+- `listLayout`, `sectionListLayout`, `sectionIndexAt` and `LIST_SCRUBBER_DEFAULTS` are the real ones.
+
+The package ships ES modules. If Jest reports `Cannot use import statement outside a module`, add
+`react-native-list-scrubber` to the packages your `transformIgnorePatterns` lets Babel transform.
 
 ## Troubleshooting
 

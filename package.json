@@ -31,6 +31,11 @@
       "types": "./lib/typescript/src/index.d.ts",
       "default": "./lib/module/index.js"
     },
+    "./jest": {
+      "source": "./src/jest.tsx",
+      "types": "./lib/typescript/src/jest.d.ts",
+      "default": "./lib/module/jest.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [

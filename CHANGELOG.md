@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- `useListScrubber` returns `scrollToSection(index)` and `scrollToOffset(y)`, to move the list from code (e.g.
+  a tappable A–Z index), without animating by default.
+- `react-native-list-scrubber/jest`: a Jest mock for testing apps that use the package, with no Reanimated,
+  Worklets or Gesture Handler needed.
 - Development builds warn when `sections` keeps arriving as a new array with the same contents (not memoized).
 - README: a Troubleshooting section.
 - `listLayout` and `sectionListLayout`: compute `sections` and the list's `getItemLayout` from row heights,

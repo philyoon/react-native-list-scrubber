@@ -34,7 +34,12 @@ console.log(`✓ packed ${tarball}`);
 
 // 2. Every path the package's entry points name exists
 const pkg = JSON.parse(readFileSync(join(pkgDir, 'package.json'), 'utf8'));
-const targets = [pkg.main, pkg.types, ...Object.values(pkg.exports['.'])];
+const targets = [
+  pkg.main,
+  pkg.types,
+  ...Object.values(pkg.exports['.']),
+  ...Object.values(pkg.exports['./jest']),
+];
 for (const target of targets) {
   if (!existsSync(join(pkgDir, target))) fail(`package.json points at ${target}, which isn't in the package`);
 }
@@ -51,6 +56,20 @@ for (const file of readdirSync(moduleDir).filter((f) => f.endsWith('.js'))) {
   }
 }
 console.log(`✓ relative imports resolve (${imports})`);
+
+// 3b. The Jest mock loads none of the native libraries it stands in for, however deep its imports go
+const native = /(?:from|import)\s*['"](react-native-(?:reanimated|worklets|gesture-handler)[^'"]*)['"]/;
+const seen = new Set();
+const visit = (file) => {
+  if (seen.has(file)) return;
+  seen.add(file);
+  const code = readFileSync(join(moduleDir, file), 'utf8');
+  const hit = code.match(native);
+  if (hit) fail(`the Jest mock loads ${hit[1]} (through lib/module/${file})`);
+  for (const [, spec] of code.matchAll(/(?:from|import)\s*['"]\.\/([^'"]+)['"]/g)) visit(spec);
+};
+visit('jest.js');
+console.log(`✓ the Jest mock loads no native libraries (${seen.size} modules)`);
 
 // 4. An app using every public export typechecks, with strict and with legacy React Native types
 writeFileSync(
@@ -77,6 +96,7 @@ import {
   type UseListScrubberOptions,
   type UseListScrubberResult,
 } from 'react-native-list-scrubber';
+import * as mock from 'react-native-list-scrubber/jest';
 
 const colors: ListScrubberColors = { thumb: 'gray', thumbActive: 'blue', bubble: 'black', bubbleText: 'white' };
 const metrics: Partial<ListScrubberMetrics> = { thumbLength: LIST_SCRUBBER_DEFAULTS.metrics.thumbLength + 8 };
@@ -119,6 +139,18 @@ export function WithSections({ sections }: { sections: Sections }) {
         <CurrentSectionLabel {...label} />
       </Animated.View>
       <Scrubber scrubber={scrubber} />
+    </View>
+  );
+}
+
+export function JumpTo({ sections }: { sections: Sections }) {
+  const scrubber = useListScrubber({ sections });
+  const jest: typeof import('react-native-list-scrubber') = mock;
+  return (
+    <View>
+      <Animated.FlatList {...scrubber.listProps} data={[]} renderItem={() => null} />
+      <Animated.View onTouchEnd={() => scrubber.scrollToSection(0, { animated: true })} />
+      <Animated.View onTouchEnd={() => jest.useListScrubber().scrollToOffset(0)} />
     </View>
   );
 }
