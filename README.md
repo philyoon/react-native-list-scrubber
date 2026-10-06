@@ -346,7 +346,10 @@ checked and copied to the UI thread again on every render.
 - **Vertical lists only.** Horizontal lists aren't supported.
 - **Right-to-left:** mirrored automatically on iOS and Android, not on web. See
   [Right-to-left layouts](#right-to-left-layouts).
-- **Inverted lists** aren't handled: the thumb follows the content offset, not the visual direction.
+- **Inverted lists** aren't handled: the thumb follows the content offset, not the visual direction. For a
+  chat-style list, start a normal list at the bottom instead, which the scrubber handles as is: FlashList v2's
+  `maintainVisibleContentPosition={{ startRenderingFromBottom: true }}` (it deprecates `inverted`), or Legend
+  List's `alignItemsAtEnd` with `maintainScrollAtEnd`.
 - **Web: works, with limits.** Checked in the example app on Expo web (React Native Web 0.21) in desktop
   Chromium: the thumb appears on scroll, dragging scrolls every list type, and the bubble, pinned header and
   screen-reader value follow. The screen-reader control is a Tab stop there: ↓/→ and ↑/← step like a screen
