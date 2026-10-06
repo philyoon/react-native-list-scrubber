@@ -1,21 +1,32 @@
-# Opens the example in Expo Go (Metro must be running: npm start) on the demo tab named DEMO.
-appId: host.exp.Exponent
+# Opens the example in Expo Go (Metro must be running: npm run start:e2e) on the demo named DEMO.
+# Expo Go: host.exp.Exponent on iOS; on Android run with -e APP_ID=host.exp.exponent
+appId: ${APP_ID}
+env:
+  APP_ID: host.exp.Exponent
 ---
-# Fresh start: Expo Go keeps the last tab and scroll positions otherwise
+# Fresh start: Expo Go keeps the last screen and scroll positions otherwise
 - stopApp
-- openLink: exp://127.0.0.1:8081
+- openLink: exp://127.0.0.1:8081/--/?demo=${DEMO}
+# iOS may ask: Open in "Expo Go"?
+- tapOn:
+    text: Open
+    optional: true
+# On its first run Expo Go shows a developer-menu introduction over the app
 - extendedWaitUntil:
-    visible: List Scrubber
+    visible: 'List Scrubber|Continue'
     timeout: 60000
-# The tabs scroll sideways and later ones start off screen: swipe the tab row (16% down) to its end
+- tapOn:
+    text: Continue
+    optional: true
+# ...and then the developer menu itself
 - runFlow:
     when:
-      notVisible:
-        id: demo-${DEMO}
+      visible: Toggle element inspector
     commands:
-      - swipe:
-          start: 90%, 16%
-          end: 10%, 16%
-          duration: 400
-- tapOn:
-    id: demo-${DEMO}
+      - tapOn: Close
+- extendedWaitUntil:
+    visible:
+      id: list-scrubber-a11y
+    timeout: 10000
+# The link picks the demo; each flow then checks that demo's content (later tabs are off screen)
+- waitForAnimationToEnd

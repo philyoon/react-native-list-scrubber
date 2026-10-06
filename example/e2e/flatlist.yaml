@@ -1,24 +1,16 @@
-# FlatList: dragging the handle to the bottom reaches the last letter; to the top, back to "A".
-# Coordinates: the handle sits at the card's right edge (93%); the list spans roughly 22%–97% of the screen.
-appId: host.exp.Exponent
+# FlatList: dragging the handle to the bottom reaches the last letter; back to the top, "A" again.
+# Expo Go: host.exp.Exponent on iOS; on Android run with -e APP_ID=host.exp.exponent
+appId: ${APP_ID}
+env:
+  APP_ID: host.exp.Exponent
 ---
 - runFlow:
     file: subflows/open.yaml
     env:
       DEMO: FlatList
 - assertVisible: Ada Abby
-- runFlow: subflows/show-handle.yaml
-- swipe:
-    start: 93%, 25%
-    end: 93%, 98%
-    duration: 1500
-- waitForAnimationToEnd
+- runFlow: subflows/drag-to-end.yaml
 - assertVisible: '.* Zel.*'
 - assertNotVisible: Ada Abby
-- runFlow: subflows/show-handle.yaml
-- swipe:
-    start: 93%, 94%
-    end: 93%, 20%
-    duration: 1500
-- waitForAnimationToEnd
+- runFlow: subflows/drag-to-start.yaml
 - assertVisible: Ada Abby

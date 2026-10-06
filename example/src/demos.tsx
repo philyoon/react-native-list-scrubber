@@ -22,6 +22,7 @@ import {
   type Entry,
   type Section,
 } from './data';
+import { E2E, E2E_TIMING } from './e2e';
 import { useColors, type Colors } from './theme';
 
 const ROW = 64;
@@ -45,6 +46,7 @@ function Scrubber(props: {
         bubbleText: colors.bubbleText,
       }}
       accessibilityLabel="Scroll position"
+      timing={E2E ? E2E_TIMING : undefined}
       onDragStart={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
       // A tick per section crossed, like the iOS Contacts index
       onSectionChange={() => Haptics.selectionAsync()}

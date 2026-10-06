@@ -5,10 +5,12 @@
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
+    "start:e2e": "EXPO_PUBLIC_E2E=1 expo start --clear",
     "ios": "expo start --ios",
     "android": "expo start --android",
     "typecheck": "tsc --noEmit",
-    "e2e": "maestro test e2e"
+    "e2e": "maestro test e2e",
+    "e2e:android": "maestro test -e APP_ID=host.exp.exponent e2e"
   },
   "dependencies": {
     "@legendapp/list": "^3.6.0",

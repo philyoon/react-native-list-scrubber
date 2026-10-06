@@ -4,12 +4,18 @@ A drag handle for scrubbing through long React Native lists, with a label bubble
 
 <img src="docs/demo.gif" width="320" alt="Dragging the handle through 3,000 contacts: the bubble and the pinned header follow letter by letter" />
 
-- **Runs on the UI thread.** The drag, the handle, the list scroll _and the bubble label_ are all driven by Reanimated and Gesture Handler. They keep up with your finger even while JS is busy rendering rows.
-- **Label bubble.** Pass labelled `sections` (A–Z, months, chapters…). The bubble shows the one under your finger, and it reaches the last section even when that section is shorter than a screen.
-- **Pinned header.** `SectionLabel` draws the current section's name, for a header pinned above the list. Unlike native sticky headers, it doesn't fall behind big jumps. `usePinnedHeaderStyle` lets the next section's header push it out, like iOS Contacts.
-- **Screen readers.** An adjustable "Scroll position" control is always present. Swipe up or down to step to the next section, and VoiceOver or TalkBack reads its label.
+- **Runs on the UI thread.** The drag, the handle, the list scroll _and the bubble label_ are all driven by
+  Reanimated and Gesture Handler. They keep up with your finger even while JS is busy rendering rows.
+- **Label bubble.** Pass labelled `sections` (A–Z, months, chapters…). The bubble shows the one under your
+  finger, and it reaches the last section even when that section is shorter than a screen.
+- **Pinned header.** `SectionLabel` draws the current section's name, for a header pinned above the list.
+  Unlike native sticky headers, it doesn't fall behind big jumps. `usePinnedHeaderStyle` lets the next
+  section's header push it out, like iOS Contacts.
+- **Screen readers.** An adjustable "Scroll position" control is always present. Swipe up or down to step to
+  the next section, and VoiceOver or TalkBack reads its label.
 - **Unstyled.** You pass the colours, text and haptics. Sizes and timings have defaults you can override.
-- **Works with** FlatList, SectionList, ScrollView, Legend List and FlashList. See [Compatibility](#compatibility).
+- **Works with** FlatList, SectionList, ScrollView, Legend List and FlashList. See
+  [Compatibility](#compatibility).
 
 ## Install
 
@@ -22,7 +28,9 @@ Peer dependencies (already in most Expo apps):
 - `react-native-reanimated` ≥ 4 and `react-native-worklets`
 - `react-native-gesture-handler` ≥ 2.20, with `GestureHandlerRootView` at your app root
 
-Keep exactly one copy of react-native-gesture-handler, matching your native runtime. Check with `npm ls react-native-gesture-handler`. A second copy, pulled in by some other package's loose peer range, crashes at startup.
+Keep exactly one copy of react-native-gesture-handler, matching your native runtime. Check with
+`npm ls react-native-gesture-handler`. A second copy, pulled in by some other package's loose peer range,
+crashes at startup.
 
 ## Usage
 
@@ -64,7 +72,10 @@ function Contacts({ contacts }: { contacts: Contact[] }) {
 }
 ```
 
-`listProps` holds `ref`, `onScroll`, `scrollEventThrottle`, `onLayout`, `onContentSizeChange` and hides the native indicator. If your list needs its own `onLayout` or `onContentSizeChange`, wire the pieces yourself: `useListScrubber()` also returns `listRef`, `scrollY` and `onScroll`, and `ListScrubber` takes `contentHeight` and `viewportHeight` directly.
+`listProps` holds `ref`, `onScroll`, `scrollEventThrottle`, `onLayout`, `onContentSizeChange` and hides the
+native indicator. If your list needs its own `onLayout` or `onContentSizeChange`, wire the pieces yourself:
+`useListScrubber()` also returns `listRef`, `scrollY` and `onScroll`, and `ListScrubber` takes `contentHeight`
+and `viewportHeight` directly.
 
 The list must be an **Animated** component, so the scroll handler runs on the UI thread:
 
@@ -92,30 +103,42 @@ const push = usePinnedHeaderStyle(scrubber.scrollY, sections, HEADER_HEIGHT);
 </View>;
 ```
 
-- `SectionLabel` renders every label once in a column and slides it from the UI thread. It changes in the same frame as the list and survives React re-renders. That suits up to a few hundred sections. Its line height comes from the style's `lineHeight` (or 1.3 × `fontSize`), or set `height`.
-- `usePinnedHeaderStyle` pushes the pinned header up as the next section's header reaches it, instead of swapping the letter underneath.
-- With SectionList, turn off `stickySectionHeadersEnabled`: its native sticky headers only pin headers that are already rendered, so they lag behind scrubber jumps.
+- `SectionLabel` renders every label once in a column and slides it from the UI thread. It changes in the same
+  frame as the list and survives React re-renders. That suits up to a few hundred sections. Its line height
+  comes from the style's `lineHeight` (or 1.3 × `fontSize`), or set `height`.
+- `usePinnedHeaderStyle` pushes the pinned header up as the next section's header reaches it, instead of
+  swapping the letter underneath.
+- With SectionList, turn off `stickySectionHeadersEnabled`: its native sticky headers only pin headers that
+  are already rendered, so they lag behind scrubber jumps.
 
 ### Labels that aren't sections
 
-`labelAt(offset)` computes any label on the JS thread, for example "42%". It can lag a frame or two behind a fast drag, so prefer `sections` when the labels are known ahead of time. Two helpers come from the same logic: `labelProbe(offset, contentHeight, viewportHeight)` gives the content position to describe, and `sectionIndexAt(starts, y)` does a binary search over section starts.
+`labelAt(offset)` computes any label on the JS thread, for example "42%". It can lag a frame or two behind a
+fast drag, so prefer `sections` when the labels are known ahead of time. Two helpers come from the same logic:
+`labelProbe(offset, contentHeight, viewportHeight)` gives the content position to describe, and
+`sectionIndexAt(starts, y)` does a binary search over section starts.
 
 ## Props
 
-| Prop                                                    | Default                          |                                                                  |
-| ------------------------------------------------------- | -------------------------------- | ---------------------------------------------------------------- |
-| `scrollY`, `listRef`, `contentHeight`, `viewportHeight` | required                         | From `scrubberProps`                                             |
-| `colors`                                                | required                         | `thumb`, `thumbActive`, `bubble`, `bubbleText`                   |
-| `accessibilityLabel`                                    | required                         | Screen-reader name                                               |
-| `sections`                                              | none                             | `{ offset, label }[]`, ascending. Bubble and screen-reader steps |
-| `labelAt(offset)`                                       | none                             | JS-thread label when there are no `sections`                     |
-| `steps`                                                 | section offsets, else one screen | Screen-reader step targets                                       |
-| `formatPercent`                                         | `40%`                            | Screen-reader value when there's no label                        |
-| `onDragStart`                                           | none                             | E.g. haptics                                                     |
-| `right`                                                 | `0`                              | Negative to sit in a margin outside the list                     |
-| `railWidth`                                             | `20`                             | Width of the handle's strip                                      |
-| `metrics`, `timing`                                     | see below                        | Partial overrides                                                |
-| `bubbleStyle`, `bubbleTextStyle`                        | none                             | Extra styles (shadow, font)                                      |
+Required:
+
+- `scrollY`, `listRef`, `contentHeight`, `viewportHeight`: from `scrubberProps`.
+- `colors`: `thumb`, `thumbActive`, `bubble`, `bubbleText`.
+- `accessibilityLabel`: the screen-reader name.
+
+Optional:
+
+- `sections`: `{ offset, label }[]`, ascending. Drives the bubble and the screen-reader steps.
+- `labelAt(offset)`: a JS-thread label when there are no `sections`.
+- `steps`: screen-reader step targets. Default: the section offsets, else one screen.
+- `formatPercent`: the screen-reader value when there's no label. Default: `40%`.
+- `onDragStart`: the drag started, e.g. for haptics.
+- `onSectionChange(index, section)`: with `sections`, the finger crossed into another section while dragging,
+  e.g. for a haptic tick.
+- `right`: offset from the right edge, negative to sit in a margin outside the list. Default: `0`.
+- `railWidth`: width of the handle's strip. Default: `20`.
+- `metrics`, `timing`: partial overrides of the defaults below.
+- `bubbleStyle`, `bubbleTextStyle`: extra styles, e.g. a shadow or a font.
 
 ### Defaults (`LIST_SCRUBBER_DEFAULTS`)
 
@@ -138,19 +161,25 @@ The touch width is fixed at 44 pt, the minimum touch target.
 
 ## Compatibility
 
-Tested on iOS in the example app (Expo SDK 57, React Native 0.86, Reanimated 4.5, Gesture Handler 2.32). The pinned header, push and section bubble were also checked on Android, in the app this library came from:
+Tested in the example app (Expo SDK 57, React Native 0.86, Reanimated 4.5, Gesture Handler 2.32): by hand on
+iOS, and with the [end-to-end tests](#end-to-end-tests) on iOS and Android, which drag the handle to both ends
+of FlatList, SectionList, Legend List and ScrollView. The pinned header, push and section bubble were also
+checked by hand on Android, in the app this library came from:
 
-| List                             | Result                                                                                                                                                                              |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| FlatList + `getItemLayout`       | Exact. Bubble, pinned header and rows agree in every frame                                                                                                                          |
-| ScrollView                       | Exact                                                                                                                                                                               |
-| Legend List + `getFixedItemSize` | Exact                                                                                                                                                                               |
-| SectionList + `getItemLayout`    | Exact. Use the pinned header above instead of native sticky headers, which lag behind big jumps                                                                                     |
-| FlashList v2                     | Works, but positions are estimates. FlashList sizes unmeasured rows at 200 pt and has no prop for real sizes, so on unvisited parts of a long list the handle and labels can be off |
+- **FlatList + `getItemLayout`**: exact. Bubble, pinned header and rows agree in every frame.
+- **ScrollView**: exact.
+- **Legend List + `getFixedItemSize`**: exact.
+- **SectionList + `getItemLayout`**: exact. Use the pinned header above instead of native sticky headers,
+  which lag behind big jumps.
+- **FlashList v2**: works, but positions are estimates. FlashList sizes unmeasured rows at 200 pt and has no
+  prop for real sizes, so on unvisited parts of a long list the handle and labels can be off.
 
-The scrubber needs to know where things are. Lists that measure rows as they render, such as FlatList without `getItemLayout` or variable-height rows, give estimated positions.
+The scrubber needs to know where things are. Lists that measure rows as they render, such as FlatList without
+`getItemLayout` or variable-height rows, give estimated positions.
 
-During very fast drags a list can show blank rows for a moment while JS renders them. The scrubber itself never waits for that. For FlatList, a small `windowSize` with a large `maxToRenderPerBatch` fills the screen fastest after a jump.
+During very fast drags a list can show blank rows for a moment while JS renders them. The scrubber itself
+never waits for that. For FlatList, a small `windowSize` with a large `maxToRenderPerBatch` fills the screen
+fastest after a jump.
 
 ## Limits
 
@@ -172,14 +201,35 @@ It opens in Expo Go and has one screen per list type. It uses the library source
 
 ### End-to-end tests
 
-[Maestro](https://maestro.dev) flows in `example/e2e` drive the example in Expo Go on an iOS simulator: dragging the handle to the end and back on each list type, touches passing through the hidden handle, and the screen-reader control. With Metro running (`npm start`) and a simulator booted:
+[Maestro](https://maestro.dev) flows in `example/e2e` drive the example in Expo Go on an iOS simulator or an
+Android emulator: dragging the handle to the end and back on each list type, touches passing through the
+hidden handle, and the screen-reader control. They run on iPhone SE, iPhone 17 Pro, iPhone 17 Pro Max and a
+Pixel 8 emulator.
+
+Start Metro in e2e mode and keep it running:
 
 ```sh
 cd example
-npm run e2e
+npm run start:e2e
 ```
 
-If an Android emulator is also running, pick the simulator with `maestro --device <udid> test e2e`.
+Then, with Expo Go installed on the device:
+
+```sh
+npm run e2e                 # iOS simulator
+adb reverse tcp:8081 tcp:8081
+npm run e2e:android         # Android emulator
+```
+
+With more than one device running, Maestro may pick the wrong one: add `--device <udid or emulator-5554>`, for
+example `npx maestro --device emulator-5554 test -e APP_ID=host.exp.exponent e2e`.
+
+How the flows find the handle: it is hidden from screen readers, so Maestro, which finds elements through the
+accessibility tree, can't target it, and Maestro's swipe points are fixed screen percentages. In e2e mode
+(`EXPO_PUBLIC_E2E=1`) the example pins its list to fixed percentages of the screen (`example/src/e2e.ts`), so
+the same points land on the handle on any phone size. It also keeps the handle up for 5 s instead of 1.5 s,
+since Maestro's wait after each swipe can outlast the default on a slow device. A link like
+`exp://127.0.0.1:8081/--/?demo=ScrollView` opens a given demo.
 
 ## License
 

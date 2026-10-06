@@ -1,9 +1,10 @@
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DEMOS } from './demos';
+import { E2E, E2E_CARD } from './e2e';
 import { useColors } from './theme';
 
 export default function App() {
@@ -20,6 +21,17 @@ function Main() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [demo, setDemo] = useState(0);
+  // A link like exp://…/--/?demo=ScrollView opens that demo (the e2e flows use it)
+  useEffect(() => {
+    const open = (url: string | null) => {
+      const name = url && decodeURIComponent(url.match(/[?&]demo=([^&]+)/)?.[1] ?? '');
+      const i = DEMOS.findIndex((d) => d.name === name);
+      if (i >= 0) setDemo(i);
+    };
+    Linking.getInitialURL().then(open);
+    const sub = Linking.addEventListener('url', (e) => open(e.url));
+    return () => sub.remove();
+  }, []);
   const Demo = DEMOS[demo]!.Component;
   return (
     <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top }}>
@@ -53,7 +65,9 @@ function Main() {
         ))}
       </ScrollView>
       <Text style={[styles.hint, { color: colors.secondary }]}>{DEMOS[demo]!.hint}</Text>
-      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View
+        style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }, E2E && E2E_CARD]}
+      >
         {/* key: each demo gets a fresh list and scrubber */}
         <Demo key={demo} />
       </View>

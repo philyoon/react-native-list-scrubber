@@ -1,15 +1,17 @@
 # While the handle is hidden, a swipe on its strip scrolls the list instead of grabbing the handle.
-appId: host.exp.Exponent
+# Expo Go: host.exp.Exponent on iOS; on Android run with -e APP_ID=host.exp.exponent
+appId: ${APP_ID}
+env:
+  APP_ID: host.exp.Exponent
 ---
 - runFlow:
     file: subflows/open.yaml
     env:
       DEMO: FlatList
-- waitForAnimationToEnd:
-    timeout: 3000
+# Along the handle's strip, from its bottom to halfway up: an ordinary scroll
 - swipe:
-    start: 93%, 80%
-    end: 93%, 40%
+    start: 91%, 95%
+    end: 91%, 50%
     duration: 400
 - waitForAnimationToEnd
 - assertNotVisible: Ada Abby
