@@ -10,6 +10,7 @@ import Animated, {
 import { Bubble, bubbleTextStyle } from './Bubble';
 import {
   LIST_SCRUBBER_DEFAULTS,
+  MAX_FONT_SCALE,
   TOUCH_WIDTH,
   type ListScrubberMetrics,
   type ListScrubberTiming,
@@ -234,6 +235,7 @@ export function ListScrubber({
                 index={sectionIdx}
                 labels={labels}
                 height={m.bubbleSize}
+                maxFontSizeMultiplier={MAX_FONT_SCALE}
                 // Sized per label: one long label doesn't shrink all the letters
                 style={(text) => [bubbleTextStyle(text, m, colors), bubbleTextStyleProp]}
               />
@@ -242,7 +244,11 @@ export function ListScrubber({
             active &&
             label != null && (
               <Bubble {...bubbleProps}>
-                <Text numberOfLines={1} style={[bubbleTextStyle(label, m, colors), bubbleTextStyleProp]}>
+                <Text
+                  numberOfLines={1}
+                  maxFontSizeMultiplier={MAX_FONT_SCALE}
+                  style={[bubbleTextStyle(label, m, colors), bubbleTextStyleProp]}
+                >
                   {label}
                 </Text>
               </Bubble>

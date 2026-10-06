@@ -54,6 +54,12 @@ export const LIST_SCRUBBER_DEFAULTS: Readonly<{
 export const TOUCH_WIDTH = 44;
 /** Screen-reader step without `accessibilitySteps`, as a share of the viewport; the previous screen's last row stays visible */
 export const A11Y_PAGE = 0.9;
+/**
+ * Labels follow the system text size up to this multiple (React Native's `maxFontSizeMultiplier`):
+ * the bubble and the pinned header have fixed heights, so the text can't grow without limit.
+ * At 1.5×, the bubble's 24pt letters still fit its default 64pt.
+ */
+export const MAX_FONT_SCALE = 1.5;
 /** Below this opacity the thumb counts as hidden and touches pass through to the list */
 export const VISIBLE_MIN = 0.01;
 /** Distance (pt) treated as "already at this step", so rounding can't keep the reader in place */

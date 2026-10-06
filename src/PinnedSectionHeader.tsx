@@ -1,6 +1,14 @@
 import { useMemo } from 'react';
-import { StyleSheet, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  useWindowDimensions,
+  type StyleProp,
+  type TextStyle,
+  type ViewStyle,
+} from 'react-native';
 import Animated, { useAnimatedStyle, useDerivedValue, type SharedValue } from 'react-native-reanimated';
+import { MAX_FONT_SCALE } from './defaults';
 import { LabelStrip } from './LabelStrip';
 import { sectionIndexAt } from './math';
 import type { ListScrubberSection } from './types';
@@ -18,6 +26,7 @@ export function PinnedSectionHeader({
   push = true,
   style,
   textStyle,
+  maxFontSizeMultiplier,
   testID = 'list-scrubber-pinned-header',
 }: {
   scrollY: SharedValue<number>;
@@ -30,6 +39,8 @@ export function PinnedSectionHeader({
   /** The header box, e.g. background and padding */
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
+  /** Cap on the system text size for the label (default 1.5): the header doesn't grow with it */
+  maxFontSizeMultiplier?: number;
   /** Test ID of the header; its label is `<testID>-label` (default 'list-scrubber-pinned-header') */
   testID?: string;
 }) {
@@ -41,6 +52,7 @@ export function PinnedSectionHeader({
           scrollY={scrollY}
           sections={sections}
           style={textStyle}
+          maxFontSizeMultiplier={maxFontSizeMultiplier}
           testID={`${testID}-label`}
         />
       </Animated.View>
@@ -60,13 +72,19 @@ export function CurrentSectionLabel({
   sections,
   height,
   style,
+  maxFontSizeMultiplier = MAX_FONT_SCALE,
   testID = 'list-scrubber-section-label',
 }: {
   scrollY: SharedValue<number>;
   sections: readonly ListScrubberSection[];
-  /** Height of one label line (default: the style's lineHeight, else 1.3 × fontSize) */
+  /**
+   * Height of one label line. Default: the style's lineHeight, else 1.3 × fontSize, scaled with the
+   * system text size (up to maxFontSizeMultiplier). A height you pass is used as is.
+   */
   height?: number;
   style?: StyleProp<TextStyle>;
+  /** Cap on the system text size (default 1.5) */
+  maxFontSizeMultiplier?: number;
   /** Test ID of the label; its strip is `<testID>-strip` (default 'list-scrubber-section-label') */
   testID?: string;
 }) {
@@ -74,7 +92,9 @@ export function CurrentSectionLabel({
   const offsets = useMemo(() => sections.map((s) => s.offset), [sections]);
   const labels = useMemo(() => sections.map((s) => s.label), [sections]);
   const flat = StyleSheet.flatten(style) ?? {};
-  const lineHeight = height ?? flat.lineHeight ?? Math.ceil((flat.fontSize ?? 14) * 1.3);
+  // Text scales with the system text size, so its row must too, or the strip's window clips it
+  const scale = Math.min(useWindowDimensions().fontScale, maxFontSizeMultiplier);
+  const lineHeight = height ?? Math.ceil((flat.lineHeight ?? (flat.fontSize ?? 14) * 1.3) * scale);
   const index = useDerivedValue(() => sectionIndexAt(offsets, scrollY.get()));
   return (
     <View
@@ -88,6 +108,7 @@ export function CurrentSectionLabel({
         index={index}
         labels={labels}
         height={lineHeight}
+        maxFontSizeMultiplier={maxFontSizeMultiplier}
         style={style}
       />
     </View>

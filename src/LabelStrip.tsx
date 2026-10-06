@@ -12,6 +12,7 @@ export function LabelStrip({
   labels,
   height,
   style,
+  maxFontSizeMultiplier,
   testID,
 }: {
   index: SharedValue<number>;
@@ -19,6 +20,8 @@ export function LabelStrip({
   height: number;
   /** One style for every label, or a style per label */
   style?: StyleProp<TextStyle> | ((label: string) => StyleProp<TextStyle>);
+  /** Cap on the system text size (the row height must already allow for it) */
+  maxFontSizeMultiplier: number;
   testID: string;
 }) {
   const slide = useAnimatedStyle(() => ({
@@ -29,7 +32,11 @@ export function LabelStrip({
       <Animated.View style={slide} testID={testID}>
         {labels.map((label, i) => (
           <View key={i} style={{ height, justifyContent: 'center' }}>
-            <Text numberOfLines={1} style={typeof style === 'function' ? style(label) : style}>
+            <Text
+              numberOfLines={1}
+              maxFontSizeMultiplier={maxFontSizeMultiplier}
+              style={typeof style === 'function' ? style(label) : style}
+            >
               {label}
             </Text>
           </View>
