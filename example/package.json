@@ -10,7 +10,7 @@
     "android": "expo start --android",
     "web": "expo start --web",
     "export:web": "expo export --platform web",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "e2e": "maestro test e2e",
     "e2e:android": "maestro test -e APP_ID=host.exp.exponent e2e"
   },
