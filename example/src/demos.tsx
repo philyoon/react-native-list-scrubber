@@ -81,12 +81,30 @@ function EntryRow({ item, colors }: { item: Entry; colors: Colors }) {
   );
 }
 
-/** Month sections for fixed-height rows, newest first */
+/** The current month pinned over the list, so the bubble's month matches something on screen (rows only show the day) */
+function MonthHeader(props: {
+  scrubber: ReturnType<typeof useListScrubber>;
+  sections: readonly ListScrubberSection[];
+}) {
+  const colors = useColors();
+  return (
+    <PinnedSectionHeader
+      scrollY={props.scrubber.scrollY}
+      sections={props.sections}
+      height={HEADER}
+      push={false}
+      style={[styles.header, { backgroundColor: colors.header }]}
+      textStyle={{ color: colors.secondary, fontWeight: '700', fontSize: 14 }}
+    />
+  );
+}
+
+/** Month sections for fixed-height rows under a HEADER spacer, newest first */
 function monthSections(entries: Entry[]): ListScrubberSection[] {
   const out: ListScrubberSection[] = [];
   entries.forEach((e, i) => {
     const label = monthLabel(e.date);
-    if (out[out.length - 1]?.label !== label) out.push({ offset: i * ROW, label });
+    if (out[out.length - 1]?.label !== label) out.push({ offset: i === 0 ? 0 : HEADER + i * ROW, label });
   });
   return out;
 }
@@ -196,8 +214,10 @@ function FlashListDemo() {
         {...scrubber.listProps}
         data={ENTRIES}
         keyExtractor={(e) => e.id}
+        ListHeaderComponent={<View style={{ height: HEADER }} />}
         renderItem={({ item }) => <EntryRow item={item} colors={colors} />}
       />
+      <MonthHeader scrubber={scrubber} sections={sections} />
       <Scrubber scrubber={scrubber} sections={sections} />
     </>
   );
@@ -215,9 +235,11 @@ function LegendListDemo() {
         data={ENTRIES}
         keyExtractor={(e) => e.id}
         renderItem={({ item }) => <EntryRow item={item} colors={colors} />}
+        ListHeaderComponent={<View style={{ height: HEADER }} />}
         getFixedItemSize={() => ROW}
         recycleItems
       />
+      <MonthHeader scrubber={scrubber} sections={sections} />
       <Scrubber scrubber={scrubber} sections={sections} />
     </>
   );
