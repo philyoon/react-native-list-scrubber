@@ -44,6 +44,8 @@
 - `useListScrubber({ sections })`: the hook carries the sections into `scrubberProps` and a new `headerProps`
   (`scrollY` + `sections`) for `PinnedSectionHeader`, so the scrubber and the header can't be given different
   ones. Passing `sections` to either component directly still works.
+- Development builds warn (once per array) when `sections` or `accessibilitySteps` aren't in ascending order:
+  they're looked up by binary search, so out of order the wrong section showed without a hint.
 - Section bubble: each label gets its own font size by its length, so one long label no longer shrinks every
   letter.
 - **Breaking:** `right` is replaced by `side` + `edgeOffset`.
