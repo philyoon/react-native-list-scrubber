@@ -1,4 +1,4 @@
-import { baseProps, reactions, setup } from './support';
+import { baseProps, goIdle, mockClosures, reactions, setup } from './support';
 import { act } from '@testing-library/react-native';
 import { getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
 import { render } from '@testing-library/react-native';
@@ -72,4 +72,22 @@ it("the pinned header's labels don't re-render when the app renders with the sam
   expect(mockLabel.renders).toBe(1);
   await view.rerender(header(16)); // a real change does
   expect(mockLabel.renders).toBe(2);
+});
+
+it("re-rendering the section label with the same labels doesn't restart its worklets", async () => {
+  await setup({ sections, contentHeight: 20000 });
+  // The label's worklets: its text (the only animated props) and its font size (the style right after it).
+  // Each restart would copy all 300 labels to the UI thread again.
+  const labelWorklets = (render: number) => {
+    const text = mockClosures.map((c, i) => (c.hook === 'props' ? i : -1)).filter((i) => i >= 0)[render]!;
+    return [mockClosures[text]!.values, mockClosures[text + 1]!.values];
+  };
+  const mounted = labelWorklets(0);
+  await goIdle(); // re-renders it to measure the labels
+  expect(mockLabel.renders).toBe(2);
+  const again = labelWorklets(1);
+  again.forEach((values, w) => {
+    expect(values).toHaveLength(mounted[w]!.length);
+    values.forEach((value, v) => expect(value).toBe(mounted[w]![v]));
+  });
 });

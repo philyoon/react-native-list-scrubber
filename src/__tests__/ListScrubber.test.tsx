@@ -122,6 +122,22 @@ describe('sections', () => {
     expect(copies()).toHaveLength(165);
   });
 
+  it('measures thousands of new labels a batch at a time, the rest at once when the thumb shows', async () => {
+    const many = Array.from({ length: 450 }, (_, i) => ({ offset: i * 10, label: `S${i}` }));
+    await setup({ sections: many, contentHeight: 20000 });
+    await goIdle();
+    const copies = () => screen.queryAllByText(/^S\d+$/, { includeHiddenElements: true });
+    const layout = (width: number) =>
+      fireEvent(copies()[0]!.parent!, 'layout', { nativeEvent: { layout: { width, height: 0 } } });
+    expect(copies()).toHaveLength(200);
+    await layout(40);
+    expect(copies()).toHaveLength(200); // the next batch, right away
+    await act(async () => reactions()[1].react(true, false)); // the thumb shows
+    expect(copies()).toHaveLength(250); // everything left
+    await layout(30);
+    expect(copies()).toHaveLength(0);
+  });
+
   it('labels that change while being measured get a fresh view, which reports its layout again', async () => {
     const first = [{ offset: 0, label: 'A' }];
     const view = await setup({ sections: first });
