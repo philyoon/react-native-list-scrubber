@@ -155,6 +155,19 @@ hand.)
 - With SectionList, turn off `stickySectionHeadersEnabled`: its native sticky headers only pin headers that
   are already rendered, so they lag behind scrubber jumps.
 
+### Scrolling from code
+
+The hook also moves the list, for a tappable A–Z index or a "jump to today" button:
+
+```tsx
+scrubber.scrollToSection(index); // the start of sections[index] (the hook's sections)
+scrubber.scrollToOffset(y, { animated: true }); // a content offset, clamped to the list
+```
+
+Both scroll on the UI thread without animating by default: a long animated scroll shows blank rows until it
+settles. The screen-reader value follows on its own. To jump by label, find the index first, e.g.
+`sections.findIndex((s) => s.label === 'M')`.
+
 ### Labels that aren't sections
 
 `labelAt(position, scrollOffset)` computes any label on the JS thread, for example "42%". It can lag a frame
@@ -264,6 +277,28 @@ During very fast drags a list can show blank rows for a moment while JS renders 
 never waits for that. For FlatList, a small `windowSize` with a large `maxToRenderPerBatch` fills the screen
 fastest after a jump.
 
+## Testing your app
+
+Rendering the real scrubber in Jest needs Reanimated, Worklets and Gesture Handler mocked. To skip that, mock
+the package itself in your Jest setup:
+
+```js
+jest.mock('react-native-list-scrubber', () => require('react-native-list-scrubber/jest'));
+```
+
+The mock loads none of those libraries and has every export, with the same types:
+
+- `ListScrubber` renders only its screen-reader control: role `adjustable`, your `accessibilityLabel`, the
+  first section's label (or "0%") as its value, and test ID `<testID>-a11y`.
+- `PinnedSectionHeader` and `CurrentSectionLabel` show the first section's label, with the real test IDs.
+- `useListScrubber` returns the same shape. Its shared values are plain objects with `get`/`set`. The list
+  handlers record sizes and call your own, and `scrollToSection` / `scrollToOffset` set `scrollY` to where the
+  real hook would scroll.
+- `listLayout`, `sectionListLayout`, `sectionIndexAt` and `LIST_SCRUBBER_DEFAULTS` are the real ones.
+
+The package ships ES modules. If Jest reports `Cannot use import statement outside a module`, add
+`react-native-list-scrubber` to the packages your `transformIgnorePatterns` lets Babel transform.
+
 ## Troubleshooting
 
 **The thumb never appears.** It shows while the list scrolls and hides a moment after, so scroll first. If it
@@ -313,15 +348,16 @@ npm install
 npx expo start
 ```
 
-It opens in Expo Go and has one screen per list type. It uses the library source from `../src`. `npm run web`
-opens it in the browser instead (Expo web); CI builds that web bundle on every push.
+It opens in Expo Go and has one screen per list type, plus an Index screen: a tappable A–Z bar above a
+SectionList that jumps with `scrollToSection`. It uses the library source from `../src`. `npm run web` opens
+it in the browser instead (Expo web); CI builds that web bundle on every push.
 
 ### End-to-end tests
 
 [Maestro](https://maestro.dev) flows in `example/e2e` drive the example in Expo Go on an iOS simulator or an
 Android emulator: dragging the thumb to the end and back on each list type, touches passing through the hidden
-thumb, and the screen-reader control. They run on iPhone SE, iPhone 17 Pro, iPhone 17 Pro Max and a Pixel 8
-emulator.
+thumb, the screen-reader control, and jumping from the A–Z index. They run on iPhone SE, iPhone 17 Pro, iPhone
+17 Pro Max and a Pixel 8 emulator.
 
 Start Metro in e2e mode and keep it running:
 

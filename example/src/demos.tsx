@@ -3,7 +3,7 @@ import { AnimatedLegendList } from '@legendapp/list/reanimated';
 import * as Haptics from 'expo-haptics';
 import { FlashList } from '@shopify/flash-list';
 import { useMemo, type ComponentType } from 'react';
-import { SectionList, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, SectionList, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import {
   ListScrubber,
@@ -182,6 +182,64 @@ function SectionListDemo() {
   );
 }
 
+// A tappable A–Z index above a SectionList, like iOS Contacts: each letter calls scrubber.scrollToSection,
+// which jumps on the UI thread. The jump lands the section's header under the pinned one, and the scrubber,
+// the pinned header and the screen-reader value all follow.
+function IndexDemo() {
+  const colors = useColors();
+  const data = useMemo(() => groupByLetter(CONTACTS), []);
+  const { sections, getItemLayout } = useMemo(
+    () => sectionListLayout(data, { itemHeight: ROW, sectionHeaderHeight: HEADER }),
+    [data],
+  );
+  const scrubber = useListScrubber({ sections });
+  return (
+    <>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={[styles.index, { borderColor: colors.border }]}
+        contentContainerStyle={styles.indexContent}
+      >
+        {sections.map((section, i) => (
+          <Pressable
+            key={section.label}
+            onPress={() => scrubber.scrollToSection(i)}
+            accessibilityRole="button"
+            accessibilityLabel={`Jump to ${section.label}`}
+            testID={`index-${section.label}`}
+            style={({ pressed }) => [styles.indexLetter, pressed && { backgroundColor: colors.header }]}
+          >
+            <Text style={{ color: colors.accent, fontWeight: '700' }}>{section.label}</Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+      <View style={{ flex: 1 }}>
+        <AnimatedSectionList
+          {...scrubber.listProps}
+          sections={data}
+          keyExtractor={(c) => c.id}
+          stickySectionHeadersEnabled={false}
+          renderSectionHeader={({ section }) => (
+            <View style={[styles.header, { backgroundColor: colors.header }]}>
+              <Text style={{ color: colors.secondary, fontWeight: '700' }}>{section.title}</Text>
+            </View>
+          )}
+          renderItem={({ item }) => <ContactRow item={item} colors={colors} />}
+          getItemLayout={getItemLayout}
+        />
+        <PinnedSectionHeader
+          {...scrubber.headerProps}
+          height={HEADER}
+          style={[styles.header, { backgroundColor: colors.header }]}
+          textStyle={{ color: colors.secondary, fontWeight: '700', fontSize: 14 }}
+        />
+        <Scrubber scrubber={scrubber} />
+      </View>
+    </>
+  );
+}
+
 const AnimatedFlashList = Animated.createAnimatedComponent(FlashList<Entry>);
 
 // FlashList v2 measures rows itself; content height comes from onContentSizeChange.
@@ -268,6 +326,7 @@ export const DEMOS: { name: string; hint: string; Component: ComponentType }[] =
   { name: 'FlashList', hint: 'Positions are estimates until rows are measured', Component: FlashListDemo },
   { name: 'Legend List', hint: '4,000 entries by month, exact sizes', Component: LegendListDemo },
   { name: 'ScrollView', hint: '60 chapters', Component: ScrollViewDemo },
+  { name: 'Index', hint: 'Tap a letter to jump: scrollToSection', Component: IndexDemo },
 ];
 
 const styles = StyleSheet.create({
@@ -283,4 +342,8 @@ const styles = StyleSheet.create({
   avatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   rowText: { fontSize: 16, fontWeight: '500' },
   header: { height: HEADER, justifyContent: 'center', paddingHorizontal: 16 },
+  index: { flexGrow: 0, borderBottomWidth: StyleSheet.hairlineWidth },
+  indexContent: { paddingHorizontal: 8, paddingVertical: 4 },
+  // 44pt tall: the minimum touch target
+  indexLetter: { minWidth: 32, height: 44, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
 });

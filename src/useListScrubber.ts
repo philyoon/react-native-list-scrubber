@@ -1,6 +1,7 @@
 import { useMemo, type Component } from 'react';
 import type { LayoutChangeEvent } from 'react-native';
 import {
+  scrollTo,
   useAnimatedRef,
   useAnimatedScrollHandler,
   useSharedValue,
@@ -9,6 +10,8 @@ import {
   type ScrollHandlerProcessed,
   type SharedValue,
 } from 'react-native-reanimated';
+import { scheduleOnUI } from 'react-native-worklets';
+import { clamp } from './math';
 import type { ListScrubberSection } from './types';
 import { useLatest } from './useLatest';
 
@@ -43,6 +46,9 @@ export interface UseListScrubberOptions<S extends readonly ListScrubberSection[]
  * Returns the props to spread, and the pieces they're made of (`listRef`, `scrollY`, `onScroll`, and the
  * `contentHeight` / `viewportHeight` shared values) for wiring them by hand: all of it is public API.
  * Measuring the list doesn't re-render the component calling this hook.
+ *
+ * `scrollToSection(index)` and `scrollToOffset(y)` move the list from code, e.g. for a tappable A–Z index
+ * or a "jump to today" button.
  */
 // `any`: works with any scrollable component
 export function useListScrubber<
@@ -93,7 +99,49 @@ export function useListScrubber<
     [listRef, scrollY, contentHeight, viewportHeight, sections],
   );
   const headerProps = useMemo(() => ({ scrollY, sections: sections ?? NO_SECTIONS }), [scrollY, sections]);
-  return { listRef, scrollY, onScroll, contentHeight, viewportHeight, listProps, scrubberProps, headerProps };
+  const scrollToOffset = useLatest((offset: number, { animated = false }: ScrollOptions = {}) => {
+    scheduleOnUI(scrollToClamped, listRef, contentHeight, viewportHeight, offset, animated);
+  });
+  const scrollToSection = useLatest((index: number, scrollOptions?: ScrollOptions) => {
+    const section = sections?.[index];
+    if (section) scrollToOffset(section.offset, scrollOptions);
+    else if (__DEV__) {
+      console.warn(
+        `react-native-list-scrubber: scrollToSection(${index}) has no section to go to: ` +
+          `there are ${sections?.length ?? 0} (pass \`sections\` to useListScrubber).`,
+      );
+    }
+  });
+  return {
+    listRef,
+    scrollY,
+    onScroll,
+    contentHeight,
+    viewportHeight,
+    listProps,
+    scrubberProps,
+    headerProps,
+    scrollToSection,
+    scrollToOffset,
+  };
+}
+
+/** Scrolls within the list's range, read on the UI thread where the sizes are current */
+function scrollToClamped(
+  listRef: AnimatedRef<any>,
+  contentHeight: SharedValue<number>,
+  viewportHeight: SharedValue<number>,
+  offset: number,
+  animated: boolean,
+) {
+  'worklet';
+  const maxScroll = Math.max(0, contentHeight.get() - viewportHeight.get());
+  scrollTo(listRef, 0, clamp(offset, 0, maxScroll), animated);
+}
+
+interface ScrollOptions {
+  /** Animate the scroll (default false: a long animated scroll shows blank rows until it settles) */
+  animated?: boolean;
 }
 
 const NO_SECTIONS: readonly ListScrubberSection[] = [];
@@ -135,4 +183,8 @@ export interface UseListScrubberResult<
   scrubberProps: ScrubberProps<TList, S>;
   /** Spread on PinnedSectionHeader: `scrollY` and the hook's `sections` */
   headerProps: { scrollY: SharedValue<number>; sections: readonly ListScrubberSection[] };
+  /** Scroll to the start of `sections[index]` (the hook's sections) */
+  scrollToSection: (index: number, options?: { animated?: boolean }) => void;
+  /** Scroll to a content offset, clamped to the list's range */
+  scrollToOffset: (offset: number, options?: { animated?: boolean }) => void;
 }

@@ -1,0 +1,19 @@
+# Index: tapping a letter jumps there with scrubber.scrollToSection; tapping "A" comes back.
+# Expo Go: host.exp.Exponent on iOS; on Android run with -e APP_ID=host.exp.exponent
+appId: ${APP_ID}
+env:
+  APP_ID: host.exp.Exponent
+---
+- runFlow:
+    file: subflows/open.yaml
+    env:
+      DEMO: Index
+- assertVisible: Ada Abby
+# F: on screen without scrolling the letter bar, even on the smallest phones
+- tapOn:
+    id: index-F
+- assertVisible: Ada Fenby
+- assertNotVisible: Ada Abby
+- tapOn:
+    id: index-A
+- assertVisible: Ada Abby
