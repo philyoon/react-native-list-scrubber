@@ -31,7 +31,7 @@ it('SectionText is memoized', () => {
   expect(mockLabel.isMemo).toBe(true);
 });
 
-it('the section label renders once, not again as the thumb shows, drags and hides', async () => {
+it('the section label renders only to measure, not again as the thumb shows, drags and hides', async () => {
   await setup({ sections, contentHeight: 20000 });
   expect(mockLabel.renders).toBe(1);
   const [fade, visible] = reactions();
@@ -45,7 +45,10 @@ it('the section label renders once, not again as the thumb shows, drags and hide
   });
   await act(async () => pan().onFinalize({}));
   await act(async () => visible.react(false, true)); // the thumb hides
-  expect(mockLabel.renders).toBe(1);
+  await act(async () => visible.react(true, false)); // and shows again
+  await act(async () => visible.react(false, true));
+  // Once more, to measure the labels when the thumb first showed; never again
+  expect(mockLabel.renders).toBe(2);
 });
 
 it('inline colours and text style with the same values do not re-render it; a change does', async () => {

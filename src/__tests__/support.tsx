@@ -117,3 +117,6 @@ export function sectionText(testID: string) {
   const style: TextStyle = StyleSheet.flatten(field.props.style);
   return { text: field.props.animatedProps.text as string, style, field };
 }
+
+/** Lets the app go idle, when the bubble measures its labels (see SectionText) */
+export const goIdle = () => act(() => jest.advanceTimersByTime(2000));

@@ -339,8 +339,8 @@ checked and copied to the UI thread again on every render.
   reader, Page Down/Up move one screen, Home/End go to the ends. With no separate UI thread on web, everything
   runs on JS. Not tested on mobile browsers.
 - The section bubble is as wide as the widest section label: every distinct label is laid out once, invisibly,
-  when `sections` (or the bubble's text style, or the system text size) changes, then unmounted. With
-  thousands of sections that one layout pass is the scrubber's main cost; keep `sections` memoized.
+  then unmounted. That happens once the app is idle after `sections` change (or when the thumb first shows, if
+  that's sooner), not while the list first renders. Keep `sections` memoized, or it's measured again.
 
 ## Example app
 

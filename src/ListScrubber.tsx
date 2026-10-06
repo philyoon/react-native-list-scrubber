@@ -222,6 +222,10 @@ export function ListScrubber({
   });
 
   const { opacity, visible } = useAutoHide({ scrollY, dragging, fadeMs, hideAfterMs, onHide });
+  // The labels the thumb has been shown with: the bubble's labels must be measured by then (see SectionText).
+  // Latched, so later shows and hides don't re-render the label
+  const [shownFor, setShownFor] = useState<readonly string[]>();
+  if (visible && shownFor !== labels) setShownFor(labels);
   const { pan, dragTop, sectionIdx } = useScrubGesture({
     listRef,
     scrollY,
@@ -299,6 +303,8 @@ export function ListScrubber({
           {sections?.length ? (
             <Bubble {...bubbleProps} shown={dragging}>
               <SectionText
+                // The thumb takes touches only once shown, so this measures before any drag can start
+                measureNow={shownFor === labels}
                 testID={`${testID}-label`}
                 index={sectionIdx}
                 labels={labels}

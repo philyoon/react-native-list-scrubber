@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -22,7 +22,8 @@ const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
  * A native text field doesn't resize when its text changes outside React, so with `sizeToLabels` every
  * distinct label is laid out once, invisibly, and the field takes the widest: no label is ever clipped.
  * The copies are unmounted once measured, and laid out again when the labels, style or system text size
- * change.
+ * change. New labels are measured once the app is idle (so not while the list first renders), or as soon as
+ * `measureNow` is set, whichever comes first.
  */
 export const SectionText = memo(function SectionText({
   index,
@@ -31,6 +32,7 @@ export const SectionText = memo(function SectionText({
   style,
   fontSizes,
   sizeToLabels = false,
+  measureNow = false,
   maxFontSizeMultiplier,
   testID,
 }: {
@@ -44,6 +46,8 @@ export const SectionText = memo(function SectionText({
   fontSizes?: { short: number; long: number; shortMaxLength: number };
   /** Gives its parent the width of the widest label (for a bubble that sizes to its label) */
   sizeToLabels?: boolean;
+  /** Measure the labels now, without waiting for the app to be idle (e.g. the bubble is about to show) */
+  measureNow?: boolean;
   /** Cap on the system text size (the line height must already allow for it) */
   maxFontSizeMultiplier: number;
   testID: string;
@@ -72,10 +76,14 @@ export const SectionText = memo(function SectionText({
   const inputs = [labels, style, fontSizes, fontScale, maxFontSizeMultiplier];
   const width =
     measured && measured.inputs.every((input, i) => input === inputs[i]) ? measured.width : undefined;
-  const sizers = useMemo(
-    () => (sizeToLabels && width === undefined ? [...new Set(labels)] : []),
-    [sizeToLabels, width, labels],
-  );
+  // The labels the app has been idle since
+  const [idleFor, setIdleFor] = useState<readonly string[]>();
+  useEffect(() => {
+    if (!sizeToLabels) return;
+    return whenIdle(() => setIdleFor(labels));
+  }, [sizeToLabels, labels]);
+  const measure = sizeToLabels && width === undefined && (measureNow || idleFor === labels);
+  const sizers = useMemo(() => (measure ? [...new Set(labels)] : []), [measure, labels]);
   const first = labels[0] ?? '';
 
   return (
@@ -128,6 +136,28 @@ export const SectionText = memo(function SectionText({
     </View>
   );
 });
+
+/** Runs `fn` once the JS thread is idle; returns a cancel function. Safari (web) has no requestIdleCallback. */
+function whenIdle(fn: () => void): () => void {
+  const { requestIdleCallback, cancelIdleCallback } = globalThis as unknown as IdleCallbacks;
+  if (typeof requestIdleCallback === 'function') {
+    const id = requestIdleCallback(fn, { timeout: IDLE_TIMEOUT_MS });
+    return () => cancelIdleCallback(id);
+  }
+  const id = setTimeout(fn, IDLE_FALLBACK_MS);
+  return () => clearTimeout(id);
+}
+
+/** Declared by React Native and the DOM, but in neither's types as this package compiles them */
+interface IdleCallbacks {
+  requestIdleCallback?: (fn: () => void, options: { timeout: number }) => number;
+  cancelIdleCallback: (id: number) => void;
+}
+
+/** Measure by then even if the app never goes idle */
+const IDLE_TIMEOUT_MS = 2000;
+/** Without requestIdleCallback: after the first renders have settled */
+const IDLE_FALLBACK_MS = 500;
 
 const styles = StyleSheet.create({
   fill: { alignSelf: 'stretch' },

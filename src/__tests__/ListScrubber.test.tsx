@@ -1,4 +1,14 @@
-import { baseProps, drag, mockReactions, mockScrollTo, sectionText, setup, sharedZero } from './support';
+import {
+  baseProps,
+  drag,
+  goIdle,
+  mockReactions,
+  mockScrollTo,
+  reactions,
+  sectionText,
+  setup,
+  sharedZero,
+} from './support';
 import { act, fireEvent, screen } from '@testing-library/react-native';
 import { I18nManager, StyleSheet, type ViewStyle } from 'react-native';
 import { getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
@@ -59,6 +69,8 @@ describe('sections', () => {
     expect(screen.getAllByTestId('list-scrubber-label', { includeHiddenElements: true })).toHaveLength(1);
     // Every distinct label is laid out once, invisibly: the widest gives the bubble its width
     const copies = () => screen.queryAllByText(/^S\d+$/, { includeHiddenElements: true });
+    expect(copies()).toHaveLength(0); // not while the list first renders: once the app is idle
+    await goIdle();
     expect(copies()).toHaveLength(150);
     const sizer = copies()[0]!.parent!;
     expect(StyleSheet.flatten(sizer.props.style)).toMatchObject({ height: 0, alignSelf: 'flex-start' });
@@ -73,7 +85,36 @@ describe('sections', () => {
     await view.rerender(<ListScrubber {...baseProps} sections={many} contentHeight={20000} />);
     expect(copies()).toHaveLength(0);
     await view.rerender(<ListScrubber {...baseProps} sections={many.slice(0, 200)} contentHeight={20000} />);
+    expect(copies()).toHaveLength(0);
+    await goIdle();
     expect(copies()).toHaveLength(150);
+  });
+
+  it('measures with requestIdleCallback where there is one, and cancels it on unmount', async () => {
+    const callbacks: (() => void)[] = [];
+    const g = globalThis as unknown as Record<string, unknown>;
+    g.requestIdleCallback = jest.fn((fn: () => void) => callbacks.push(fn));
+    g.cancelIdleCallback = jest.fn();
+    try {
+      const view = await setup({ sections: [{ offset: 0, label: 'Jan' }] });
+      expect(g.requestIdleCallback).toHaveBeenCalledWith(expect.any(Function), { timeout: 2000 });
+      await act(async () => callbacks[0]!());
+      expect(screen.queryAllByText('Jan', { includeHiddenElements: true })).toHaveLength(1);
+      await view.unmount();
+      expect(g.cancelIdleCallback).toHaveBeenCalledWith(1);
+    } finally {
+      delete g.requestIdleCallback;
+      delete g.cancelIdleCallback;
+    }
+  });
+
+  it('measures the labels as soon as the thumb shows, if the app was never idle', async () => {
+    await setup({ sections: [{ offset: 0, label: 'Jan' }] });
+    const copies = () => screen.queryAllByText('Jan', { includeHiddenElements: true });
+    expect(copies()).toHaveLength(0);
+    // the thumb takes touches only once shown, so this is before any drag can start
+    await act(async () => reactions()[1].react(true, false));
+    expect(copies()).toHaveLength(1);
   });
 
   it('screen readers step section by section and hear the section label', async () => {
@@ -250,6 +291,7 @@ describe('while the finger is down', () => {
         { offset: 500, label: 'Zebra' },
       ],
     });
+    await goIdle();
     // the shown label (the first section at rest), and the invisible copies that size the bubble
     expect(sectionText('list-scrubber-label').style.fontSize).toBe(24);
     expect(sectionText('list-scrubber-label').field.props.maxFontSizeMultiplier).toBe(1.5);
@@ -267,6 +309,7 @@ describe('while the finger is down', () => {
       ],
       bubbleTextStyle: { fontSize: 18 },
     });
+    await goIdle();
     expect(sectionText('list-scrubber-label').style.fontSize).toBe(18);
     expect(
       StyleSheet.flatten(screen.getByText('Zebra', { includeHiddenElements: true }).props.style).fontSize,
