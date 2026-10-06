@@ -1,4 +1,5 @@
-import { act, render } from '@testing-library/react-native';
+import { act, render, screen } from '@testing-library/react-native';
+import { StyleSheet, type TextStyle } from 'react-native';
 import { State } from 'react-native-gesture-handler';
 import { fireGestureHandler, getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
 import type { SharedValue } from 'react-native-reanimated';
@@ -27,6 +28,13 @@ jest.mock('react-native-reanimated', () => {
     useSharedValue: (init: unknown) => {
       const ref = React.useRef(null);
       ref.current ??= mock.useSharedValue(init);
+      return ref.current;
+    },
+    // Same for derived values: the real one keeps its identity across renders (and memoized children rely on it)
+    useDerivedValue: (processor: () => unknown) => {
+      const ref = React.useRef(null);
+      ref.current ??= mock.useSharedValue(undefined);
+      ref.current.set(processor());
       return ref.current;
     },
     useAnimatedRef: () => React.useRef(null),
@@ -99,3 +107,16 @@ beforeEach(() => {
 
 /** The two reactions of the latest render: [scroll → fade, opacity → visible] */
 export const reactions = () => mockReactions.slice(-2) as [Reaction, Reaction];
+
+/**
+ * A section label as drawn: the text its native field shows (set from the UI thread) and its style.
+ * The mock computes it on render, from the current shared values.
+ */
+export function sectionText(testID: string) {
+  const field = screen.getByTestId(testID, { includeHiddenElements: true });
+  const style: TextStyle = StyleSheet.flatten(field.props.style);
+  return { text: field.props.animatedProps.text as string, style, field };
+}
+
+/** Lets the app go idle, when the bubble measures its labels (see SectionText) */
+export const goIdle = () => act(() => jest.advanceTimersByTime(2000));

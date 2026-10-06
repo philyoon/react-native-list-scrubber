@@ -10,6 +10,12 @@
 - README: a Troubleshooting section.
 - `listLayout` and `sectionListLayout`: compute `sections` and the list's `getItemLayout` from row heights,
   for flat lists and SectionList.
+- Performance: the section bubble and `PinnedSectionHeader` / `CurrentSectionLabel` draw the current section
+  in one native text field, its text set on the UI thread (no React render), instead of mounting every section
+  label and sliding them. The bubble still fits its widest label: each distinct label is laid out once,
+  invisibly, once the app is idle (or the thumb shows), then unmounted. **Breaking (test IDs):** the bubble's
+  label is `<testID>-label` (was `-label-strip`), and `CurrentSectionLabel`'s is `<testID>-text` (was
+  `-strip`); they hold the shown label as the field's text, not one text per section.
 - `colors` is optional, and each colour can be overridden on its own; defaults are in
   `LIST_SCRUBBER_DEFAULTS.colors`.
 - Performance: measuring the list no longer re-renders the component calling `useListScrubber`; only
@@ -76,6 +82,15 @@
   flips in RTL while React Native Web keeps `left`/`right`, so it landed off-screen). The docs no longer say
   to flip `side` for RTL: React Native already mirrors `left`/`right` on iOS and Android, so that flipped it
   twice. A README section describes RTL on each platform.
+- Performance: the section bubble's labels (all of them, rendered at once) no longer re-render when the thumb
+  shows or hides or a drag starts or ends. The strip is memoized, and `colors` and `bubbleTextStyle` are
+  compared by value, so inline objects don't defeat it.
+- Performance: `PinnedSectionHeader` / `CurrentSectionLabel` compare their text style by value, so an inline
+  `textStyle={{…}}` no longer re-renders every section label each time the app renders.
+- Performance: with `labelAt`, a busy JS thread no longer collects one stale call per drag frame. One call is
+  in flight at a time; frames arriving meanwhile only keep the newest offset, sent when JS has answered.
+- **Breaking:** `metrics.bubbleShortLabelMax` is renamed `bubbleShortLabelMaxLength` (labels up to this many
+  characters count as short).
 - Section bubble: each label gets its own font size by its length, so one long label no longer shrinks every
   letter.
 - **Breaking:** `right` is replaced by `side` + `edgeOffset`.

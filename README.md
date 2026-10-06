@@ -141,8 +141,8 @@ always read the same sections. (Both components also take `scrollY` and `section
 hand.)
 
 - It shows the current section's label, drawn on the UI thread: it changes in the same frame as the list, even
-  during scrubber jumps. It renders every label once and slides them, which suits up to a few hundred
-  sections.
+  during scrubber jumps. It's one native text field whose text is set on the UI thread, so its cost doesn't
+  grow with the number of sections.
 - As the next section's header reaches it, it's pushed up and out, like iOS Contacts. If the list has no
   section headers of its own, pass `push={false}`.
 - Give the scrubber `insets={{ top: HEADER_HEIGHT }}` to keep the thumb out from under it.
@@ -205,8 +205,8 @@ Optional:
 - `edgeOffset`: distance from that edge, negative to sit in a margin outside the list. Default: `0`.
 - `insets`: `{ top, bottom }` space the thumb stays out of, e.g. under a pinned header or above a toolbar.
 - `enabled`: `false` hides the scrubber and its screen-reader control, keeping its state. Default: `true`.
-- `testID`: prefix of the test IDs (`<testID>` for the drag gesture, `-thumb`, `-a11y`, `-label-strip`).
-  Default: `list-scrubber`.
+- `testID`: prefix of the test IDs (`<testID>` for the drag gesture, `-thumb`, `-a11y`, `-label`). Default:
+  `list-scrubber`.
 - `metrics`, `timing`: partial overrides of the defaults below.
 - `bubbleStyle`, `bubbleTextStyle`: extra styles, e.g. a shadow or a font.
 
@@ -227,15 +227,15 @@ component that takes the hook's result with sections:
 | `bubble`      | `#3A3A3C` | Dark grey, with white `bubbleText` (`#FFFFFF`)  |
 | `bubbleText`  | `#FFFFFF` |                                                 |
 
-| `metrics`                               | pt      |                                                     |
-| --------------------------------------- | ------- | --------------------------------------------------- |
-| `thumbLength`                           | 48      | Longer than a fingertip                             |
-| `thumbWidth` / `thumbActiveWidth`       | 6 / 8   | Thin when idle, thicker while grabbed               |
-| `thumbRadius`                           | 4       |                                                     |
-| `bubbleSize`                            | 64      | Height and minimum width                            |
-| `bubbleGap`                             | 40      | Keeps the bubble clear of the finger                |
-| `bubbleRadius` / `bubblePadding`        | 16 / 16 |                                                     |
-| `bubbleFontSize` / `bubbleLongFontSize` | 24 / 16 | Up to `bubbleShortLabelMax` (2) characters / longer |
+| `metrics`                               | pt      |                                                           |
+| --------------------------------------- | ------- | --------------------------------------------------------- |
+| `thumbLength`                           | 48      | Longer than a fingertip                                   |
+| `thumbWidth` / `thumbActiveWidth`       | 6 / 8   | Thin when idle, thicker while grabbed                     |
+| `thumbRadius`                           | 4       |                                                           |
+| `bubbleSize`                            | 64      | Height and minimum width                                  |
+| `bubbleGap`                             | 40      | Keeps the bubble clear of the finger                      |
+| `bubbleRadius` / `bubblePadding`        | 16 / 16 |                                                           |
+| `bubbleFontSize` / `bubbleLongFontSize` | 24 / 16 | Up to `bubbleShortLabelMaxLength` (2) characters / longer |
 
 | `timing`      | ms   |                                          |
 | ------------- | ---- | ---------------------------------------- |
@@ -338,7 +338,9 @@ checked and copied to the UI thread again on every render.
   screen-reader value follow. The screen-reader control is a Tab stop there: ↓/→ and ↑/← step like a screen
   reader, Page Down/Up move one screen, Home/End go to the ends. With no separate UI thread on web, everything
   runs on JS. Not tested on mobile browsers.
-- `PinnedSectionHeader` renders every section label once, so it suits up to a few hundred sections.
+- The section bubble is as wide as the widest section label: every distinct label is laid out once, invisibly,
+  then unmounted. That happens once the app is idle after `sections` change (or when the thumb first shows, if
+  that's sooner), not while the list first renders. Keep `sections` memoized, or it's measured again.
 
 ## Example app
 

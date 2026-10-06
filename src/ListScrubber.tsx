@@ -23,12 +23,12 @@ import {
   type ListScrubberMetrics,
   type ListScrubberTiming,
 } from './defaults';
-import { LabelStrip } from './LabelStrip';
 import { clamp, labelPosition } from './math';
+import { SectionText } from './SectionText';
 import type { ListScrubberColors, ListScrubberSection } from './types';
 import { useA11yStepper } from './useA11yStepper';
 import { useAutoHide } from './useAutoHide';
-import { useJsValue } from './useJsValue';
+import { useMirroredNumber } from './useMirroredNumber';
 import { useLatest } from './useLatest';
 import { useScrubGesture } from './useScrubGesture';
 import { useSectionOffsets, warnIfInvalid } from './validate';
@@ -70,7 +70,7 @@ interface ListScrubberBaseProps {
   /** Extra style for the bubble box (e.g. a shadow) */
   bubbleStyle?: StyleProp<ViewStyle>;
   bubbleTextStyle?: StyleProp<TextStyle>;
-  /** Prefix of the test IDs: `<testID>` (the drag gesture), `-thumb`, `-a11y`, `-label-strip` (default 'list-scrubber') */
+  /** Prefix of the test IDs: `<testID>` (the drag gesture), `-thumb`, `-a11y`, `-label` (default 'list-scrubber') */
   testID?: string;
   /**
    * With `sections`: the finger moved into another section while dragging (e.g. a haptic tick per letter).
@@ -139,14 +139,37 @@ export function ListScrubber({
   testID = 'list-scrubber',
 }: ListScrubberProps) {
   // Shared values from useListScrubber are mirrored here, so a new size re-renders only the scrubber
-  const contentHeight = useJsValue(contentHeightProp);
-  const viewportHeight = useJsValue(viewportHeightProp);
-  const colors = { ...LIST_SCRUBBER_DEFAULTS.colors, ...colorsProp };
+  const contentHeight = useMirroredNumber(contentHeightProp);
+  const viewportHeight = useMirroredNumber(viewportHeightProp);
   // Memoized: worklets copy what they capture to the UI thread whenever its identity changes, and an
   // inline `metrics={{…}}` would otherwise do that on every render (hence keyed by value).
   const metricsKey = JSON.stringify(metrics ?? null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const m = useMemo(() => ({ ...LIST_SCRUBBER_DEFAULTS.metrics, ...metrics }), [metricsKey]);
+  // Colours and the section label's style keep their identity between renders too, keyed by value so inline
+  // objects are fine: the section label (SectionText) is memoized and re-renders only when they change
+  const colorsKey = JSON.stringify(colorsProp ?? null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const colors = useMemo(() => ({ ...LIST_SCRUBBER_DEFAULTS.colors, ...colorsProp }), [colorsKey]);
+  const textStyleKey = JSON.stringify(StyleSheet.flatten(bubbleTextStyleProp) ?? null);
+  const sectionLabelStyle = useMemo(
+    (): TextStyle => ({
+      color: colors.bubbleText,
+      fontWeight: '700',
+      textAlign: 'center',
+      ...StyleSheet.flatten(bubbleTextStyleProp),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [colors, textStyleKey],
+  );
+  // Sized per label (one long label doesn't shrink all the letters), unless bubbleTextStyle sets fontSize
+  const sectionFontSizes = useMemo(
+    () =>
+      sectionLabelStyle.fontSize === undefined
+        ? { short: m.bubbleFontSize, long: m.bubbleLongFontSize, shortMaxLength: m.bubbleShortLabelMaxLength }
+        : undefined,
+    [m, sectionLabelStyle],
+  );
   const { hideAfterMs, fadeMs } = { ...LIST_SCRUBBER_DEFAULTS.timing, ...timing };
   const offsets = useSectionOffsets(sections);
   // Checked once per array (the result is cached), so calling it on every render is free
@@ -156,7 +179,8 @@ export function ListScrubber({
   const insetBottom = insets?.bottom ?? 0;
   /** Height of the strip the thumb travels in */
   const railHeight = Math.max(0, viewportHeight - insetTop - insetBottom);
-  const track = Math.max(0, railHeight - m.thumbLength);
+  /** How far the thumb can move: the rail minus the thumb */
+  const travel = Math.max(0, railHeight - m.thumbLength);
   const maxScroll = Math.max(0, contentHeight - viewportHeight);
 
   const dragging = useSharedValue(false);
@@ -187,7 +211,7 @@ export function ListScrubber({
     setLabel(null);
     onDragEnd?.();
   });
-  const onOffset = useLatest((offset: number) => {
+  const onDragOffset = useLatest((offset: number) => {
     const next = labelAt?.(labelPosition(offset, contentHeight, viewportHeight), offset);
     if (next != null) setLabel(next);
   });
@@ -198,12 +222,16 @@ export function ListScrubber({
   });
 
   const { opacity, visible } = useAutoHide({ scrollY, dragging, fadeMs, hideAfterMs, onHide });
+  // The labels the thumb has been shown with: the bubble's labels must be measured by then (see SectionText).
+  // Latched, so later shows and hides don't re-render the label
+  const [shownFor, setShownFor] = useState<readonly string[]>();
+  if (visible && shownFor !== labels) setShownFor(labels);
   const { pan, dragTop, sectionIdx } = useScrubGesture({
     listRef,
     scrollY,
     opacity,
     dragging,
-    track,
+    travel,
     maxScroll,
     contentHeight,
     viewportHeight,
@@ -214,16 +242,16 @@ export function ListScrubber({
     testID,
     onBegin,
     onEnd,
-    onOffset: labelAt ? onOffset : undefined,
+    onDragOffset: labelAt ? onDragOffset : undefined,
     onSection: onSectionChange ? onSection : undefined,
   });
 
   const positionStyle = useAnimatedStyle(() => {
-    const top = dragging.get() ? dragTop.get() : maxScroll > 0 ? (scrollY.get() / maxScroll) * track : 0;
-    return { opacity: opacity.get(), transform: [{ translateY: clamp(top, 0, track) }] };
+    const top = dragging.get() ? dragTop.get() : maxScroll > 0 ? (scrollY.get() / maxScroll) * travel : 0;
+    return { opacity: opacity.get(), transform: [{ translateY: clamp(top, 0, travel) }] };
   });
 
-  if (!enabled || maxScroll <= 0 || track <= 0) return null;
+  if (!enabled || maxScroll <= 0 || travel <= 0) return null;
 
   const thumbWidth = active ? m.thumbActiveWidth : m.thumbWidth;
   const bubbleProps = { metrics: m, colors, railHeight, dragging, dragTop, side, style: bubbleStyle };
@@ -274,14 +302,17 @@ export function ListScrubber({
         >
           {sections?.length ? (
             <Bubble {...bubbleProps} shown={dragging}>
-              <LabelStrip
-                testID={`${testID}-label-strip`}
+              <SectionText
+                // The thumb takes touches only once shown, so this measures before any drag can start
+                measureNow={shownFor === labels}
+                testID={`${testID}-label`}
                 index={sectionIdx}
                 labels={labels}
                 height={m.bubbleSize}
+                style={sectionLabelStyle}
+                fontSizes={sectionFontSizes}
+                sizeToLabels
                 maxFontSizeMultiplier={MAX_FONT_SCALE}
-                // Sized per label: one long label doesn't shrink all the letters
-                style={(text) => [bubbleTextStyle(text, m, colors), bubbleTextStyleProp]}
               />
             </Bubble>
           ) : (

@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import Animated, { useAnimatedStyle, useDerivedValue, type SharedValue } from 'react-native-reanimated';
 import { MAX_FONT_SCALE } from './defaults';
-import { LabelStrip } from './LabelStrip';
+import { SectionText } from './SectionText';
 import { sectionIndexAt } from './math';
 import type { ListScrubberSection } from './types';
 import { useSectionOffsets } from './validate';
@@ -74,7 +74,7 @@ export interface CurrentSectionLabelProps {
   style?: StyleProp<TextStyle>;
   /** Cap on the system text size (default 1.5) */
   maxFontSizeMultiplier?: number;
-  /** Test ID of the label; its strip is `<testID>-strip` (default 'list-scrubber-section-label') */
+  /** Test ID of the label; its text field is `<testID>-text` (default 'list-scrubber-section-label') */
   testID?: string;
 }
 
@@ -83,7 +83,7 @@ export interface CurrentSectionLabelProps {
  * for building a custom pinned header. Native sticky headers (SectionList) only pin headers of rows already rendered,
  * so they show the wrong section while the scrubber jumps; this one follows the scroll position
  * directly. Hidden from screen readers (the list's own headers are read instead).
- * Renders every label once, so it suits up to a few hundred sections.
+ * One native text field, whatever the number of sections.
  */
 export function CurrentSectionLabel({
   scrollY,
@@ -95,8 +95,12 @@ export function CurrentSectionLabel({
 }: CurrentSectionLabelProps) {
   const offsets = useSectionOffsets(sections);
   const labels = useMemo(() => sections.map((s) => s.label), [sections]);
-  const flat = StyleSheet.flatten(style) ?? {};
-  // Text scales with the system text size, so its row must too, or the strip's window clips it
+  // Compared by value: the label re-renders only when its style changes, and an inline `style={{…}}` (or a PinnedSectionHeader
+  // `textStyle`) is a new object on each render, which would re-render all of them every time the app renders
+  const styleKey = JSON.stringify(StyleSheet.flatten(style) ?? {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const flat: TextStyle = useMemo(() => StyleSheet.flatten(style) ?? {}, [styleKey]);
+  // Text scales with the system text size, so its line must too, or the text field clips it
   const scale = Math.min(useWindowDimensions().fontScale, maxFontSizeMultiplier);
   const lineHeight = height ?? Math.ceil((flat.lineHeight ?? (flat.fontSize ?? 14) * 1.3) * scale);
   const index = useDerivedValue(() => sectionIndexAt(offsets, scrollY.get()));
@@ -107,13 +111,13 @@ export function CurrentSectionLabel({
       importantForAccessibility="no-hide-descendants"
       testID={testID}
     >
-      <LabelStrip
-        testID={`${testID}-strip`}
+      <SectionText
+        testID={`${testID}-text`}
         index={index}
         labels={labels}
         height={lineHeight}
         maxFontSizeMultiplier={maxFontSizeMultiplier}
-        style={style}
+        style={flat}
       />
     </View>
   );

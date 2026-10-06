@@ -82,7 +82,7 @@ export function bubbleTextStyle(
 ): TextStyle {
   return {
     color: colors.bubbleText,
-    fontSize: label.length <= m.bubbleShortLabelMax ? m.bubbleFontSize : m.bubbleLongFontSize,
+    fontSize: label.length <= m.bubbleShortLabelMaxLength ? m.bubbleFontSize : m.bubbleLongFontSize,
     fontWeight: '700',
     textAlign: 'center',
   };
