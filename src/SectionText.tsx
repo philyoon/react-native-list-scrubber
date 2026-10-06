@@ -9,6 +9,7 @@ import {
   type TextStyle,
 } from 'react-native';
 import Animated, { useAnimatedProps, useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
+import { FILL } from './defaults';
 import { clamp } from './math';
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
@@ -164,7 +165,7 @@ const styles = StyleSheet.create({
   sizer: { height: 0, overflow: 'hidden', alignSelf: 'flex-start' },
   // Text fields pad and underline themselves (Android); a label shouldn't
   input: {
-    ...StyleSheet.absoluteFill,
+    ...FILL,
     padding: 0,
     margin: 0,
     borderWidth: 0,

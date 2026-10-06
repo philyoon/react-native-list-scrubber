@@ -74,3 +74,8 @@ export const MAX_FONT_SCALE = 1.5;
 export const VISIBLE_MIN = 0.01;
 /** Distance (pt) treated as "already at this step", so rounding can't keep the reader in place */
 export const STEP_SLACK = 1;
+/**
+ * Fills the parent, like StyleSheet.absoluteFill, spelled out: that's an opaque registered style in older React
+ * Native types (0.78), so it can't be spread there, and absoluteFillObject is gone from newer ones.
+ */
+export const FILL = { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 } as const;

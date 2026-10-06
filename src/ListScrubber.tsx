@@ -17,6 +17,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Bubble, bubbleTextStyle } from './Bubble';
 import {
+  FILL,
   LIST_SCRUBBER_DEFAULTS,
   MAX_FONT_SCALE,
   TOUCH_WIDTH,
@@ -371,7 +372,7 @@ const styles = StyleSheet.create({
   // Touches outside the thumb reach the list
   rail: { position: 'absolute', top: 0, bottom: 0, pointerEvents: 'box-none' },
   // Screen readers only: touches pass through to the thumb and the list
-  a11y: { ...StyleSheet.absoluteFill, pointerEvents: 'none' },
+  a11y: { ...FILL, pointerEvents: 'none' },
   touchArea: {
     position: 'absolute',
     top: 0,
