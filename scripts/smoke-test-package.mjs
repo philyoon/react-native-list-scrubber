@@ -62,7 +62,9 @@ import {
   LIST_SCRUBBER_DEFAULTS,
   ListScrubber,
   PinnedSectionHeader,
+  listLayout,
   sectionIndexAt,
+  sectionListLayout,
   useListScrubber,
   usePinnedSectionHeaderStyle,
   type CurrentSectionLabelProps,
@@ -80,6 +82,10 @@ const colors: ListScrubberColors = { thumb: 'gray', thumbActive: 'blue', bubble:
 const metrics: Partial<ListScrubberMetrics> = { thumbLength: LIST_SCRUBBER_DEFAULTS.metrics.thumbLength + 8 };
 const timing: Partial<ListScrubberTiming> = { fadeMs: 100 };
 type Sections = readonly ListScrubberSection[];
+const contacts = [{ name: 'Ada' }, { name: 'Bea' }];
+const flat = listLayout(contacts, { label: (c) => c.name[0]!, itemHeight: 64 });
+const grouped = sectionListLayout([{ title: 'A', data: contacts }], { itemHeight: 64, sectionHeaderHeight: 32 });
+export const layouts: Sections[] = [flat.sections, grouped.sections];
 
 function Scrubber({ scrubber }: { scrubber: UseListScrubberResult<any, Sections> }) {
   return (
@@ -102,7 +108,12 @@ export function WithSections({ sections }: { sections: Sections }) {
   const push = usePinnedSectionHeaderStyle(scrubber.scrollY, sections, 32);
   return (
     <View style={{ flex: 1 }}>
-      <Animated.FlatList {...scrubber.listProps} data={['a']} renderItem={() => null} />
+      <Animated.FlatList
+        {...scrubber.listProps}
+        data={contacts}
+        renderItem={() => null}
+        getItemLayout={flat.getItemLayout}
+      />
       <PinnedSectionHeader {...header} />
       <Animated.View style={push}>
         <CurrentSectionLabel {...label} />
