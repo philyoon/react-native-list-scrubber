@@ -82,11 +82,23 @@ that runs every check, including the example app and the Maestro flows:
 
 ## Releasing (maintainers)
 
+Releases are published by the Release workflow (`.github/workflows/release.yml`) with npm trusted publishing:
+npm trusts that workflow, so there's no npm token to store.
+
 1. Set `version` in `package.json`, and turn `## Unreleased` in `CHANGELOG.md` into `## <version>`.
 2. Merge that to `main`.
-3. Tag it: `git tag v<version> && git push origin v<version>`. The Release workflow checks that the tag
-   matches `package.json`, runs the checks, and publishes to npm with provenance. It needs the `NPM_TOKEN`
-   repository secret.
+3. Tag it: `git tag v<version> && git push origin v<version>`. The workflow checks that the tag matches
+   `package.json`, runs the checks, and publishes to npm with provenance.
 
 After a release, the next change that users will notice starts a new `## Unreleased` section at the top of
 `CHANGELOG.md`.
+
+### One-time setup
+
+- If the package doesn't exist on npm yet, publish the first version by hand from a clean checkout of the
+  tagged commit: `npm ci && npm publish --access public` (with two-factor authentication).
+- In the package's settings on npmjs.com, add a trusted publisher: GitHub Actions, owner `philyoon`,
+  repository `react-native-list-scrubber`, workflow `release.yml`.
+- Then, if npm offers it, set the package's publishing access to require two-factor authentication and
+  disallow tokens, so only the workflow (or a maintainer with two-factor authentication) can publish.
+- npm adds provenance only when the repository is public.

@@ -1,6 +1,7 @@
 name: Release
 # Publishes to npm when a version tag is pushed: git tag v0.1.0 && git push origin v0.1.0
-# Needs the NPM_TOKEN repository secret (an npm automation or granular access token with publish rights).
+# Uses npm trusted publishing: npm trusts this workflow (set up in the package's settings on npmjs.com) and gives
+# it a short-lived credential per run, so there's no npm token to store. npm adds provenance on its own.
 on:
   push:
     tags: ['v*']
@@ -9,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write # npm provenance: links the published package to this workflow run
+      id-token: write # trusted publishing: lets the run prove to npm which repo and workflow it is
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -17,6 +18,8 @@ jobs:
           node-version: 22
           cache: npm
           registry-url: https://registry.npmjs.org
+      # Trusted publishing needs npm 11.5.1 or later; Node 22 bundles npm 10
+      - run: npm install -g npm@^11.5.1
       - name: Tag matches package.json version
         run: |
           version="$(node -p "require('./package.json').version")"
@@ -31,6 +34,4 @@ jobs:
       - run: npm test -- --coverage
       # Packs the package (prepare builds it) and checks it as users get it
       - run: npm run smoke:package
-      - run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: npm publish --access public
