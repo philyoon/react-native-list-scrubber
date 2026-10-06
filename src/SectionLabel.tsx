@@ -37,7 +37,13 @@ export function SectionLabel({
       importantForAccessibility="no-hide-descendants"
       testID="list-scrubber-section-label"
     >
-      <LabelStrip index={index} labels={labels} height={lineHeight} style={style} />
+      <LabelStrip
+        testID="list-scrubber-label-strip"
+        index={index}
+        labels={labels}
+        height={lineHeight}
+        style={style}
+      />
     </View>
   );
 }

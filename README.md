@@ -73,9 +73,16 @@ function Contacts({ contacts }: { contacts: Contact[] }) {
 ```
 
 `listProps` holds `ref`, `onScroll`, `scrollEventThrottle`, `onLayout`, `onContentSizeChange` and hides the
-native indicator. If your list needs its own `onLayout` or `onContentSizeChange`, wire the pieces yourself:
-`useListScrubber()` also returns `listRef`, `scrollY` and `onScroll`, and `ListScrubber` takes `contentHeight`
-and `viewportHeight` directly.
+native indicator. If your list needs its own handlers, pass them to the hook and they're called after the
+scrubber's:
+
+```tsx
+const scrubber = useListScrubber({ onLayout, onContentSizeChange, onScroll: myScrollWorklet });
+```
+
+`onScroll` there is a worklet (it runs on the UI thread); keep its identity stable. The hook also returns the
+pieces `listProps` and `scrubberProps` are made of (`listRef`, `scrollY`, `onScroll`, `contentHeight`,
+`viewportHeight`) for wiring them by hand; all of these are public API.
 
 The list must be an **Animated** component, so the scroll handler runs on the UI thread:
 
@@ -129,14 +136,20 @@ Required:
 Optional:
 
 - `sections`: `{ offset, label }[]`, ascending. Drives the bubble and the screen-reader steps.
-- `labelAt(offset)`: a JS-thread label when there are no `sections`.
+- `labelAt(offset)`: a JS-thread label when there are no `sections`. The types accept one or the other.
 - `steps`: screen-reader step targets. Default: the section offsets, else one screen.
 - `formatPercent`: the screen-reader value when there's no label. Default: `40%`.
-- `onDragStart`: the drag started, e.g. for haptics.
+- `onDragStart`, `onDragEnd`: the drag started or ended, e.g. for haptics.
 - `onSectionChange(index, section)`: with `sections`, the finger crossed into another section while dragging,
   e.g. for a haptic tick.
-- `right`: offset from the right edge, negative to sit in a margin outside the list. Default: `0`.
+- `side`: `'left'` or `'right'` edge of the list. Default: `'right'`. For RTL layouts, pass
+  `I18nManager.isRTL ? 'left' : 'right'`.
+- `edgeOffset`: distance from that edge, negative to sit in a margin outside the list. Default: `0`.
+- `insets`: `{ top, bottom }` space the handle stays out of, e.g. under a pinned header or above a toolbar.
 - `railWidth`: width of the handle's strip. Default: `20`.
+- `enabled`: `false` hides the scrubber and its screen-reader control, keeping its state. Default: `true`.
+- `testID`: prefix of the test IDs (`<testID>` for the drag gesture, `-handle`, `-a11y`, `-label-strip`).
+  Default: `list-scrubber`.
 - `metrics`, `timing`: partial overrides of the defaults below.
 - `bubbleStyle`, `bubbleTextStyle`: extra styles, e.g. a shadow or a font.
 
@@ -184,7 +197,7 @@ fastest after a jump.
 ## Limits
 
 - **Vertical lists only.** Horizontal lists aren't supported.
-- **Right edge, no RTL mirroring.** The handle sits at `right`; it doesn't flip for right-to-left layouts.
+- **No automatic RTL mirroring.** The handle stays on `side`; pick the side from `I18nManager.isRTL`.
 - **Inverted lists** aren't handled: the handle follows the content offset, not the visual direction.
 - **Native only (iOS, Android).** Not tested on web.
 - `SectionLabel` renders every section label once, so it suits up to a few hundred sections.

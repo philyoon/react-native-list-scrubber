@@ -11,7 +11,8 @@ import type { ListScrubberColors } from './types';
 export function Bubble({
   metrics: m,
   colors,
-  viewportHeight,
+  railHeight,
+  side,
   dragging,
   dragTop,
   shown,
@@ -20,7 +21,10 @@ export function Bubble({
 }: {
   metrics: ListScrubberMetrics;
   colors: ListScrubberColors;
-  viewportHeight: number;
+  /** The bubble stays inside this height */
+  railHeight: number;
+  /** The handle's edge: the bubble goes on the other side of it */
+  side: 'left' | 'right';
   dragging: SharedValue<boolean>;
   dragTop: SharedValue<number>;
   shown?: SharedValue<boolean>;
@@ -30,7 +34,7 @@ export function Bubble({
   const shift = useAnimatedStyle(() => {
     const top = dragging.get() ? dragTop.get() : 0;
     const overhang = (m.bubbleSize - m.thumbLength) / 2;
-    const y = Math.max(0, overhang - top) - Math.max(0, top + m.thumbLength + overhang - viewportHeight);
+    const y = Math.max(0, overhang - top) - Math.max(0, top + m.thumbLength + overhang - railHeight);
     return { transform: [{ translateY: y }], ...(shown && { opacity: shown.get() ? 1 : 0 }) };
   });
   return (
@@ -38,7 +42,7 @@ export function Bubble({
       style={[
         styles.box,
         {
-          right: TOUCH_WIDTH + m.bubbleGap,
+          [side]: TOUCH_WIDTH + m.bubbleGap,
           minWidth: m.bubbleSize,
           height: m.bubbleSize,
           paddingHorizontal: m.bubblePadding,

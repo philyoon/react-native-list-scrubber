@@ -12,18 +12,20 @@ export function LabelStrip({
   labels,
   height,
   style,
+  testID,
 }: {
   index: SharedValue<number>;
   labels: readonly string[];
   height: number;
   style?: StyleProp<TextStyle>;
+  testID: string;
 }) {
   const slide = useAnimatedStyle(() => ({
     transform: [{ translateY: -clamp(index.get(), 0, labels.length - 1) * height }],
   }));
   return (
     <View style={{ height, overflow: 'hidden' }}>
-      <Animated.View style={slide} testID="list-scrubber-label-strip">
+      <Animated.View style={slide} testID={testID}>
         {labels.map((label, i) => (
           <View key={i} style={{ height, justifyContent: 'center' }}>
             <Text numberOfLines={1} style={style}>

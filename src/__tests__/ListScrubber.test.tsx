@@ -84,7 +84,7 @@ function setup(props: Partial<ListScrubberProps> = {}) {
       viewportHeight={100}
       colors={colors}
       accessibilityLabel="Scroll position"
-      {...props}
+      {...(props as object)} // a Partial of the sections / labelAt union isn't spreadable as is
     />,
   );
 }
@@ -177,7 +177,7 @@ describe('sections', () => {
 
   it('draws every section label once in a strip and never asks labelAt', async () => {
     const labelAt = jest.fn(() => 'js');
-    await setup({ sections, labelAt });
+    await setup({ sections, labelAt: labelAt as never }); // the types forbid both; check it at runtime too
     await drag(26);
     await act(async () => {});
     expect(labelAt).not.toHaveBeenCalled();
@@ -642,5 +642,79 @@ describe('render cost', () => {
 
   it('freezes the defaults', () => {
     expect(Object.isFrozen(LIST_SCRUBBER_DEFAULTS.metrics)).toBe(true);
+  });
+});
+
+describe('API options', () => {
+  const style = (id: string) =>
+    StyleSheet.flatten(screen.getByTestId(id, { includeHiddenElements: true }).props.style);
+  type Handlers = Record<'onBegin' | 'onUpdate' | 'onFinalize', (e: object) => void>;
+  const pan = (id = 'list-scrubber') =>
+    (getByGestureTestId(id) as unknown as { handlers: Handlers }).handlers;
+
+  it('onDragEnd fires when the finger lifts', async () => {
+    const onDragEnd = jest.fn();
+    await setup({ onDragEnd });
+    await drag(10);
+    await act(async () => {});
+    expect(onDragEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it('side="left" mirrors the rail, handle, thumb and bubble', async () => {
+    await setup({ side: 'left', edgeOffset: 4, labelAt: () => 'Jan' });
+    const rail = screen.getByTestId('list-scrubber-a11y', { includeHiddenElements: true }).parent!;
+    expect(StyleSheet.flatten(rail.props.style)).toMatchObject({ left: 4 });
+    expect(StyleSheet.flatten(rail.props.style).right).toBeUndefined();
+    expect(style('list-scrubber-handle')).toMatchObject({ left: 0 });
+    await act(async () => {
+      pan().onBegin({});
+      pan().onUpdate({ translationY: 10 });
+    });
+    const handle = screen.getByTestId('list-scrubber-handle', { includeHiddenElements: true });
+    const bar = StyleSheet.flatten(
+      (handle.children.at(-1) as unknown as { props: { style: ViewStyle } }).props.style,
+    );
+    expect(bar).toMatchObject({ marginLeft: 6 });
+    let bubble = screen.getByText('Jan', { includeHiddenElements: true }).parent!;
+    while (!StyleSheet.flatten(bubble.props.style)?.transform) bubble = bubble.parent!;
+    expect(StyleSheet.flatten(bubble.props.style)).toMatchObject({ left: 44 + 40 });
+  });
+
+  it('insets shrink the rail and the handle travel', async () => {
+    await setup({ insets: { top: 10, bottom: 2 } }); // rail 100 − 12 = 88, travel 88 − 48 = 40
+    const rail = screen.getByTestId('list-scrubber-a11y', { includeHiddenElements: true }).parent!;
+    expect(StyleSheet.flatten(rail.props.style)).toMatchObject({ top: 10, bottom: 2 });
+    await drag(20); // half the travel
+    expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 450, false);
+  });
+
+  it('enabled={false} draws nothing', async () => {
+    await setup({ enabled: false });
+    expect(screen.queryByTestId('list-scrubber-a11y', { includeHiddenElements: true })).toBeNull();
+  });
+
+  it('testID prefixes every test ID', async () => {
+    await setup({ testID: 'contacts', sections: [{ offset: 0, label: 'A' }] });
+    expect(getByGestureTestId('contacts')).toBeTruthy();
+    for (const id of ['contacts-handle', 'contacts-a11y', 'contacts-label-strip']) {
+      expect(screen.getByTestId(id, { includeHiddenElements: true })).toBeTruthy();
+    }
+  });
+
+  it("useListScrubber calls the list's own handlers after its own", async () => {
+    const onScroll = jest.fn();
+    const onLayout = jest.fn();
+    const onContentSizeChange = jest.fn();
+    const { result } = await renderHook(() => useListScrubber({ onScroll, onLayout, onContentSizeChange }));
+    const layout = { nativeEvent: { layout: { height: 600 } } } as never;
+    await act(() => {
+      result.current.listProps.onLayout(layout);
+      result.current.listProps.onContentSizeChange(390, 12000);
+      (result.current.onScroll as unknown as (e: unknown) => void)({ contentOffset: { y: 5 } });
+    });
+    expect(onLayout).toHaveBeenCalledWith(layout);
+    expect(onContentSizeChange).toHaveBeenCalledWith(390, 12000);
+    expect(onScroll).toHaveBeenCalledWith({ contentOffset: { y: 5 } });
+    expect(result.current.scrubberProps).toMatchObject({ viewportHeight: 600, contentHeight: 12000 });
   });
 });

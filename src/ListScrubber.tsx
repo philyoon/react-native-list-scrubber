@@ -22,19 +22,12 @@ import { useAutoHide } from './useAutoHide';
 import { useLatest } from './useLatest';
 import { useScrubGesture } from './useScrubGesture';
 
-export interface ListScrubberProps {
+interface ListScrubberBaseProps {
   scrollY: SharedValue<number>;
   listRef: AnimatedRef<any>; // any scrollable component
   contentHeight: number;
   viewportHeight: number;
   colors: ListScrubberColors;
-  /**
-   * Labelled sections (ascending offsets). The bubble shows the section under the finger, picked and
-   * drawn on the UI thread, and screen readers step section by section. Preferred over `labelAt`.
-   */
-  sections?: readonly ListScrubberSection[];
-  /** Bubble label while dragging, computed on the JS thread (can lag); null keeps the previous label */
-  labelAt?: (offset: number) => string | null;
   /** Screen-reader step targets (ascending offsets); defaults to the section offsets, else one screen */
   steps?: readonly number[];
   /** Screen-reader name (e.g. "Scroll position") */
@@ -43,12 +36,18 @@ export interface ListScrubberProps {
   formatPercent?: (percent: number) => string;
   /** Drag started (e.g. haptics) */
   onDragStart?: () => void;
-  /** With `sections`: the finger moved into another section while dragging (e.g. a haptic tick per letter) */
-  onSectionChange?: (index: number, section: ListScrubberSection) => void;
-  /** Offset from the right edge (negative to sit in a margin outside the list) */
-  right?: number;
+  /** Drag ended (finger lifted or gesture cancelled) */
+  onDragEnd?: () => void;
+  /** Which edge of the list the handle sits on (default 'right'). For RTL, pass `I18nManager.isRTL ? 'left' : 'right'`. */
+  side?: 'left' | 'right';
+  /** Distance from that edge (negative to sit in a margin outside the list) */
+  edgeOffset?: number;
+  /** Space at the top and bottom of the list the handle stays out of (e.g. a pinned header or a toolbar) */
+  insets?: { top?: number; bottom?: number };
   /** Width of the strip the handle sits in (default 20) */
   railWidth?: number;
+  /** false hides the scrubber and its screen-reader control, keeping its state (default true) */
+  enabled?: boolean;
   /** Size overrides (defaults: LIST_SCRUBBER_DEFAULTS.metrics) */
   metrics?: Partial<ListScrubberMetrics>;
   /** Duration overrides (defaults: LIST_SCRUBBER_DEFAULTS.timing) */
@@ -56,7 +55,28 @@ export interface ListScrubberProps {
   /** Extra style for the bubble box (e.g. a shadow) */
   bubbleStyle?: StyleProp<ViewStyle>;
   bubbleTextStyle?: StyleProp<TextStyle>;
+  /** Prefix of the test IDs: `<testID>` (the drag gesture), `-handle`, `-a11y`, `-label-strip` (default 'list-scrubber') */
+  testID?: string;
 }
+
+/** Labels from sections: picked and drawn on the UI thread, so they never lag. Preferred. */
+interface ListScrubberSectionProps {
+  /** Labelled sections (ascending offsets). The bubble shows the section under the finger, and screen readers step section by section. */
+  sections: readonly ListScrubberSection[];
+  /** The finger moved into another section while dragging (e.g. a haptic tick per letter) */
+  onSectionChange?: (index: number, section: ListScrubberSection) => void;
+  labelAt?: never;
+}
+
+/** Labels from a function on the JS thread: for labels that aren't known ahead of time. */
+interface ListScrubberLabelAtProps {
+  sections?: undefined;
+  onSectionChange?: never;
+  /** Bubble label while dragging, computed on the JS thread (can lag); null keeps the previous label */
+  labelAt?: (offset: number) => string | null;
+}
+
+export type ListScrubberProps = ListScrubberBaseProps & (ListScrubberSectionProps | ListScrubberLabelAtProps);
 
 const defaultFormatPercent = (percent: number) => `${percent}%`;
 
@@ -83,13 +103,18 @@ export function ListScrubber({
   accessibilityLabel,
   formatPercent = defaultFormatPercent,
   onDragStart,
+  onDragEnd,
   onSectionChange,
-  right = 0,
+  side = 'right',
+  edgeOffset = 0,
+  insets,
   railWidth = LIST_SCRUBBER_DEFAULTS.railWidth,
+  enabled = true,
   metrics,
   timing,
   bubbleStyle,
   bubbleTextStyle: bubbleTextStyleProp,
+  testID = 'list-scrubber',
 }: ListScrubberProps) {
   // Memoized: worklets copy what they capture to the UI thread whenever its identity changes, and an
   // inline `metrics={{…}}` would otherwise do that on every render (hence keyed by value).
@@ -99,7 +124,11 @@ export function ListScrubber({
   const { hideAfterMs, fadeMs } = { ...LIST_SCRUBBER_DEFAULTS.timing, ...timing };
   const offsets = useMemo(() => sections?.map((s) => s.offset) ?? [], [sections]);
   const labels = useMemo(() => sections?.map((s) => s.label) ?? [], [sections]);
-  const track = Math.max(0, viewportHeight - m.thumbLength);
+  const insetTop = insets?.top ?? 0;
+  const insetBottom = insets?.bottom ?? 0;
+  /** Height of the strip the handle travels in */
+  const railHeight = Math.max(0, viewportHeight - insetTop - insetBottom);
+  const track = Math.max(0, railHeight - m.thumbLength);
   const maxScroll = Math.max(0, contentHeight - viewportHeight);
 
   const dragging = useSharedValue(false);
@@ -127,6 +156,7 @@ export function ListScrubber({
   const onEnd = useLatest(() => {
     setActive(false);
     setLabel(null);
+    onDragEnd?.();
   });
   const onOffset = useLatest((offset: number) => {
     const next = labelAt?.(offset);
@@ -151,7 +181,8 @@ export function ListScrubber({
     offsets,
     fadeMs,
     hideAfterMs,
-    enabled: true,
+    enabled,
+    testID,
     onBegin,
     onEnd,
     onOffset: labelAt ? onOffset : undefined,
@@ -163,14 +194,19 @@ export function ListScrubber({
     return { opacity: opacity.get(), transform: [{ translateY: clamp(top, 0, track) }] };
   });
 
-  if (maxScroll <= 0 || track <= 0) return null;
+  if (!enabled || maxScroll <= 0 || track <= 0) return null;
 
   // With sections, one font size for all: the longest label decides
   const longest = labels.reduce((a, b) => (b.length > a.length ? b : a), '');
   const thumbWidth = active ? m.thumbActiveWidth : m.thumbWidth;
+  const left = side === 'left';
+  const bubbleProps = { metrics: m, colors, railHeight, dragging, dragTop, side, style: bubbleStyle };
 
   return (
-    <View pointerEvents="box-none" style={[styles.rail, { right, width: railWidth }]}>
+    <View
+      pointerEvents="box-none"
+      style={[styles.rail, { top: insetTop, bottom: insetBottom, [side]: edgeOffset, width: railWidth }]}
+    >
       {/* Screen readers: an adjustable control that is always present; the handle itself is drag-only, so it's hidden */}
       <View
         accessible
@@ -180,25 +216,22 @@ export function ListScrubber({
         accessibilityActions={A11Y_ACTIONS}
         onAccessibilityAction={(e) => a11y.step(e.nativeEvent.actionName === 'increment' ? 1 : -1)}
         pointerEvents="none"
-        style={[styles.rail, { right: 0, width: railWidth }]}
-        testID="list-scrubber-a11y"
+        style={[styles.rail, { [side]: 0, width: railWidth }]}
+        testID={`${testID}-a11y`}
       />
       <GestureDetector gesture={pan}>
         <Animated.View
           pointerEvents={visible ? 'auto' : 'none'}
-          style={[styles.handle, { height: m.thumbLength }, handleStyle]}
+          style={[styles.handle, { [side]: 0, height: m.thumbLength }, handleStyle]}
           accessible={false}
           importantForAccessibility="no-hide-descendants"
           accessibilityElementsHidden
-          testID="list-scrubber-handle"
+          testID={`${testID}-handle`}
         >
           {sections?.length ? (
-            <Bubble
-              {...{ metrics: m, colors, viewportHeight, dragging, dragTop }}
-              shown={dragging}
-              style={bubbleStyle}
-            >
+            <Bubble {...bubbleProps} shown={dragging}>
               <LabelStrip
+                testID={`${testID}-label-strip`}
                 index={sectionIdx}
                 labels={labels}
                 height={m.bubbleSize}
@@ -208,7 +241,7 @@ export function ListScrubber({
           ) : (
             active &&
             label != null && (
-              <Bubble {...{ metrics: m, colors, viewportHeight, dragging, dragTop }} style={bubbleStyle}>
+              <Bubble {...bubbleProps}>
                 <Text numberOfLines={1} style={[bubbleTextStyle(label, m, colors), bubbleTextStyleProp]}>
                   {label}
                 </Text>
@@ -219,7 +252,7 @@ export function ListScrubber({
             style={{
               width: thumbWidth,
               height: m.thumbLength,
-              marginRight: (railWidth - thumbWidth) / 2,
+              [left ? 'marginLeft' : 'marginRight']: (railWidth - thumbWidth) / 2,
               borderRadius: m.thumbRadius,
               backgroundColor: active ? colors.thumbActive : colors.thumb,
             }}
@@ -237,7 +270,6 @@ const styles = StyleSheet.create({
   handle: {
     position: 'absolute',
     top: 0,
-    right: 0,
     width: TOUCH_WIDTH,
     alignItems: 'flex-end',
     justifyContent: 'center',

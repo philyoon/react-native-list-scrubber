@@ -15,6 +15,12 @@
 - `onSectionChange` is skipped if `sections` changed and the section no longer exists when it would fire.
 - `LIST_SCRUBBER_DEFAULTS` is frozen.
 - Removed the unused `children` prop.
+- `useListScrubber({ onScroll, onLayout, onContentSizeChange })`: the list's own handlers, called after the
+  scrubber's.
+- `ListScrubber`: `onDragEnd`, `insets`, `enabled` and `testID` props, and `side` (`'left'` / `'right'`).
+- **Breaking:** `right` is replaced by `side` + `edgeOffset`.
+- **Breaking (types):** `sections` and `labelAt` are mutually exclusive, and `onSectionChange` requires
+  `sections`.
 
 ## 0.1.0
 

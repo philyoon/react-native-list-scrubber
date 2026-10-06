@@ -29,6 +29,7 @@ export function useScrubGesture({
   fadeMs,
   hideAfterMs,
   enabled,
+  testID,
   onBegin,
   onEnd,
   onOffset,
@@ -47,6 +48,7 @@ export function useScrubGesture({
   fadeMs: number;
   hideAfterMs: number;
   enabled: boolean;
+  testID: string;
   onBegin: () => void;
   onEnd: () => void;
   /** Without sections: the scroll offset of every drag frame */
@@ -62,7 +64,7 @@ export function useScrubGesture({
   const pan = useMemo(
     () =>
       Gesture.Pan()
-        .withTestId('list-scrubber')
+        .withTestId(testID)
         .enabled(enabled && track > 0 && maxScroll > 0)
         .minDistance(0)
         .onBegin(() => {
@@ -110,6 +112,7 @@ export function useScrubGesture({
       fadeMs,
       hideAfterMs,
       enabled,
+      testID,
       onBegin,
       onEnd,
       onOffset,
