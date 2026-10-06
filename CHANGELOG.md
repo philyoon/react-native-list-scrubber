@@ -46,11 +46,18 @@
   ones. Passing `sections` to either component directly still works.
 - Development builds warn (once per array) when `sections` or `accessibilitySteps` aren't in ascending order:
   they're looked up by binary search, so out of order the wrong section showed without a hint.
+- Types: `UseListScrubberOptions`, `UseListScrubberResult` (the hook's result, named),
+  `PinnedSectionHeaderProps` and `CurrentSectionLabelProps` are exported.
+- `onSectionChange`'s parameters are typed when `sections` come in a spread (`{...scrubber.scrubberProps}`);
+  before, strict TypeScript rejected `(index, section) => …` there as implicitly `any`.
+- The package includes `CHANGELOG.md`. CI tests the packed package (`npm run smoke:package`): its entry
+  points, the built modules' imports, and an app using every export, typechecked with strict and legacy React
+  Native types.
 - Section bubble: each label gets its own font size by its length, so one long label no longer shrinks every
   letter.
 - **Breaking:** `right` is replaced by `side` + `edgeOffset`.
-- **Breaking (types):** `sections` and `labelAt` are mutually exclusive, and `onSectionChange` requires
-  `sections`.
+- **Breaking (types):** `sections` and `labelAt` are mutually exclusive. (`onSectionChange` is accepted with
+  either and fires only with `sections`, so its parameters are typed even when `sections` arrive in a spread.)
 
 ## 0.1.0
 
