@@ -51,6 +51,15 @@ npm run e2e:android    # Android emulator (after adb reverse tcp:8081 tcp:8081)
 
 The README's [End-to-end tests](README.md#end-to-end-tests) section explains how the flows find the thumb.
 
+## Dependency updates
+
+Dependabot opens monthly, grouped pull requests for tooling only. Upgrade these by hand, as one pull request
+that runs every check, including the example app and the Maestro flows:
+
+- The React Native platform: `react`, `react-native`, Reanimated, Worklets, Gesture Handler, and their types
+  and presets. They set what the library is tested against.
+- Major versions of anything, which usually need config or code changes.
+
 ## Pull requests
 
 - Keep each pull request to one change.

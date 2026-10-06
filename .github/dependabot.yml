@@ -1,12 +1,17 @@
-# Monthly, grouped updates so they don't flood the pull requests.
-# Peer dependency ranges in package.json are a deliberate choice and aren't touched here.
-# The example app follows its Expo SDK (npx expo install --fix), so it isn't updated here either.
+# Monthly, grouped updates for tooling only, at most two open pull requests at a time.
+# Not updated here, on purpose:
+# - The React Native platform (react, react-native, Reanimated, Worklets, Gesture Handler and their types and
+#   presets): it sets which versions the library is tested against, so it's upgraded by hand, as one tested
+#   pull request.
+# - Major versions: they need config or code changes (e.g. ESLint flat config, Jest), so they're upgraded by hand.
+# - Peer dependency ranges in package.json, and the example app (it follows its Expo SDK: npx expo install --fix).
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+    open-pull-requests-limit: 2
     groups:
       actions:
         patterns: ['*']
@@ -14,9 +19,20 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    open-pull-requests-limit: 2
     allow:
       - dependency-type: development
+    ignore:
+      - dependency-name: '*'
+        update-types: [version-update:semver-major]
+      - dependency-name: react
+      - dependency-name: react-test-renderer
+      - dependency-name: '@types/react'
+      - dependency-name: react-native
+      - dependency-name: '@react-native/*'
+      - dependency-name: react-native-reanimated
+      - dependency-name: react-native-worklets
+      - dependency-name: react-native-gesture-handler
     groups:
       dev-dependencies:
         patterns: ['*']
-        update-types: [minor, patch]
