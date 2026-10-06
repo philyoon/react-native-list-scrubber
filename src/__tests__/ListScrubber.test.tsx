@@ -81,13 +81,57 @@ describe('sections', () => {
     expect(
       label.children.map((c) => typeof c !== 'string' && StyleSheet.flatten(c.props.style)),
     ).toContainEqual({ width: 42 });
-    // Same labels: still measured. New labels: laid out again
-    await view.rerender(<ListScrubber {...baseProps} sections={many} contentHeight={20000} />);
-    expect(copies()).toHaveLength(0);
-    await view.rerender(<ListScrubber {...baseProps} sections={many.slice(0, 200)} contentHeight={20000} />);
-    expect(copies()).toHaveLength(0);
+    // Same labels in a new array: nothing to measure
+    const props = { ...baseProps, contentHeight: 20000 };
+    await view.rerender(<ListScrubber {...props} sections={many.slice(0, 200)} />);
     await goIdle();
-    expect(copies()).toHaveLength(150);
+    expect(copies()).toHaveLength(0);
+    // Another page: only its new labels are laid out, and the width only grows
+    const page = (from: number, count: number) =>
+      Array.from({ length: count }, (_, i) => ({
+        offset: 3000 + (from + i) * 10,
+        label: `S${150 + from + i}`,
+      }));
+    const layout = (width: number) =>
+      fireEvent(copies()[0]!.parent!, 'layout', { nativeEvent: { layout: { width, height: 0 } } });
+    const spacer = () =>
+      sectionText('list-scrubber-label')
+        .field.parent!.children.map((c) => typeof c !== 'string' && StyleSheet.flatten(c.props.style))
+        .find((st) => st && 'width' in st);
+    const twoPages = [...many, ...page(0, 10)];
+    await view.rerender(<ListScrubber {...props} sections={twoPages} />);
+    await goIdle();
+    expect(copies().map((c) => c.props.children)).toEqual(page(0, 10).map((p) => p.label));
+    await layout(30); // narrower than before: the bubble keeps the widest
+    expect(copies()).toHaveLength(0);
+    expect(spacer()).toEqual({ width: 42 });
+    await view.rerender(<ListScrubber {...props} sections={[...twoPages, ...page(10, 5)]} />);
+    await goIdle();
+    expect(copies()).toHaveLength(5);
+    await layout(50);
+    expect(spacer()).toEqual({ width: 50 });
+    // A new text style: every label again
+    await view.rerender(
+      <ListScrubber
+        {...props}
+        sections={[...twoPages, ...page(10, 5)]}
+        bubbleTextStyle={{ fontFamily: 'Serif' }}
+      />,
+    );
+    await goIdle();
+    expect(copies()).toHaveLength(165);
+  });
+
+  it('labels that change while being measured get a fresh view, which reports its layout again', async () => {
+    const first = [{ offset: 0, label: 'A' }];
+    const view = await setup({ sections: first });
+    // The thumb shows: the labels are measured now, and go on being measured as they change
+    await act(async () => reactions()[1].react(true, false));
+    const sizer = screen.getByText('A', { includeHiddenElements: true }).parent!;
+    const next = [...first, { offset: 500, label: 'B' }];
+    await view.rerender(<ListScrubber {...baseProps} sections={next} />);
+    // A view that stays mounted reports its layout only if its size changes: B could be as wide as A
+    expect(screen.getByText('B', { includeHiddenElements: true }).parent).not.toBe(sizer);
   });
 
   it('measures with requestIdleCallback where there is one, and cancels it on unmount', async () => {
