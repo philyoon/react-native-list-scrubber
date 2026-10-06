@@ -227,7 +227,8 @@ npm install
 npx expo start
 ```
 
-It opens in Expo Go and has one screen per list type. It uses the library source from `../src`.
+It opens in Expo Go and has one screen per list type. It uses the library source from `../src`. `npm run web`
+opens it in the browser instead (Expo web); CI builds that web bundle on every push.
 
 ### End-to-end tests
 

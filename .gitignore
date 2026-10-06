@@ -4,6 +4,7 @@ lib/
 .DS_Store
 coverage/
 example/.expo/
+example/dist/
 example/ios/
 example/android/
 .idea/

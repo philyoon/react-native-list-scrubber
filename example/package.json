@@ -8,21 +8,26 @@
     "start:e2e": "EXPO_PUBLIC_E2E=1 expo start --clear",
     "ios": "expo start --ios",
     "android": "expo start --android",
+    "web": "expo start --web",
+    "export:web": "expo export --platform web",
     "typecheck": "tsc --noEmit",
     "e2e": "maestro test e2e",
     "e2e:android": "maestro test -e APP_ID=host.exp.exponent e2e"
   },
   "dependencies": {
+    "@expo/metro-runtime": "~57.0.16",
     "@legendapp/list": "^3.6.0",
     "@shopify/flash-list": "2.0.2",
     "expo": "~57.0.25",
     "expo-haptics": "~57.0.3",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
+    "react-dom": "19.2.3",
     "react-native": "0.86.3",
     "react-native-gesture-handler": "~2.32.0",
     "react-native-reanimated": "4.5.1",
     "react-native-safe-area-context": "~5.7.0",
+    "react-native-web": "~0.21.0",
     "react-native-worklets": "0.10.1"
   },
   "devDependencies": {
