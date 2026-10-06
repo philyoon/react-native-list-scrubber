@@ -20,3 +20,5 @@ jobs:
       - run: npm run build
       - run: npm --prefix example install
       - run: npm --prefix example run typecheck
+      # Builds the example for web: catches anything that breaks the web bundle
+      - run: npm --prefix example run export:web
