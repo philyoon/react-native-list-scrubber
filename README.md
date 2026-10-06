@@ -1,5 +1,9 @@
 # react-native-list-scrubber
 
+[![npm](https://img.shields.io/npm/v/react-native-list-scrubber)](https://www.npmjs.com/package/react-native-list-scrubber)
+[![CI](https://github.com/philyoon/react-native-list-scrubber/actions/workflows/ci.yml/badge.svg)](https://github.com/philyoon/react-native-list-scrubber/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/github/license/philyoon/react-native-list-scrubber)](LICENSE)
+
 A draggable thumb for scrubbing through long React Native lists, with a label bubble beside the finger.
 
 <img src="docs/demo.gif" width="320" alt="Dragging the thumb through 3,000 contacts: the bubble and the pinned header follow letter by letter" />
@@ -165,6 +169,14 @@ Optional:
   Default: `list-scrubber`.
 - `metrics`, `timing`: partial overrides of the defaults below.
 - `bubbleStyle`, `bubbleTextStyle`: extra styles, e.g. a shadow or a font.
+
+### Types
+
+Every component's props and the hook's options and result are exported: `ListScrubberProps`,
+`PinnedSectionHeaderProps`, `CurrentSectionLabelProps`, `UseListScrubberOptions`, `UseListScrubberResult`,
+plus `ListScrubberSection`, `ListScrubberColors`, `ListScrubberMetrics` and `ListScrubberTiming`. For a
+component that takes the hook's result with sections:
+`UseListScrubberResult<any, readonly ListScrubberSection[]>`.
 
 ### Defaults (`LIST_SCRUBBER_DEFAULTS`)
 

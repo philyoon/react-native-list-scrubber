@@ -82,4 +82,19 @@ describe('useListScrubber({ sections })', () => {
     );
     expect([ok, refused]).toHaveLength(2);
   });
+
+  it("types: onSectionChange's parameters are inferred when sections arrive in the spread", async () => {
+    const scrubber = (await renderHook(() => useListScrubber({ sections }))).result.current;
+    const colors = { thumb: 'gray', thumbActive: 'red', bubble: 'black', bubbleText: 'white' };
+    // Under `strict` this fails to compile ("implicitly has an 'any' type") if the parameters aren't inferred
+    const el = (
+      <ListScrubber
+        {...scrubber.scrubberProps}
+        colors={colors}
+        accessibilityLabel="s"
+        onSectionChange={(index, section) => [index.toFixed(), section.label.toUpperCase()]}
+      />
+    );
+    expect(el).toBeTruthy();
+  });
 });

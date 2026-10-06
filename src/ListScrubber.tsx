@@ -65,21 +65,24 @@ interface ListScrubberBaseProps {
   bubbleTextStyle?: StyleProp<TextStyle>;
   /** Prefix of the test IDs: `<testID>` (the drag gesture), `-thumb`, `-a11y`, `-label-strip` (default 'list-scrubber') */
   testID?: string;
+  /**
+   * With `sections`: the finger moved into another section while dragging (e.g. a haptic tick per letter).
+   * Shared by both label modes rather than tied to `sections`, so its parameters are typed even when
+   * `sections` comes in a spread (`{...scrubber.scrubberProps}`), which TypeScript can't discriminate on.
+   */
+  onSectionChange?: (index: number, section: ListScrubberSection) => void;
 }
 
 /** Labels from sections: picked and drawn on the UI thread, so they never lag. Preferred. */
 interface ListScrubberSectionProps {
   /** Labelled sections (ascending offsets). The bubble shows the section under the finger, and screen readers step section by section. */
   sections: readonly ListScrubberSection[];
-  /** The finger moved into another section while dragging (e.g. a haptic tick per letter) */
-  onSectionChange?: (index: number, section: ListScrubberSection) => void;
   labelAt?: never;
 }
 
 /** Labels from a function on the JS thread: for labels that aren't known ahead of time. */
 interface ListScrubberLabelAtProps {
   sections?: undefined;
-  onSectionChange?: never;
   /**
    * Bubble label while dragging, computed on the JS thread (can lag); null keeps the previous label.
    * `position` is the content offset to describe (it slides from the top of the viewport at the start to

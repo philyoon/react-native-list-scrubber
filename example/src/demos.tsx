@@ -10,6 +10,7 @@ import {
   PinnedSectionHeader,
   useListScrubber,
   type ListScrubberSection,
+  type UseListScrubberResult,
 } from 'react-native-list-scrubber';
 import {
   dayLabel,
@@ -30,7 +31,7 @@ const CONTACTS = makeContacts(3000);
 const ENTRIES = makeEntries(4000);
 
 /** useListScrubber given sections: its scrubberProps and headerProps carry them */
-type SectionScrubber = ReturnType<typeof useListScrubber<any, readonly ListScrubberSection[]>>;
+type SectionScrubber = UseListScrubberResult<any, readonly ListScrubberSection[]>;
 
 function Scrubber(props: { scrubber: SectionScrubber }) {
   const colors = useColors();

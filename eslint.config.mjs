@@ -14,6 +14,11 @@ export default tseslint.config(
     },
   },
   {
+    // Node scripts
+    files: ['scripts/**'],
+    languageOptions: { globals: { console: 'readonly', process: 'readonly' } },
+  },
+  {
     // Config files and jest.mock factories use CommonJS
     files: ['*.js', 'src/__tests__/**'],
     languageOptions: { globals: { module: 'writable', require: 'readonly', jest: 'readonly' } },

@@ -3,6 +3,7 @@ lib/
 *.log
 .DS_Store
 coverage/
+.smoke/
 example/.expo/
 example/dist/
 example/ios/

@@ -14,6 +14,23 @@ import { sectionIndexAt } from './math';
 import type { ListScrubberSection } from './types';
 import { warnIfUnsorted } from './validate';
 
+export interface PinnedSectionHeaderProps {
+  scrollY: SharedValue<number>;
+  /** Section offsets are where each section's header starts in the list */
+  sections: readonly ListScrubberSection[];
+  /** Header height */
+  height: number;
+  /** The next section's header pushes this one out (default true) */
+  push?: boolean;
+  /** The header box, e.g. background and padding */
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
+  /** Cap on the system text size for the label (default 1.5): the header doesn't grow with it */
+  maxFontSizeMultiplier?: number;
+  /** Test ID of the header; its label is `<testID>-label` (default 'list-scrubber-pinned-header') */
+  testID?: string;
+}
+
 /**
  * A section header pinned over the top of the list, showing the current section's label. Drawn on the
  * UI thread, so it changes in the same frame as the list, even during scrubber jumps. Put it next to the
@@ -29,22 +46,7 @@ export function PinnedSectionHeader({
   textStyle,
   maxFontSizeMultiplier,
   testID = 'list-scrubber-pinned-header',
-}: {
-  scrollY: SharedValue<number>;
-  /** Section offsets are where each section's header starts in the list */
-  sections: readonly ListScrubberSection[];
-  /** Header height */
-  height: number;
-  /** The next section's header pushes this one out (default true) */
-  push?: boolean;
-  /** The header box, e.g. background and padding */
-  style?: StyleProp<ViewStyle>;
-  textStyle?: StyleProp<TextStyle>;
-  /** Cap on the system text size for the label (default 1.5): the header doesn't grow with it */
-  maxFontSizeMultiplier?: number;
-  /** Test ID of the header; its label is `<testID>-label` (default 'list-scrubber-pinned-header') */
-  testID?: string;
-}) {
+}: PinnedSectionHeaderProps) {
   const pushStyle = usePinnedSectionHeaderStyle(scrollY, sections, height);
   return (
     <View style={[styles.pinned, { height }]} testID={testID}>
@@ -61,6 +63,21 @@ export function PinnedSectionHeader({
   );
 }
 
+export interface CurrentSectionLabelProps {
+  scrollY: SharedValue<number>;
+  sections: readonly ListScrubberSection[];
+  /**
+   * Height of one label line. Default: the style's lineHeight, else 1.3 × fontSize, scaled with the
+   * system text size (up to maxFontSizeMultiplier). A height you pass is used as is.
+   */
+  height?: number;
+  style?: StyleProp<TextStyle>;
+  /** Cap on the system text size (default 1.5) */
+  maxFontSizeMultiplier?: number;
+  /** Test ID of the label; its strip is `<testID>-strip` (default 'list-scrubber-section-label') */
+  testID?: string;
+}
+
 /**
  * The label of the section at the top of the list, drawn on the UI thread: PinnedSectionHeader's label,
  * for building a custom pinned header. Native sticky headers (SectionList) only pin headers of rows already rendered,
@@ -75,20 +92,7 @@ export function CurrentSectionLabel({
   style,
   maxFontSizeMultiplier = MAX_FONT_SCALE,
   testID = 'list-scrubber-section-label',
-}: {
-  scrollY: SharedValue<number>;
-  sections: readonly ListScrubberSection[];
-  /**
-   * Height of one label line. Default: the style's lineHeight, else 1.3 × fontSize, scaled with the
-   * system text size (up to maxFontSizeMultiplier). A height you pass is used as is.
-   */
-  height?: number;
-  style?: StyleProp<TextStyle>;
-  /** Cap on the system text size (default 1.5) */
-  maxFontSizeMultiplier?: number;
-  /** Test ID of the label; its strip is `<testID>-strip` (default 'list-scrubber-section-label') */
-  testID?: string;
-}) {
+}: CurrentSectionLabelProps) {
   // Memoized: worklets copy what they capture to the UI thread whenever its identity changes.
   const offsets = useMemo(() => {
     const values = sections.map((s) => s.offset);
