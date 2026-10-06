@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Peer dependencies: `react-native-reanimated >=4.1.0` (was `>=4.0.0`). Reanimated 4.0 only runs with Worklets
+  0.4, which lacks the functions this library uses, so it never worked; nobody who could use the package
+  before is dropped.
 - `useListScrubber` returns `scrollToSection(index)` and `scrollToOffset(y)`, to move the list from code (e.g.
   a tappable A–Z index), without animating by default. The example app's Index screen shows it.
 - `react-native-list-scrubber/jest`: a Jest mock for testing apps that use the package, with no Reanimated,
