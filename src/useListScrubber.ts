@@ -6,6 +6,7 @@ import {
   useSharedValue,
   type AnimatedRef,
   type ScrollEvent,
+  type ScrollHandlerProcessed,
   type SharedValue,
 } from 'react-native-reanimated';
 import type { ListScrubberSection } from './types';
@@ -46,7 +47,7 @@ export interface UseListScrubberOptions<S extends readonly ListScrubberSection[]
 export function useListScrubber<
   TList extends Component<any, any> = any,
   S extends readonly ListScrubberSection[] | undefined = undefined,
->(options: UseListScrubberOptions<S> = {}) {
+>(options: UseListScrubberOptions<S> = {}): UseListScrubberResult<TList, S> {
   const { onScroll: userOnScroll, sections } = options;
   const listRef = useAnimatedRef<TList>();
   const scrollY = useSharedValue(0);
@@ -100,3 +101,33 @@ type ScrubberProps<TList extends Component<any, any>, S> = {
   contentHeight: number;
   viewportHeight: number;
 } & (S extends readonly ListScrubberSection[] ? { sections: S } : unknown);
+
+/**
+ * What `useListScrubber` returns. `S` is the type of the `sections` passed to it (`undefined` without),
+ * e.g. `UseListScrubberResult<any, readonly ListScrubberSection[]>` for a component that takes the hook's
+ * result as a prop.
+ */
+export interface UseListScrubberResult<
+  TList extends Component<any, any> = any,
+  S extends readonly ListScrubberSection[] | undefined = undefined,
+> {
+  listRef: AnimatedRef<TList>;
+  /** Scroll offset, updated on the UI thread */
+  scrollY: SharedValue<number>;
+  onScroll: ScrollHandlerProcessed<Record<string, unknown>>;
+  contentHeight: number;
+  viewportHeight: number;
+  /** Spread on the list */
+  listProps: {
+    ref: AnimatedRef<TList>;
+    onScroll: ScrollHandlerProcessed<Record<string, unknown>>;
+    scrollEventThrottle: number;
+    showsVerticalScrollIndicator: boolean;
+    onContentSizeChange: (width: number, height: number) => void;
+    onLayout: (event: LayoutChangeEvent) => void;
+  };
+  /** Spread on ListScrubber (with `sections` when the hook was given them) */
+  scrubberProps: ScrubberProps<TList, S>;
+  /** Spread on PinnedSectionHeader: `scrollY` and the hook's `sections` */
+  headerProps: { scrollY: SharedValue<number>; sections: readonly ListScrubberSection[] };
+}
