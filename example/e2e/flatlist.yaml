@@ -1,4 +1,4 @@
-# FlatList: dragging the handle to the bottom reaches the last letter; back to the top, "A" again.
+# FlatList: dragging the thumb to the bottom reaches the last letter; back to the top, "A" again.
 # Expo Go: host.exp.Exponent on iOS; on Android run with -e APP_ID=host.exp.exponent
 appId: ${APP_ID}
 env:

@@ -3,7 +3,7 @@
 ## Unreleased
 
 - `onSectionChange`: called when a drag crosses into another section (e.g. a haptic tick per letter).
-- Screen-reader value follows manual scrolling (re-read when the handle hides).
+- Screen-reader value follows manual scrolling (re-read when the thumb hides).
 - `useListScrubber` returns stable `listProps` / `scrubberProps`.
 - Example app: Maestro end-to-end flows on iOS and Android (`npm run e2e`, `npm run e2e:android`), an e2e mode
   that pins the list for them, `?demo=` links, and haptics via `onDragStart` / `onSectionChange`.
@@ -28,6 +28,8 @@
 - **Breaking:** `railWidth` is removed. The thumb is centred in its 44 pt touch area (it was centred off a 20
   pt rail it didn't sit in), about 3 pt closer to the edge than before; use `edgeOffset` to move it. The
   screen-reader control now covers the same 44 pt strip (it was 20 pt).
+- **Breaking:** the `list-scrubber-handle` test ID is now `list-scrubber-thumb` (`<testID>-thumb`): the docs
+  call the draggable control the thumb throughout.
 - Section bubble: each label gets its own font size by its length, so one long label no longer shrinks every
   letter.
 - **Breaking:** `right` is replaced by `side` + `edgeOffset`.

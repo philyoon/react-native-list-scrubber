@@ -54,7 +54,7 @@ jest.mock('react-native-reanimated', () => {
       mockDelays.push(ms);
       return next;
     },
-    withSequence: () => 1, // the handle ends up fully faded in
+    withSequence: () => 1, // the thumb ends up fully faded in
   };
 });
 
@@ -66,7 +66,7 @@ function sharedZero() {
 
 const colors = { thumb: 'gray', thumbActive: 'red', bubble: 'black', bubbleText: 'white' };
 
-// List 1,000 tall in a 100 viewport: the 48 handle travels 100 - 48 = 52.
+// List 1,000 tall in a 100 viewport: the 48 thumb travels 100 - 48 = 52.
 const baseProps = {
   scrollY: sharedZero(),
   listRef: (() => null) as never,
@@ -126,25 +126,25 @@ it('dragging scrolls the list in proportion and asks for the label at that spot'
 
 it('draws nothing when the list fits on screen', async () => {
   await setup({ contentHeight: 80 });
-  expect(screen.queryByTestId('list-scrubber-handle', { includeHiddenElements: true })).toBeNull();
+  expect(screen.queryByTestId('list-scrubber-thumb', { includeHiddenElements: true })).toBeNull();
 });
 
 it('takes size overrides and keeps the other defaults', async () => {
   await setup({ metrics: { thumbLength: 80 } });
-  const handle = screen.getByTestId('list-scrubber-handle', { includeHiddenElements: true });
-  expect(StyleSheet.flatten(handle.props.style).height).toBe(80);
-  const bar = handle.children.at(-1) as unknown as { props: { style: ViewStyle } };
+  const thumb = screen.getByTestId('list-scrubber-thumb', { includeHiddenElements: true });
+  expect(StyleSheet.flatten(thumb.props.style).height).toBe(80);
+  const bar = thumb.children.at(-1) as unknown as { props: { style: ViewStyle } };
   expect(StyleSheet.flatten(bar.props.style)!.width).toBe(LIST_SCRUBBER_DEFAULTS.metrics.thumbWidth);
 });
 
-it('a longer handle shortens the travel', async () => {
+it('a longer thumb shortens the travel', async () => {
   await setup({ metrics: { thumbLength: 50 } }); // travel 50
   await drag(25);
   expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 450, false);
 });
 
 describe('screen readers', () => {
-  it('is an adjustable "Scroll position" control even while the handle is hidden', async () => {
+  it('is an adjustable "Scroll position" control even while the thumb is hidden', async () => {
     await setup();
     const el = screen.getByRole('adjustable', { name: 'Scroll position' });
     expect(el.props.accessibilityValue).toEqual({ text: '0%' });
@@ -271,7 +271,7 @@ describe('usePinnedSectionHeaderStyle', () => {
 });
 
 describe('appearing and hiding', () => {
-  const handle = () => screen.getByTestId('list-scrubber-handle', { includeHiddenElements: true });
+  const thumb = () => screen.getByTestId('list-scrubber-thumb', { includeHiddenElements: true });
 
   it('fades in on the first scroll frame, then hides after hideAfterMs', async () => {
     const scrollY = sharedZero();
@@ -317,17 +317,17 @@ describe('appearing and hiding', () => {
 
   it('lets touches through while hidden and catches them while visible', async () => {
     await setup();
-    expect(handle().props.pointerEvents).toBe('none');
+    expect(thumb().props.pointerEvents).toBe('none');
     const [fade, visible] = reactions();
     fade.react(10, 0); // opacity becomes 1
     expect(visible.prepare()).toBe(true);
     await act(async () => visible.react(true, false));
-    expect(handle().props.pointerEvents).toBe('auto');
+    expect(thumb().props.pointerEvents).toBe('auto');
     await act(async () => visible.react(false, true));
-    expect(handle().props.pointerEvents).toBe('none');
+    expect(thumb().props.pointerEvents).toBe('none');
   });
 
-  it('screen-reader value follows manual scrolling once the handle hides', async () => {
+  it('screen-reader value follows manual scrolling once the thumb hides', async () => {
     const scrollY = sharedZero();
     await setup({
       scrollY,
@@ -350,26 +350,26 @@ describe('layout', () => {
   const style = (id: string) =>
     StyleSheet.flatten(screen.getByTestId(id, { includeHiddenElements: true }).props.style);
 
-  it('places the handle by scroll position', async () => {
+  it('places the thumb by scroll position', async () => {
     const scrollY = sharedZero();
     scrollY.set(450); // half of 900
     await setup({ scrollY });
-    expect(style('list-scrubber-handle').transform).toEqual([{ translateY: 26 }]); // half of 52
+    expect(style('list-scrubber-thumb').transform).toEqual([{ translateY: 26 }]); // half of 52
   });
 
-  it('clamps the handle when the list overscrolls', async () => {
+  it('clamps the thumb when the list overscrolls', async () => {
     const scrollY = sharedZero();
     scrollY.set(-80);
     await setup({ scrollY });
-    expect(style('list-scrubber-handle').transform).toEqual([{ translateY: 0 }]);
+    expect(style('list-scrubber-thumb').transform).toEqual([{ translateY: 0 }]);
     scrollY.set(5000);
     await setup({ scrollY });
     expect(
-      screen.getAllByTestId('list-scrubber-handle', { includeHiddenElements: true }).at(-1)!.props.style,
+      screen.getAllByTestId('list-scrubber-thumb', { includeHiddenElements: true }).at(-1)!.props.style,
     ).toBeTruthy();
   });
 
-  it('the screen-reader control covers the handle strip, as wide as the touch area', async () => {
+  it('the screen-reader control covers the thumb strip, as wide as the touch area', async () => {
     await setup();
     const rail = screen.getByTestId('list-scrubber-a11y', { includeHiddenElements: true }).parent!;
     expect(StyleSheet.flatten(rail.props.style)).toMatchObject({ right: 0, width: 44 });
@@ -378,7 +378,7 @@ describe('layout', () => {
 
   it('keeps the section bubble inside the list at the top', async () => {
     await setup({ sections: [{ offset: 0, label: 'A' }] });
-    // at rest the handle is at the top: the 64pt bubble is pushed down by (64 − 48) / 2
+    // at rest the thumb is at the top: the 64pt bubble is pushed down by (64 − 48) / 2
     const strip = screen.getByTestId('list-scrubber-label-strip', { includeHiddenElements: true });
     let bubble = strip.parent!;
     while (!StyleSheet.flatten(bubble.props.style)?.transform) bubble = bubble.parent!;
@@ -490,17 +490,17 @@ describe('while the finger is down', () => {
     StyleSheet.flatten(
       (
         screen
-          .getByTestId('list-scrubber-handle', { includeHiddenElements: true })
+          .getByTestId('list-scrubber-thumb', { includeHiddenElements: true })
           .children.at(-1) as unknown as {
           props: { style: ViewStyle };
         }
       ).props.style,
     );
 
-  it('the handle follows the finger, thickens and takes the active colour', async () => {
+  it('the thumb follows the finger, thickens and takes the active colour', async () => {
     await setup();
     await hold(26);
-    expect(style('list-scrubber-handle').transform).toEqual([{ translateY: 26 }]);
+    expect(style('list-scrubber-thumb').transform).toEqual([{ translateY: 26 }]);
     expect(bar()).toMatchObject({ width: 8, backgroundColor: 'red' });
     await release();
     expect(bar()).toMatchObject({ width: 6, backgroundColor: 'gray' });
@@ -602,12 +602,12 @@ describe('while the finger is down', () => {
 
     it('stays inside the list at the bottom', async () => {
       await setup({ sections });
-      await hold(900); // handle at the end of its 52pt travel
+      await hold(900); // thumb at the end of its 52pt travel
       // its bottom would overhang by 52 + 48 + 8 − 100 = 8: pushed up by that much
       expect(bubble().transform).toEqual([{ translateY: -8 }]);
     });
 
-    it('is centred on the handle in the middle', async () => {
+    it('is centred on the thumb in the middle', async () => {
       await setup({ sections });
       await hold(26);
       expect(bubble().transform).toEqual([{ translateY: 0 }]);
@@ -635,9 +635,9 @@ describe('CurrentSectionLabel line height', () => {
 
 it('the visibility reaction ignores repeats', async () => {
   await setup();
-  const handle = screen.getByTestId('list-scrubber-handle', { includeHiddenElements: true });
+  const thumb = screen.getByTestId('list-scrubber-thumb', { includeHiddenElements: true });
   await act(async () => reactions()[1].react(false, false));
-  expect(handle.props.pointerEvents).toBe('none');
+  expect(thumb.props.pointerEvents).toBe('none');
 });
 
 describe('render cost', () => {
@@ -676,12 +676,12 @@ describe('API options', () => {
     expect(onDragEnd).toHaveBeenCalledTimes(1);
   });
 
-  it('side="left" mirrors the rail, handle and bubble', async () => {
+  it('side="left" mirrors the rail, thumb and bubble', async () => {
     await setup({ side: 'left', edgeOffset: 4, labelAt: () => 'Jan' });
     const rail = screen.getByTestId('list-scrubber-a11y', { includeHiddenElements: true }).parent!;
     expect(StyleSheet.flatten(rail.props.style)).toMatchObject({ left: 4 });
     expect(StyleSheet.flatten(rail.props.style).right).toBeUndefined();
-    expect(style('list-scrubber-handle')).toMatchObject({ left: 0 });
+    expect(style('list-scrubber-thumb')).toMatchObject({ left: 0 });
     await act(async () => {
       pan().onBegin({});
       pan().onUpdate({ translationY: 10 });
@@ -691,7 +691,7 @@ describe('API options', () => {
     expect(StyleSheet.flatten(bubble.props.style)).toMatchObject({ left: 44 + 40 });
   });
 
-  it('insets shrink the rail and the handle travel', async () => {
+  it('insets shrink the rail and the thumb travel', async () => {
     await setup({ insets: { top: 10, bottom: 2 } }); // rail 100 − 12 = 88, travel 88 − 48 = 40
     const rail = screen.getByTestId('list-scrubber-a11y', { includeHiddenElements: true }).parent!;
     expect(StyleSheet.flatten(rail.props.style)).toMatchObject({ top: 10, bottom: 2 });
@@ -707,7 +707,7 @@ describe('API options', () => {
   it('testID prefixes every test ID', async () => {
     await setup({ testID: 'contacts', sections: [{ offset: 0, label: 'A' }] });
     expect(getByGestureTestId('contacts')).toBeTruthy();
-    for (const id of ['contacts-handle', 'contacts-a11y', 'contacts-label-strip']) {
+    for (const id of ['contacts-thumb', 'contacts-a11y', 'contacts-label-strip']) {
       expect(screen.getByTestId(id, { includeHiddenElements: true })).toBeTruthy();
     }
   });

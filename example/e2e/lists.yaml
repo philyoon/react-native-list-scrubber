@@ -1,4 +1,4 @@
-# SectionList, FlashList and Legend List: the handle reaches the end of each list.
+# SectionList, FlashList and Legend List: the thumb reaches the end of each list.
 # Expo Go: host.exp.Exponent on iOS; on Android run with -e APP_ID=host.exp.exponent
 appId: ${APP_ID}
 env:
@@ -16,7 +16,7 @@ env:
       DEMO: Legend List
 - assertVisible: 'Scroll position.*' # Android adds the value
 - runFlow: subflows/drag-to-end.yaml
-# Rows show no year; the screen reader value does, once the handle hides (5 s in e2e mode)
+# Rows show no year; the screen reader value does, once the thumb hides (5 s in e2e mode)
 - extendedWaitUntil:
     visible:
       id: list-scrubber-a11y

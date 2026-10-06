@@ -12,7 +12,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { clamp, labelPosition, sectionIndexAt } from './math';
 
 /**
- * The drag: maps the handle's travel (`track`) onto the list's scroll range and scrolls it, all on the
+ * The drag: maps the thumb's travel (`track`) onto the list's scroll range and scrolls it, all on the
  * UI thread. With section `offsets` it also picks the section under the finger (`sectionIdx`).
  * The JS callbacks must be stable (useLatest): the gesture is rebuilt only when its numbers change.
  */
@@ -39,7 +39,7 @@ export function useScrubGesture({
   scrollY: SharedValue<number>;
   opacity: SharedValue<number>;
   dragging: SharedValue<boolean>;
-  /** How far the handle travels (pt) */
+  /** How far the thumb travels (pt) */
   track: number;
   maxScroll: number;
   contentHeight: number;

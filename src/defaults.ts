@@ -1,9 +1,6 @@
-/**
- * Adjustable sizes (pt). Override any subset with `metrics`.
- * The thumb is the visible bar; the handle is the draggable touch area around it (44pt wide).
- */
+/** Adjustable sizes (pt). Override any subset with `metrics`. */
 export interface ListScrubberMetrics {
-  /** Thumb length (and the handle's), longer than a fingertip */
+  /** Thumb length, longer than a fingertip */
   thumbLength: number;
   /** Idle thumb width, thin so it doesn't cover row content */
   thumbWidth: number;
@@ -12,7 +9,7 @@ export interface ListScrubberMetrics {
   thumbRadius: number;
   /** Bubble height and minimum width, big enough to read a letter beside the finger */
   bubbleSize: number;
-  /** Gap between the handle's touch area and the bubble, so the finger doesn't cover it */
+  /** Gap between the thumb's touch area and the bubble, so the finger doesn't cover it */
   bubbleGap: number;
   bubbleRadius: number;
   bubblePadding: number;
@@ -53,11 +50,11 @@ export const LIST_SCRUBBER_DEFAULTS: Readonly<{
 });
 
 // Fixed values
-/** Handle touch width: the 44pt minimum touch target */
+/** Width of the thumb's touch area, wider than the thumb itself: the 44pt minimum touch target */
 export const TOUCH_WIDTH = 44;
 /** Screen-reader step without `accessibilitySteps`, as a share of the viewport; the previous screen's last row stays visible */
 export const A11Y_PAGE = 0.9;
-/** Below this opacity the handle counts as hidden and touches pass through to the list */
+/** Below this opacity the thumb counts as hidden and touches pass through to the list */
 export const VISIBLE_MIN = 0.01;
 /** Distance (pt) treated as "already at this step", so rounding can't keep the reader in place */
 export const STEP_SLACK = 1;

@@ -1,10 +1,10 @@
 # react-native-list-scrubber
 
-A drag handle for scrubbing through long React Native lists, with a label bubble beside the finger.
+A draggable thumb for scrubbing through long React Native lists, with a label bubble beside the finger.
 
-<img src="docs/demo.gif" width="320" alt="Dragging the handle through 3,000 contacts: the bubble and the pinned header follow letter by letter" />
+<img src="docs/demo.gif" width="320" alt="Dragging the thumb through 3,000 contacts: the bubble and the pinned header follow letter by letter" />
 
-- **Runs on the UI thread.** The drag, the handle, the list scroll _and the bubble label_ are all driven by
+- **Runs on the UI thread.** The drag, the thumb, the list scroll _and the bubble label_ are all driven by
   Reanimated and Gesture Handler. They keep up with your finger even while JS is busy rendering rows.
 - **Label bubble.** Pass labelled `sections` (A–Z, months, chapters…). The bubble shows the one under your
   finger, and it reaches the last section even when that section is shorter than a screen.
@@ -113,7 +113,7 @@ list:
   sections.
 - As the next section's header reaches it, it's pushed up and out, like iOS Contacts. If the list has no
   section headers of its own, pass `push={false}`.
-- Give the scrubber `insets={{ top: HEADER_HEIGHT }}` to keep the handle out from under it.
+- Give the scrubber `insets={{ top: HEADER_HEIGHT }}` to keep the thumb out from under it.
 - For a custom pinned header, build it from `CurrentSectionLabel` (the label alone; its line height comes from
   the style's `lineHeight`, or 1.3 × `fontSize`, or `height`) and
   `usePinnedSectionHeaderStyle(scrollY, sections, height)` (the push, as an animated style).
@@ -139,7 +139,8 @@ Required:
 
 Optional:
 
-- `sections`: `{ offset, label }[]`, ascending. Drives the bubble and the screen-reader steps.
+- `sections`: `{ offset, label }[]`. `offset` is where the section starts in the list's content, in points
+  (its header's top, or its first row's), ascending. Drives the bubble and the screen-reader steps.
 - `labelAt(position, scrollOffset)`: a JS-thread label when there are no `sections`. The types accept one or
   the other.
 - `accessibilitySteps`: screen-reader step targets. Default: the section offsets, else one screen. Dragging
@@ -151,16 +152,14 @@ Optional:
 - `side`: `'left'` or `'right'` edge of the list. Default: `'right'`. For RTL layouts, pass
   `I18nManager.isRTL ? 'left' : 'right'`.
 - `edgeOffset`: distance from that edge, negative to sit in a margin outside the list. Default: `0`.
-- `insets`: `{ top, bottom }` space the handle stays out of, e.g. under a pinned header or above a toolbar.
+- `insets`: `{ top, bottom }` space the thumb stays out of, e.g. under a pinned header or above a toolbar.
 - `enabled`: `false` hides the scrubber and its screen-reader control, keeping its state. Default: `true`.
-- `testID`: prefix of the test IDs (`<testID>` for the drag gesture, `-handle`, `-a11y`, `-label-strip`).
+- `testID`: prefix of the test IDs (`<testID>` for the drag gesture, `-thumb`, `-a11y`, `-label-strip`).
   Default: `list-scrubber`.
 - `metrics`, `timing`: partial overrides of the defaults below.
 - `bubbleStyle`, `bubbleTextStyle`: extra styles, e.g. a shadow or a font.
 
 ### Defaults (`LIST_SCRUBBER_DEFAULTS`)
-
-The **thumb** is the visible bar; the **handle** is the draggable touch area around it.
 
 | `metrics`                               | pt      |                                                     |
 | --------------------------------------- | ------- | --------------------------------------------------- |
@@ -182,7 +181,7 @@ The touch width is fixed at 44 pt, the minimum touch target.
 ## Compatibility
 
 Tested in the example app (Expo SDK 57, React Native 0.86, Reanimated 4.5, Gesture Handler 2.32): by hand on
-iOS, and with the [end-to-end tests](#end-to-end-tests) on iOS and Android, which drag the handle to both ends
+iOS, and with the [end-to-end tests](#end-to-end-tests) on iOS and Android, which drag the thumb to both ends
 of FlatList, SectionList, Legend List and ScrollView. The pinned header, push and section bubble were also
 checked by hand on Android, in the app this library came from:
 
@@ -192,7 +191,7 @@ checked by hand on Android, in the app this library came from:
 - **SectionList + `getItemLayout`**: exact. Use the pinned header above instead of native sticky headers,
   which lag behind big jumps.
 - **FlashList v2**: works, but positions are estimates. FlashList sizes unmeasured rows at 200 pt and has no
-  prop for real sizes, so on unvisited parts of a long list the handle and labels can be off.
+  prop for real sizes, so on unvisited parts of a long list the thumb and labels can be off.
 
 The scrubber needs to know where things are. Lists that measure rows as they render, such as FlatList without
 `getItemLayout` or variable-height rows, give estimated positions.
@@ -204,8 +203,8 @@ fastest after a jump.
 ## Limits
 
 - **Vertical lists only.** Horizontal lists aren't supported.
-- **No automatic RTL mirroring.** The handle stays on `side`; pick the side from `I18nManager.isRTL`.
-- **Inverted lists** aren't handled: the handle follows the content offset, not the visual direction.
+- **No automatic RTL mirroring.** The thumb stays on `side`; pick the side from `I18nManager.isRTL`.
+- **Inverted lists** aren't handled: the thumb follows the content offset, not the visual direction.
 - **Native only (iOS, Android).** Not tested on web.
 - `PinnedSectionHeader` renders every section label once, so it suits up to a few hundred sections.
 
@@ -222,9 +221,9 @@ It opens in Expo Go and has one screen per list type. It uses the library source
 ### End-to-end tests
 
 [Maestro](https://maestro.dev) flows in `example/e2e` drive the example in Expo Go on an iOS simulator or an
-Android emulator: dragging the handle to the end and back on each list type, touches passing through the
-hidden handle, and the screen-reader control. They run on iPhone SE, iPhone 17 Pro, iPhone 17 Pro Max and a
-Pixel 8 emulator.
+Android emulator: dragging the thumb to the end and back on each list type, touches passing through the hidden
+thumb, and the screen-reader control. They run on iPhone SE, iPhone 17 Pro, iPhone 17 Pro Max and a Pixel 8
+emulator.
 
 Start Metro in e2e mode and keep it running:
 
@@ -244,10 +243,10 @@ npm run e2e:android         # Android emulator
 With more than one device running, Maestro may pick the wrong one: add `--device <udid or emulator-5554>`, for
 example `npx maestro --device emulator-5554 test -e APP_ID=host.exp.exponent e2e`.
 
-How the flows find the handle: it is hidden from screen readers, so Maestro, which finds elements through the
+How the flows find the thumb: it is hidden from screen readers, so Maestro, which finds elements through the
 accessibility tree, can't target it, and Maestro's swipe points are fixed screen percentages. In e2e mode
 (`EXPO_PUBLIC_E2E=1`) the example pins its list to fixed percentages of the screen (`example/src/e2e.ts`), so
-the same points land on the handle on any phone size. It also keeps the handle up for 5 s instead of 1.5 s,
+the same points land on the thumb on any phone size. It also keeps the thumb up for 5 s instead of 1.5 s,
 since Maestro's wait after each swipe can outlast the default on a slow device. A link like
 `exp://127.0.0.1:8081/--/?demo=ScrollView` opens a given demo.
 

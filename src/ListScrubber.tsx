@@ -38,11 +38,11 @@ interface ListScrubberBaseProps {
   onDragStart?: () => void;
   /** Drag ended (finger lifted or gesture cancelled) */
   onDragEnd?: () => void;
-  /** Which edge of the list the handle sits on (default 'right'). For RTL, pass `I18nManager.isRTL ? 'left' : 'right'`. */
+  /** Which edge of the list the thumb sits on (default 'right'). For RTL, pass `I18nManager.isRTL ? 'left' : 'right'`. */
   side?: 'left' | 'right';
   /** Distance from that edge (negative to sit in a margin outside the list) */
   edgeOffset?: number;
-  /** Space at the top and bottom of the list the handle stays out of (e.g. a pinned header or a toolbar) */
+  /** Space at the top and bottom of the list the thumb stays out of (e.g. a pinned header or a toolbar) */
   insets?: { top?: number; bottom?: number };
   /** false hides the scrubber and its screen-reader control, keeping its state (default true) */
   enabled?: boolean;
@@ -53,7 +53,7 @@ interface ListScrubberBaseProps {
   /** Extra style for the bubble box (e.g. a shadow) */
   bubbleStyle?: StyleProp<ViewStyle>;
   bubbleTextStyle?: StyleProp<TextStyle>;
-  /** Prefix of the test IDs: `<testID>` (the drag gesture), `-handle`, `-a11y`, `-label-strip` (default 'list-scrubber') */
+  /** Prefix of the test IDs: `<testID>` (the drag gesture), `-thumb`, `-a11y`, `-label-strip` (default 'list-scrubber') */
   testID?: string;
 }
 
@@ -83,9 +83,9 @@ export type ListScrubberProps = ListScrubberBaseProps & (ListScrubberSectionProp
 const defaultFormatPercent = (percent: number) => `${percent}%`;
 
 /**
- * A drag handle for scrubbing through long lists. Colours, text and haptics come from the app.
- * - Drag, handle position and list scroll run on the UI thread (Gesture Handler + Reanimated),
- *   so the handle follows the finger even while JS is busy rendering rows.
+ * A draggable thumb for scrubbing through long lists. Colours, text and haptics come from the app.
+ * - Drag, thumb position and list scroll run on the UI thread (Gesture Handler + Reanimated),
+ *   so the thumb follows the finger even while JS is busy rendering rows.
  * - Appears on scroll and hides a moment after it stops.
  * - While dragging, a bubble shows where the finger is. With `sections` the label is picked and drawn
  *   on the UI thread (a native text field updated from the gesture), so it never lags behind the list.
@@ -127,7 +127,7 @@ export function ListScrubber({
   const labels = useMemo(() => sections?.map((s) => s.label) ?? [], [sections]);
   const insetTop = insets?.top ?? 0;
   const insetBottom = insets?.bottom ?? 0;
-  /** Height of the strip the handle travels in */
+  /** Height of the strip the thumb travels in */
   const railHeight = Math.max(0, viewportHeight - insetTop - insetBottom);
   const track = Math.max(0, railHeight - m.thumbLength);
   const maxScroll = Math.max(0, contentHeight - viewportHeight);
@@ -191,7 +191,7 @@ export function ListScrubber({
     onSection: onSectionChange ? onSection : undefined,
   });
 
-  const handleStyle = useAnimatedStyle(() => {
+  const positionStyle = useAnimatedStyle(() => {
     const top = dragging.get() ? dragTop.get() : maxScroll > 0 ? (scrollY.get() / maxScroll) * track : 0;
     return { opacity: opacity.get(), transform: [{ translateY: clamp(top, 0, track) }] };
   });
@@ -206,7 +206,7 @@ export function ListScrubber({
       pointerEvents="box-none"
       style={[styles.rail, { top: insetTop, bottom: insetBottom, [side]: edgeOffset, width: TOUCH_WIDTH }]}
     >
-      {/* Screen readers: an adjustable control that is always present; the handle itself is drag-only, so it's hidden */}
+      {/* Screen readers: an adjustable control that is always present; the thumb itself is drag-only, so it's hidden */}
       <View
         accessible
         accessibilityRole="adjustable"
@@ -221,11 +221,11 @@ export function ListScrubber({
       <GestureDetector gesture={pan}>
         <Animated.View
           pointerEvents={visible ? 'auto' : 'none'}
-          style={[styles.handle, { [side]: 0, height: m.thumbLength }, handleStyle]}
+          style={[styles.touchArea, { [side]: 0, height: m.thumbLength }, positionStyle]}
           accessible={false}
           importantForAccessibility="no-hide-descendants"
           accessibilityElementsHidden
-          testID={`${testID}-handle`}
+          testID={`${testID}-thumb`}
         >
           {sections?.length ? (
             <Bubble {...bubbleProps} shown={dragging}>
@@ -266,7 +266,7 @@ const A11Y_ACTIONS = [{ name: 'increment' }, { name: 'decrement' }];
 
 const styles = StyleSheet.create({
   rail: { position: 'absolute', top: 0, bottom: 0 },
-  handle: {
+  touchArea: {
     position: 'absolute',
     top: 0,
     width: TOUCH_WIDTH,

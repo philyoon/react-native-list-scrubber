@@ -1,4 +1,4 @@
-# Shows the handle, then drags it from the bottom of its track (where drag-to-end left it) to above the
+# Shows the thumb, then drags it from the bottom of its track (where drag-to-end left it) to above the
 # list: it clamps at the start. Points: see src/e2e.ts.
 # Expo Go: host.exp.Exponent on iOS; on Android run with -e APP_ID=host.exp.exponent
 appId: ${APP_ID}
@@ -8,7 +8,7 @@ env:
 - swipe:
     start: 50%, 56%
     end: 50%, 60%
-    duration: 800 # slow: no fling still moving the list when the handle is grabbed
+    duration: 800 # slow: no fling still moving the list when the thumb is grabbed
 - swipe:
     start: 91%, 95%
     end: 91%, 5%
