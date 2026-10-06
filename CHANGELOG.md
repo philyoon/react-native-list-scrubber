@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `listLayout` and `sectionListLayout`: compute `sections` and the list's `getItemLayout` from row heights,
+  for flat lists and SectionList.
 - `colors` is optional, and each colour can be overridden on its own; defaults are in
   `LIST_SCRUBBER_DEFAULTS.colors`.
 - Performance: measuring the list no longer re-renders the component calling `useListScrubber`; only

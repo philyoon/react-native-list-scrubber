@@ -43,20 +43,16 @@ crashes at startup.
 
 ```tsx
 import Animated from 'react-native-reanimated';
-import { ListScrubber, useListScrubber, type ListScrubberSection } from 'react-native-list-scrubber';
+import { ListScrubber, listLayout, useListScrubber } from 'react-native-list-scrubber';
 
 const ROW = 64;
 
 function Contacts({ contacts }: { contacts: Contact[] }) {
-  // One section per first letter, at the offset of its first row
-  const sections = useMemo(() => {
-    const out: ListScrubberSection[] = [];
-    contacts.forEach((c, i) => {
-      const label = c.name[0]!.toUpperCase();
-      if (out.at(-1)?.label !== label) out.push({ offset: i * ROW, label });
-    });
-    return out;
-  }, [contacts]);
+  // One section per first letter, and the matching getItemLayout
+  const { sections, getItemLayout } = useMemo(
+    () => listLayout(contacts, { label: (c) => c.name[0]!.toUpperCase(), itemHeight: ROW }),
+    [contacts],
+  );
   const scrubber = useListScrubber({ sections });
 
   return (
@@ -65,7 +61,7 @@ function Contacts({ contacts }: { contacts: Contact[] }) {
         {...scrubber.listProps}
         data={contacts}
         renderItem={renderContact}
-        getItemLayout={(_, index) => ({ length: ROW, offset: ROW * index, index })}
+        getItemLayout={getItemLayout}
       />
       <ListScrubber
         {...scrubber.scrubberProps}
@@ -101,6 +97,30 @@ The list must be an **Animated** component, so the scroll handler runs on the UI
 | SectionList           | `Animated.createAnimatedComponent(SectionList)`        |
 | Legend List           | `AnimatedLegendList` from `@legendapp/list/reanimated` |
 | FlashList             | `Animated.createAnimatedComponent(FlashList)`          |
+
+### Computing sections
+
+Each section's `offset` is where it starts in the list's content, in points. When you know the rows' heights,
+two helpers compute the sections and the list's `getItemLayout` from the same numbers, so they can't disagree:
+
+- `listLayout(items, { label, itemHeight, listHeaderHeight? })` for flat lists (FlatList, FlashList, Legend
+  List, or a ScrollView of fixed blocks). A new section starts wherever `label(item, index)` changes from one
+  row to the next.
+- `sectionListLayout(sections, { itemHeight, sectionHeaderHeight?, sectionFooterHeight?, listHeaderHeight?, label? })`
+  for SectionList: one scrubber section per list section, labelled with its `title` by default. Its
+  `getItemLayout` follows SectionList's indexing (a header, the rows and a footer per section).
+
+```tsx
+const { sections, getItemLayout } = useMemo(
+  () => sectionListLayout(data, { itemHeight: ROW, sectionHeaderHeight: HEADER }),
+  [data],
+);
+```
+
+`itemHeight` is one number for every row, or a function for each row's own height. Include any item separator
+in it. The first section starts at 0, so it also covers a list header above it. Lists that measure rows
+themselves (FlashList, Legend List) ignore `getItemLayout`; use just `sections`. For rows of unknown height,
+build `{ offset, label }[]` yourself.
 
 ### Pinned header
 
@@ -155,9 +175,10 @@ Required:
 Optional:
 
 - `colors`: any of `thumb`, `thumbActive`, `bubble`, `bubbleText`. Defaults below.
-- `sections`: `{ offset, label }[]`. `offset` is where the section starts in the list's content, in points
-  (its header's top, or its first row's), ascending (development builds warn if they aren't, or if an offset
-  isn't a finite number or a label is empty). Drives the bubble and the screen-reader steps.
+- `sections`: `{ offset, label }[]` (see [Computing sections](#computing-sections)). `offset` is where the
+  section starts in the list's content, in points (its header's top, or its first row's), ascending
+  (development builds warn if they aren't, or if an offset isn't a finite number or a label is empty). Drives
+  the bubble and the screen-reader steps.
 - `labelAt(position, scrollOffset)`: a JS-thread label when there are no `sections`. The types accept one or
   the other.
 - `accessibilitySteps`: screen-reader step targets. Default: the section offsets, else one screen. Dragging
