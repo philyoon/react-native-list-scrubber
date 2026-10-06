@@ -33,6 +33,9 @@
 - `PinnedSectionHeader` and `CurrentSectionLabel` take a `testID`. **Breaking:** `CurrentSectionLabel`'s strip
   is `<testID>-strip` (`list-scrubber-section-label-strip`), no longer the scrubber bubble's
   `list-scrubber-label-strip`, so the two don't share an ID.
+- Large system text sizes: labels follow the system text size up to 1.5× (`maxFontSizeMultiplier` on
+  `CurrentSectionLabel` and `PinnedSectionHeader`), and `CurrentSectionLabel` sizes its rows from the scaled
+  text. Before, large text was clipped, or showed parts of two labels.
 - Section bubble: each label gets its own font size by its length, so one long label no longer shrinks every
   letter.
 - **Breaking:** `right` is replaced by `side` + `edgeOffset`.

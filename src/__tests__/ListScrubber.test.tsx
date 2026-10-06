@@ -193,6 +193,12 @@ describe('while the finger is down', () => {
     ).toBe(16);
   });
 
+  it('caps bubble text at 1.5× the system text size, so it fits the bubble', async () => {
+    await setup({ labelAt: () => 'Jan' });
+    await hold(10);
+    expect(screen.getByText('Jan', { includeHiddenElements: true }).props.maxFontSizeMultiplier).toBe(1.5);
+  });
+
   it('sizes each section label by its own length', async () => {
     await setup({
       sections: [
@@ -204,6 +210,7 @@ describe('while the finger is down', () => {
       StyleSheet.flatten(screen.getByText(text, { includeHiddenElements: true }).props.style).fontSize;
     expect(fontSize('A')).toBe(24);
     expect(fontSize('Zebra')).toBe(16);
+    expect(screen.getByText('Zebra', { includeHiddenElements: true }).props.maxFontSizeMultiplier).toBe(1.5);
   });
 
   it('onSectionChange fires once per section crossed, not for the starting one', async () => {

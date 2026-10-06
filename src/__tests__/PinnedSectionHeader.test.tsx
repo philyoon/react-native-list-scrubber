@@ -50,17 +50,34 @@ describe('CurrentSectionLabel line height', () => {
     { offset: 0, label: 'A' },
     { offset: 500, label: 'M' },
   ];
-  const shiftWith = async (style?: object) => {
+  // The test environment reports a system text size of 2×: rows scale with it, capped at 1.5× by default.
+  const shiftWith = async (style?: object, maxFontSizeMultiplier?: number) => {
     const scrollY = sharedZero();
     scrollY.set(600); // second section: the strip moves up one line
-    await render(<CurrentSectionLabel scrollY={scrollY} sections={sections} style={style} />);
+    await render(
+      <CurrentSectionLabel
+        scrollY={scrollY}
+        sections={sections}
+        style={style}
+        maxFontSizeMultiplier={maxFontSizeMultiplier}
+      />,
+    );
     const strip = screen.getByTestId('list-scrubber-section-label-strip', { includeHiddenElements: true });
     return (StyleSheet.flatten(strip.props.style).transform as { translateY: number }[])[0]!.translateY;
   };
 
-  it('uses the style lineHeight', async () => expect(await shiftWith({ lineHeight: 30 })).toBe(-30));
-  it('else 1.3 × fontSize, rounded up', async () => expect(await shiftWith({ fontSize: 20 })).toBe(-26));
-  it('else 1.3 × 14', async () => expect(await shiftWith()).toBe(-19));
+  it('uses the style lineHeight, scaled', async () => expect(await shiftWith({ lineHeight: 30 })).toBe(-45));
+  it('else 1.3 × fontSize, scaled', async () => expect(await shiftWith({ fontSize: 20 })).toBe(-39));
+  it('else 1.3 × 14, scaled and rounded up', async () => expect(await shiftWith()).toBe(-28)); // 27.3
+
+  it('scales with the system text size below the cap', async () => {
+    expect(await shiftWith({ lineHeight: 30 }, 3)).toBe(-60); // 2×, under a 3× cap
+  });
+
+  it('caps the label text at the same multiple', async () => {
+    await shiftWith({ lineHeight: 30 });
+    expect(screen.getByText('M', { includeHiddenElements: true }).props.maxFontSizeMultiplier).toBe(1.5);
+  });
 });
 
 describe('PinnedSectionHeader', () => {

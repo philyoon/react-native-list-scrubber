@@ -13,6 +13,8 @@ A draggable thumb for scrubbing through long React Native lists, with a label bu
   like iOS Contacts.
 - **Screen readers.** An adjustable "Scroll position" control is always present. Swipe up or down to step to
   the next section, and VoiceOver or TalkBack reads its label.
+- **Large text.** Labels follow the system text size up to 1.5×, so they grow without overflowing the bubble
+  or the pinned header.
 - **Unstyled.** You pass the colours, text and haptics. Sizes and timings have defaults you can override.
 - **Works with** FlatList, SectionList, ScrollView, Legend List and FlashList. See
   [Compatibility](#compatibility).
@@ -115,8 +117,10 @@ list:
   section headers of its own, pass `push={false}`.
 - Give the scrubber `insets={{ top: HEADER_HEIGHT }}` to keep the thumb out from under it.
 - `testID` names the header (default `list-scrubber-pinned-header`) and its label (`<testID>-label`).
+- The label follows the system text size up to `maxFontSizeMultiplier` (default 1.5), since the header's
+  height is fixed. Raise it if your header is tall enough for larger text.
 - For a custom pinned header, build it from `CurrentSectionLabel` (the label alone; its line height comes from
-  the style's `lineHeight`, or 1.3 × `fontSize`, or `height`) and
+  the style's `lineHeight` or 1.3 × `fontSize`, scaled with the system text size, or from `height` as is) and
   `usePinnedSectionHeaderStyle(scrollY, sections, height)` (the push, as an animated style).
 - With SectionList, turn off `stickySectionHeadersEnabled`: its native sticky headers only pin headers that
   are already rendered, so they lag behind scrubber jumps.
