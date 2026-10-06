@@ -21,8 +21,8 @@ const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
  *
  * A native text field doesn't resize when its text changes outside React, so with `sizeToLabels` every
  * distinct label is laid out once, invisibly, and the field takes the widest: no label is ever clipped.
- * The copies are unmounted once measured, and laid out again when the labels, style or system text size
- * change. New labels are measured once the app is idle (so not while the list first renders), or as soon as
+ * The copies are unmounted once measured. New labels are measured on their own (the width only grows);
+ * all of them again if the style or system text size changes. New labels are measured once the app is idle (so not while the list first renders), or as soon as
  * `measureNow` is set, whichever comes first.
  */
 export const SectionText = memo(function SectionText({
@@ -71,34 +71,48 @@ export const SectionText = memo(function SectionText({
     return size === undefined ? {} : { fontSize: size };
   });
   const fontScale = useWindowDimensions().fontScale;
-  // The widest label's width, valid only for what it was measured with (all compared by reference)
-  const [measured, setMeasured] = useState<{ width: number; inputs: readonly unknown[] }>();
-  const inputs = [labels, style, fontSizes, fontScale, maxFontSizeMultiplier];
-  const width =
-    measured && measured.inputs.every((input, i) => input === inputs[i]) ? measured.width : undefined;
+  // The widest of the labels measured so far, valid only for the text style it was measured with (compared
+  // by reference). Labels only add to it: a list that grows a page at a time measures just the new page.
+  // (Labels that are gone leave the bubble no narrower: never clipped, at worst a little wide.)
+  const [measured, setMeasured] = useState<Measured>();
+  const textInputs = [style, fontSizes, fontScale, maxFontSizeMultiplier];
+  const valid = measured?.textInputs.every((input, i) => input === textInputs[i]) ? measured : undefined;
+  const unmeasured = useMemo(
+    () => (sizeToLabels ? [...new Set(labels)].filter((label) => !valid?.labels.has(label)) : []),
+    [sizeToLabels, labels, valid],
+  );
   // The labels the app has been idle since
   const [idleFor, setIdleFor] = useState<readonly string[]>();
   useEffect(() => {
     if (!sizeToLabels) return;
     return whenIdle(() => setIdleFor(labels));
   }, [sizeToLabels, labels]);
-  const measure = sizeToLabels && width === undefined && (measureNow || idleFor === labels);
-  const sizers = useMemo(() => (measure ? [...new Set(labels)] : []), [measure, labels]);
+  const measure = unmeasured.length > 0 && (measureNow || idleFor === labels);
+  const sizers = measure ? unmeasured : NO_LABELS;
+  // A new view per batch: a view that stays mounted reports its layout again only if its size changes
+  const key = batchKey(sizers);
+  const onMeasured = (width: number) =>
+    setMeasured({
+      width: Math.max(Math.ceil(width), valid?.width ?? 0),
+      labels: new Set([...(valid?.labels ?? []), ...sizers]),
+      textInputs,
+    });
   const first = labels[0] ?? '';
 
   return (
     // Fills its parent: with sizeToLabels the parent sizes to this view's content (the measured width, or
     // the copies being measured), and a wider parent (e.g. a minWidth) widens the field with it
     <View style={[{ height }, styles.fill]}>
-      {sizeToLabels && width !== undefined && <View style={{ width }} />}
+      {valid && <View style={{ width: valid.width }} />}
       {sizers.length > 0 && (
         // Zero height, as wide as the widest label; none is ever visible
         <View
+          key={key}
           style={styles.sizer}
           pointerEvents="none"
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
-          onLayout={(e) => setMeasured({ width: Math.ceil(e.nativeEvent.layout.width), inputs })}
+          onLayout={(e) => onMeasured(e.nativeEvent.layout.width)}
         >
           {sizers.map((label) => (
             <Text
@@ -136,6 +150,25 @@ export const SectionText = memo(function SectionText({
     </View>
   );
 });
+
+interface Measured {
+  /** The widest label's width (pt, rounded up) */
+  width: number;
+  labels: ReadonlySet<string>;
+  /** What the labels were measured with */
+  textInputs: readonly unknown[];
+}
+
+const NO_LABELS: readonly string[] = [];
+
+const batchKeys = new WeakMap<readonly string[], number>();
+let batches = 0;
+/** A key unique to each batch of labels measured (each batch is a new array) */
+function batchKey(batch: readonly string[]): number {
+  let key = batchKeys.get(batch);
+  if (key === undefined) batchKeys.set(batch, (key = ++batches));
+  return key;
+}
 
 /** Runs `fn` once the JS thread is idle; returns a cancel function. Safari (web) has no requestIdleCallback. */
 function whenIdle(fn: () => void): () => void {

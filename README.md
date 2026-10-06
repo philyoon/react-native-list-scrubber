@@ -338,9 +338,10 @@ checked and copied to the UI thread again on every render.
   screen-reader value follow. The screen-reader control is a Tab stop there: ↓/→ and ↑/← step like a screen
   reader, Page Down/Up move one screen, Home/End go to the ends. With no separate UI thread on web, everything
   runs on JS. Not tested on mobile browsers.
-- The section bubble is as wide as the widest section label: every distinct label is laid out once, invisibly,
-  then unmounted. That happens once the app is idle after `sections` change (or when the thumb first shows, if
-  that's sooner), not while the list first renders. Keep `sections` memoized, or it's measured again.
+- The section bubble is as wide as the widest section label: each label is laid out once, invisibly, then
+  unmounted. That happens once the app is idle (or when the thumb shows, if that's sooner), not while the list
+  first renders. New labels are measured on their own, so a list that grows a page at a time measures only the
+  new page; the bubble only widens, never narrows, until its text style or the system text size changes.
 
 ## Example app
 
