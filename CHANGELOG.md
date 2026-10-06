@@ -20,6 +20,9 @@
 - `ListScrubber`: `onDragEnd`, `insets`, `enabled` and `testID` props, and `side` (`'left'` / `'right'`).
 - **Breaking:** `labelAt(position, scrollOffset)` receives the content position to describe, already
   converted; `labelProbe` is no longer exported.
+- `PinnedSectionHeader`: the pinned header in one component (container, clipping, push).
+- **Breaking:** `SectionLabel` is renamed `CurrentSectionLabel` and `usePinnedHeaderStyle`
+  `usePinnedSectionHeaderStyle`; both stay exported for custom headers.
 - Section bubble: each label gets its own font size by its length, so one long label no longer shrinks every
   letter.
 - **Breaking:** `right` is replaced by `side` + `edgeOffset`.

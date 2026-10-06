@@ -1,18 +1,53 @@
 import { useMemo } from 'react';
-import { StyleSheet, View, type StyleProp, type TextStyle } from 'react-native';
-import { useAnimatedStyle, useDerivedValue, type SharedValue } from 'react-native-reanimated';
+import { StyleSheet, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
+import Animated, { useAnimatedStyle, useDerivedValue, type SharedValue } from 'react-native-reanimated';
 import { LabelStrip } from './LabelStrip';
 import { sectionIndexAt } from './math';
 import type { ListScrubberSection } from './types';
 
 /**
- * The label of the section at the top of the list, drawn on the UI thread: use it for a pinned
- * header over the list. Native sticky headers (SectionList) only pin headers of rows already rendered,
+ * A section header pinned over the top of the list, showing the current section's label. Drawn on the
+ * UI thread, so it changes in the same frame as the list, even during scrubber jumps. Put it next to the
+ * list, inside the same container. As the next section's own header (in the list) reaches it, it is pushed
+ * up and out like iOS Contacts; pass `push={false}` when the list has no section headers of its own.
+ */
+export function PinnedSectionHeader({
+  scrollY,
+  sections,
+  height,
+  push = true,
+  style,
+  textStyle,
+}: {
+  scrollY: SharedValue<number>;
+  /** Section offsets are where each section's header starts in the list */
+  sections: readonly ListScrubberSection[];
+  /** Header height */
+  height: number;
+  /** The next section's header pushes this one out (default true) */
+  push?: boolean;
+  /** The header box, e.g. background and padding */
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
+}) {
+  const pushStyle = usePinnedSectionHeaderStyle(scrollY, sections, height);
+  return (
+    <View pointerEvents="none" style={[styles.pinned, { height }]} testID="list-scrubber-pinned-header">
+      <Animated.View style={[styles.header, { height }, style, push && pushStyle]}>
+        <CurrentSectionLabel scrollY={scrollY} sections={sections} style={textStyle} />
+      </Animated.View>
+    </View>
+  );
+}
+
+/**
+ * The label of the section at the top of the list, drawn on the UI thread: PinnedSectionHeader's label,
+ * for building a custom pinned header. Native sticky headers (SectionList) only pin headers of rows already rendered,
  * so they show the wrong section while the scrubber jumps; this one follows the scroll position
  * directly. Hidden from screen readers (the list's own headers are read instead).
  * Renders every label once, so it suits up to a few hundred sections.
  */
-export function SectionLabel({
+export function CurrentSectionLabel({
   scrollY,
   sections,
   height,
@@ -51,10 +86,11 @@ export function SectionLabel({
 /**
  * Animated style for a pinned section header: as the next section's own header (in the list) reaches
  * it, the pinned header is pushed up and out, like iOS Contacts, instead of being swapped underneath.
- * Put it on the view that holds the pinned header, inside a container with `overflow: 'hidden'`.
+ * For a custom pinned header (PinnedSectionHeader uses it): put it on the view that holds the header,
+ * inside a container with `overflow: 'hidden'`.
  * `height` is the header's height; section offsets are where each section's header starts.
  */
-export function usePinnedHeaderStyle(
+export function usePinnedSectionHeaderStyle(
   scrollY: SharedValue<number>,
   sections: readonly ListScrubberSection[],
   height: number,
@@ -67,3 +103,8 @@ export function usePinnedHeaderStyle(
     return { transform: [{ translateY: push }] };
   });
 }
+
+const styles = StyleSheet.create({
+  pinned: { position: 'absolute', top: 0, left: 0, right: 0, overflow: 'hidden' },
+  header: { justifyContent: 'center' },
+});

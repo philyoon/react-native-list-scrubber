@@ -8,9 +8,9 @@ A drag handle for scrubbing through long React Native lists, with a label bubble
   Reanimated and Gesture Handler. They keep up with your finger even while JS is busy rendering rows.
 - **Label bubble.** Pass labelled `sections` (A–Z, months, chapters…). The bubble shows the one under your
   finger, and it reaches the last section even when that section is shorter than a screen.
-- **Pinned header.** `SectionLabel` draws the current section's name, for a header pinned above the list.
-  Unlike native sticky headers, it doesn't fall behind big jumps. `usePinnedHeaderStyle` lets the next
-  section's header push it out, like iOS Contacts.
+- **Pinned header.** `PinnedSectionHeader` shows the current section's name in a header pinned above the list.
+  Unlike native sticky headers, it doesn't fall behind big jumps, and the next section's header pushes it out,
+  like iOS Contacts.
 - **Screen readers.** An adjustable "Scroll position" control is always present. Swipe up or down to step to
   the next section, and VoiceOver or TalkBack reads its label.
 - **Unstyled.** You pass the colours, text and haptics. Sizes and timings have defaults you can override.
@@ -95,26 +95,28 @@ The list must be an **Animated** component, so the scroll handler runs on the UI
 
 ### Pinned header
 
-Put section headers in the list (with section `offset`s pointing at them), and pin a copy on top:
+Put section headers in the list (with section `offset`s pointing at them), and pin a copy on top, next to the
+list:
 
 ```tsx
-const push = usePinnedHeaderStyle(scrubber.scrollY, sections, HEADER_HEIGHT);
-
-<View
-  style={{ position: 'absolute', top: 0, left: 0, right: 0, height: HEADER_HEIGHT, overflow: 'hidden' }}
-  pointerEvents="none"
->
-  <Animated.View style={[styles.header, push]}>
-    <SectionLabel scrollY={scrubber.scrollY} sections={sections} style={styles.headerText} />
-  </Animated.View>
-</View>;
+<PinnedSectionHeader
+  scrollY={scrubber.scrollY}
+  sections={sections}
+  height={HEADER_HEIGHT}
+  style={styles.header}
+  textStyle={styles.headerText}
+/>
 ```
 
-- `SectionLabel` renders every label once in a column and slides it from the UI thread. It changes in the same
-  frame as the list and survives React re-renders. That suits up to a few hundred sections. Its line height
-  comes from the style's `lineHeight` (or 1.3 × `fontSize`), or set `height`.
-- `usePinnedHeaderStyle` pushes the pinned header up as the next section's header reaches it, instead of
-  swapping the letter underneath.
+- It shows the current section's label, drawn on the UI thread: it changes in the same frame as the list, even
+  during scrubber jumps. It renders every label once and slides them, which suits up to a few hundred
+  sections.
+- As the next section's header reaches it, it's pushed up and out, like iOS Contacts. If the list has no
+  section headers of its own, pass `push={false}`.
+- Give the scrubber `insets={{ top: HEADER_HEIGHT }}` to keep the handle out from under it.
+- For a custom pinned header, build it from `CurrentSectionLabel` (the label alone; its line height comes from
+  the style's `lineHeight`, or 1.3 × `fontSize`, or `height`) and
+  `usePinnedSectionHeaderStyle(scrollY, sections, height)` (the push, as an animated style).
 - With SectionList, turn off `stickySectionHeadersEnabled`: its native sticky headers only pin headers that
   are already rendered, so they lag behind scrubber jumps.
 
@@ -203,7 +205,7 @@ fastest after a jump.
 - **No automatic RTL mirroring.** The handle stays on `side`; pick the side from `I18nManager.isRTL`.
 - **Inverted lists** aren't handled: the handle follows the content offset, not the visual direction.
 - **Native only (iOS, Android).** Not tested on web.
-- `SectionLabel` renders every section label once, so it suits up to a few hundred sections.
+- `PinnedSectionHeader` renders every section label once, so it suits up to a few hundred sections.
 
 ## Example app
 

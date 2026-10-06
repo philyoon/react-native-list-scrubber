@@ -7,8 +7,9 @@ import {
   LIST_SCRUBBER_DEFAULTS,
   ListScrubber,
   type ListScrubberProps,
-  SectionLabel,
-  usePinnedHeaderStyle,
+  CurrentSectionLabel,
+  PinnedSectionHeader,
+  usePinnedSectionHeaderStyle,
   sectionIndexAt,
   useListScrubber,
 } from '../index';
@@ -227,11 +228,11 @@ describe('label helpers', () => {
   });
 });
 
-it('SectionLabel slides its label strip to the section at the top of the list', async () => {
+it('CurrentSectionLabel slides its label strip to the section at the top of the list', async () => {
   const scrollY = sharedZero();
   scrollY.set(620);
   await render(
-    <SectionLabel
+    <CurrentSectionLabel
       scrollY={scrollY}
       height={20}
       sections={[
@@ -245,7 +246,7 @@ it('SectionLabel slides its label strip to the section at the top of the list', 
   expect(StyleSheet.flatten(strip.props.style)).toMatchObject({ transform: [{ translateY: -20 }] });
 });
 
-describe('usePinnedHeaderStyle', () => {
+describe('usePinnedSectionHeaderStyle', () => {
   const sections = [
     { offset: 0, label: 'A' },
     { offset: 500, label: 'B' },
@@ -253,7 +254,7 @@ describe('usePinnedHeaderStyle', () => {
   const push = async (y: number) => {
     const scrollY = sharedZero();
     scrollY.set(y);
-    const { result } = await renderHook(() => usePinnedHeaderStyle(scrollY, sections, 36));
+    const { result } = await renderHook(() => usePinnedSectionHeaderStyle(scrollY, sections, 36));
     return (result.current as unknown as { transform: { translateY: number }[] }).transform[0]!.translateY;
   };
 
@@ -612,7 +613,7 @@ describe('while the finger is down', () => {
   });
 });
 
-describe('SectionLabel line height', () => {
+describe('CurrentSectionLabel line height', () => {
   const sections = [
     { offset: 0, label: 'A' },
     { offset: 500, label: 'M' },
@@ -620,7 +621,7 @@ describe('SectionLabel line height', () => {
   const shiftWith = async (style?: object) => {
     const scrollY = sharedZero();
     scrollY.set(600); // second section: the strip moves up one line
-    await render(<SectionLabel scrollY={scrollY} sections={sections} style={style} />);
+    await render(<CurrentSectionLabel scrollY={scrollY} sections={sections} style={style} />);
     const strip = screen.getByTestId('list-scrubber-label-strip', { includeHiddenElements: true });
     return (StyleSheet.flatten(strip.props.style).transform as { translateY: number }[])[0]!.translateY;
   };
@@ -729,5 +730,50 @@ describe('API options', () => {
     expect(onContentSizeChange).toHaveBeenCalledWith(390, 12000);
     expect(onScroll).toHaveBeenCalledWith({ contentOffset: { y: 5 } });
     expect(result.current.scrubberProps).toMatchObject({ viewportHeight: 600, contentHeight: 12000 });
+  });
+});
+
+describe('PinnedSectionHeader', () => {
+  const sections = [
+    { offset: 0, label: 'A' },
+    { offset: 500, label: 'B' },
+  ];
+  const header = () =>
+    screen.getByTestId('list-scrubber-pinned-header', { includeHiddenElements: true })
+      .children[0] as unknown as {
+      props: { style: ViewStyle };
+    };
+
+  it('pins over the top of the list, clipped to its height, and is pushed out by the next header', async () => {
+    const scrollY = sharedZero();
+    scrollY.set(480);
+    await render(
+      <PinnedSectionHeader
+        scrollY={scrollY}
+        sections={sections}
+        height={36}
+        style={{ backgroundColor: 'red' }}
+      />,
+    );
+    const pinned = screen.getByTestId('list-scrubber-pinned-header', { includeHiddenElements: true });
+    expect(StyleSheet.flatten(pinned.props.style)).toMatchObject({
+      position: 'absolute',
+      top: 0,
+      height: 36,
+      overflow: 'hidden',
+    });
+    expect(StyleSheet.flatten(header().props.style)).toMatchObject({
+      height: 36,
+      backgroundColor: 'red',
+      transform: [{ translateY: -16 }],
+    });
+    expect(screen.getByText('A', { includeHiddenElements: true })).toBeTruthy();
+  });
+
+  it('push={false} keeps it in place', async () => {
+    const scrollY = sharedZero();
+    scrollY.set(480);
+    await render(<PinnedSectionHeader scrollY={scrollY} sections={sections} height={36} push={false} />);
+    expect(StyleSheet.flatten(header().props.style)?.transform).toBeUndefined();
   });
 });

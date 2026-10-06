@@ -2,7 +2,7 @@
 // FlatList, SectionList, ScrollView, FlashList, Legend List.
 export { ListScrubber, type ListScrubberProps } from './ListScrubber';
 export { useListScrubber } from './useListScrubber';
-export { SectionLabel, usePinnedHeaderStyle } from './SectionLabel';
+export { CurrentSectionLabel, PinnedSectionHeader, usePinnedSectionHeaderStyle } from './PinnedSectionHeader';
 export { sectionIndexAt } from './math';
 export { LIST_SCRUBBER_DEFAULTS, type ListScrubberMetrics, type ListScrubberTiming } from './defaults';
 export type { ListScrubberColors, ListScrubberSection } from './types';
