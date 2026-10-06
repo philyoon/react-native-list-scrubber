@@ -36,6 +36,7 @@
   "files": [
     "src",
     "lib",
+    "CHANGELOG.md",
     "!**/__tests__",
     "!**/__fixtures__",
     "!**/__mocks__"
@@ -43,10 +44,11 @@
   "sideEffects": false,
   "scripts": {
     "build": "bob build",
+    "smoke:package": "node scripts/smoke-test-package.mjs",
     "prepare": "bob build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "format:check": "prettier --check src eslint.config.mjs example/src example/e2e README.md CHANGELOG.md",
+    "format:check": "prettier --check src scripts eslint.config.mjs example/src example/e2e README.md CHANGELOG.md",
     "test": "jest",
     "example": "npm --prefix example run"
   },
