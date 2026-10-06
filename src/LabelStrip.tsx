@@ -17,7 +17,8 @@ export function LabelStrip({
   index: SharedValue<number>;
   labels: readonly string[];
   height: number;
-  style?: StyleProp<TextStyle>;
+  /** One style for every label, or a style per label */
+  style?: StyleProp<TextStyle> | ((label: string) => StyleProp<TextStyle>);
   testID: string;
 }) {
   const slide = useAnimatedStyle(() => ({
@@ -28,7 +29,7 @@ export function LabelStrip({
       <Animated.View style={slide} testID={testID}>
         {labels.map((label, i) => (
           <View key={i} style={{ height, justifyContent: 'center' }}>
-            <Text numberOfLines={1} style={style}>
+            <Text numberOfLines={1} style={typeof style === 'function' ? style(label) : style}>
               {label}
             </Text>
           </View>

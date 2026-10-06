@@ -528,6 +528,19 @@ describe('while the finger is down', () => {
     ).toBe(16);
   });
 
+  it('sizes each section label by its own length', async () => {
+    await setup({
+      sections: [
+        { offset: 0, label: 'A' },
+        { offset: 500, label: 'Zebra' },
+      ],
+    });
+    const fontSize = (text: string) =>
+      StyleSheet.flatten(screen.getByText(text, { includeHiddenElements: true }).props.style).fontSize;
+    expect(fontSize('A')).toBe(24);
+    expect(fontSize('Zebra')).toBe(16);
+  });
+
   it('onSectionChange fires once per section crossed, not for the starting one', async () => {
     const onSectionChange = jest.fn();
     const sections = [

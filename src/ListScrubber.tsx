@@ -196,8 +196,6 @@ export function ListScrubber({
 
   if (!enabled || maxScroll <= 0 || track <= 0) return null;
 
-  // With sections, one font size for all: the longest label decides
-  const longest = labels.reduce((a, b) => (b.length > a.length ? b : a), '');
   const thumbWidth = active ? m.thumbActiveWidth : m.thumbWidth;
   const left = side === 'left';
   const bubbleProps = { metrics: m, colors, railHeight, dragging, dragTop, side, style: bubbleStyle };
@@ -235,7 +233,8 @@ export function ListScrubber({
                 index={sectionIdx}
                 labels={labels}
                 height={m.bubbleSize}
-                style={[bubbleTextStyle(longest, m, colors), bubbleTextStyleProp]}
+                // Sized per label: one long label doesn't shrink all the letters
+                style={(text) => [bubbleTextStyle(text, m, colors), bubbleTextStyleProp]}
               />
             </Bubble>
           ) : (

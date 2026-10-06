@@ -18,6 +18,8 @@
 - `useListScrubber({ onScroll, onLayout, onContentSizeChange })`: the list's own handlers, called after the
   scrubber's.
 - `ListScrubber`: `onDragEnd`, `insets`, `enabled` and `testID` props, and `side` (`'left'` / `'right'`).
+- Section bubble: each label gets its own font size by its length, so one long label no longer shrinks every
+  letter.
 - **Breaking:** `right` is replaced by `side` + `edgeOffset`.
 - **Breaking (types):** `sections` and `labelAt` are mutually exclusive, and `onSectionChange` requires
   `sections`.
