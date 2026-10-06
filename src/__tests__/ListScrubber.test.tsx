@@ -276,6 +276,8 @@ describe('appearing and hiding', () => {
     const scrollY = sharedZero();
     await setup({ scrollY });
     const [fade] = reactions();
+    scrollY.set(10);
+    expect(fade.prepare()).toBe(10); // it watches the scroll offset
     fade.react(10, 0);
     expect(mockTimings.map((t) => [t.to, t.duration])).toEqual([
       [1, 150], // fade in: fadeMs × (1 − 0)
@@ -466,4 +468,122 @@ describe('useListScrubber details', () => {
 it('is disabled (no drag) when the list fits on screen', async () => {
   await setup({ contentHeight: 100 });
   expect(mockScrollTo).not.toHaveBeenCalled();
+});
+
+describe('while the finger is down', () => {
+  // fireGestureHandler always ends the gesture; call the pan callbacks directly to stay mid-drag.
+  type Handlers = Record<'onBegin' | 'onUpdate' | 'onFinalize', (e: object) => void>;
+  const pan = () => (getByGestureTestId('list-scrubber') as unknown as { handlers: Handlers }).handlers;
+  const hold = async (translationY: number) => {
+    await act(async () => {
+      pan().onBegin({});
+      pan().onUpdate({ translationY });
+    });
+  };
+  const release = () => act(async () => pan().onFinalize({}));
+  const style = (id: string) =>
+    StyleSheet.flatten(screen.getByTestId(id, { includeHiddenElements: true }).props.style);
+  const bar = () =>
+    StyleSheet.flatten(
+      (
+        screen
+          .getByTestId('list-scrubber-handle', { includeHiddenElements: true })
+          .children.at(-1) as unknown as {
+          props: { style: ViewStyle };
+        }
+      ).props.style,
+    );
+
+  it('the handle follows the finger, thickens and takes the active colour', async () => {
+    await setup();
+    await hold(26);
+    expect(style('list-scrubber-handle').transform).toEqual([{ translateY: 26 }]);
+    expect(bar()).toMatchObject({ width: 8, marginRight: 6, backgroundColor: 'red' }); // (20 − 8) / 2
+    await release();
+    expect(bar()).toMatchObject({ width: 6, marginRight: 7, backgroundColor: 'gray' });
+  });
+
+  it('shows the labelAt bubble, keeps the last label on null, and clears it on release', async () => {
+    let next: string | null = 'Jan';
+    await setup({ labelAt: () => next });
+    await hold(10);
+    expect(screen.getByText('Jan', { includeHiddenElements: true })).toBeTruthy();
+    next = null;
+    await act(async () => pan().onUpdate({ translationY: 20 }));
+    expect(screen.getByText('Jan', { includeHiddenElements: true })).toBeTruthy();
+    await release();
+    expect(screen.queryByText('Jan', { includeHiddenElements: true })).toBeNull();
+  });
+
+  it('picks the font size by label length', async () => {
+    await setup({ labelAt: (o) => (o < 300 ? 'A' : 'March 2026') });
+    await hold(5);
+    expect(
+      StyleSheet.flatten(screen.getByText('A', { includeHiddenElements: true }).props.style).fontSize,
+    ).toBe(24);
+    await act(async () => pan().onUpdate({ translationY: 40 }));
+    expect(
+      StyleSheet.flatten(screen.getByText('March 2026', { includeHiddenElements: true }).props.style)
+        .fontSize,
+    ).toBe(16);
+  });
+
+  describe('section bubble', () => {
+    const sections = [
+      { offset: 0, label: 'A' },
+      { offset: 500, label: 'M' },
+    ];
+    const bubble = () => {
+      let node = screen.getByTestId('list-scrubber-label-strip', { includeHiddenElements: true }).parent!;
+      while (!StyleSheet.flatten(node.props.style)?.transform) node = node.parent!;
+      return StyleSheet.flatten(node.props.style);
+    };
+
+    it('is shown only while dragging', async () => {
+      await setup({ sections });
+      expect(bubble().opacity).toBe(0);
+      await hold(10);
+      expect(bubble().opacity).toBe(1);
+      await release();
+      expect(bubble().opacity).toBe(0);
+    });
+
+    it('stays inside the list at the bottom', async () => {
+      await setup({ sections });
+      await hold(900); // handle at the end of its 52pt travel
+      // its bottom would overhang by 52 + 48 + 8 − 100 = 8: pushed up by that much
+      expect(bubble().transform).toEqual([{ translateY: -8 }]);
+    });
+
+    it('is centred on the handle in the middle', async () => {
+      await setup({ sections });
+      await hold(26);
+      expect(bubble().transform).toEqual([{ translateY: 0 }]);
+    });
+  });
+});
+
+describe('SectionLabel line height', () => {
+  const sections = [
+    { offset: 0, label: 'A' },
+    { offset: 500, label: 'M' },
+  ];
+  const shiftWith = async (style?: object) => {
+    const scrollY = sharedZero();
+    scrollY.set(600); // second section: the strip moves up one line
+    await render(<SectionLabel scrollY={scrollY} sections={sections} style={style} />);
+    const strip = screen.getByTestId('list-scrubber-label-strip', { includeHiddenElements: true });
+    return (StyleSheet.flatten(strip.props.style).transform as { translateY: number }[])[0]!.translateY;
+  };
+
+  it('uses the style lineHeight', async () => expect(await shiftWith({ lineHeight: 30 })).toBe(-30));
+  it('else 1.3 × fontSize, rounded up', async () => expect(await shiftWith({ fontSize: 20 })).toBe(-26));
+  it('else 1.3 × 14', async () => expect(await shiftWith()).toBe(-19));
+});
+
+it('the visibility reaction ignores repeats', async () => {
+  await setup();
+  const handle = screen.getByTestId('list-scrubber-handle', { includeHiddenElements: true });
+  await act(async () => reactions()[1].react(false, false));
+  expect(handle.props.pointerEvents).toBe('none');
 });
