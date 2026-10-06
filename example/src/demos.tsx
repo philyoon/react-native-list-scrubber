@@ -29,15 +29,14 @@ const HEADER = 32;
 const CONTACTS = makeContacts(3000);
 const ENTRIES = makeEntries(4000);
 
-function Scrubber(props: {
-  scrubber: ReturnType<typeof useListScrubber>;
-  sections: readonly ListScrubberSection[];
-}) {
+/** useListScrubber given sections: its scrubberProps and headerProps carry them */
+type SectionScrubber = ReturnType<typeof useListScrubber<any, readonly ListScrubberSection[]>>;
+
+function Scrubber(props: { scrubber: SectionScrubber }) {
   const colors = useColors();
   return (
     <ListScrubber
       {...props.scrubber.scrubberProps}
-      sections={props.sections}
       colors={{
         thumb: colors.thumb,
         thumbActive: colors.accent,
@@ -82,15 +81,11 @@ function EntryRow({ item, colors }: { item: Entry; colors: Colors }) {
 }
 
 /** The current month pinned over the list, so the bubble's month matches something on screen (rows only show the day) */
-function MonthHeader(props: {
-  scrubber: ReturnType<typeof useListScrubber>;
-  sections: readonly ListScrubberSection[];
-}) {
+function MonthHeader(props: { scrubber: SectionScrubber }) {
   const colors = useColors();
   return (
     <PinnedSectionHeader
-      scrollY={props.scrubber.scrollY}
-      sections={props.sections}
+      {...props.scrubber.headerProps}
       height={HEADER}
       push={false}
       style={[styles.header, { backgroundColor: colors.header }]}
@@ -113,7 +108,6 @@ function monthSections(entries: Entry[]): ListScrubberSection[] {
 // and a pinned letter header drawn on the UI thread (PinnedSectionHeader; the list has no headers to push it).
 function FlatListDemo() {
   const colors = useColors();
-  const scrubber = useListScrubber();
   const sections = useMemo(() => {
     const out: ListScrubberSection[] = [];
     CONTACTS.forEach((c, i) => {
@@ -122,6 +116,7 @@ function FlatListDemo() {
     });
     return out;
   }, []);
+  const scrubber = useListScrubber({ sections });
   return (
     <>
       <Animated.FlatList
@@ -137,14 +132,13 @@ function FlatListDemo() {
         updateCellsBatchingPeriod={16}
       />
       <PinnedSectionHeader
-        scrollY={scrubber.scrollY}
-        sections={sections}
+        {...scrubber.headerProps}
         height={HEADER}
         push={false}
         style={[styles.header, { backgroundColor: colors.header }]}
         textStyle={{ color: colors.secondary, fontWeight: '700', fontSize: 14 }}
       />
-      <Scrubber scrubber={scrubber} sections={sections} />
+      <Scrubber scrubber={scrubber} />
     </>
   );
 }
@@ -156,7 +150,6 @@ const AnimatedSectionList = Animated.createAnimatedComponent(SectionList<Contact
 // and the next header pushes it out like iOS Contacts. getItemLayout counts a header and a footer per section.
 function SectionListDemo() {
   const colors = useColors();
-  const scrubber = useListScrubber();
   const data = useMemo(() => groupByLetter(CONTACTS), []);
   const { layout, sections } = useMemo(() => {
     const layout: { length: number; offset: number }[] = [];
@@ -174,6 +167,7 @@ function SectionListDemo() {
     }
     return { layout, sections };
   }, [data]);
+  const scrubber = useListScrubber({ sections });
   return (
     <>
       <AnimatedSectionList
@@ -190,13 +184,12 @@ function SectionListDemo() {
         getItemLayout={(_, index) => ({ ...layout[index]!, index })}
       />
       <PinnedSectionHeader
-        scrollY={scrubber.scrollY}
-        sections={sections}
+        {...scrubber.headerProps}
         height={HEADER}
         style={[styles.header, { backgroundColor: colors.header }]}
         textStyle={{ color: colors.secondary, fontWeight: '700', fontSize: 14 }}
       />
-      <Scrubber scrubber={scrubber} sections={sections} />
+      <Scrubber scrubber={scrubber} />
     </>
   );
 }
@@ -206,8 +199,8 @@ const AnimatedFlashList = Animated.createAnimatedComponent(FlashList<Entry>);
 // FlashList v2 measures rows itself; content height comes from onContentSizeChange.
 function FlashListDemo() {
   const colors = useColors();
-  const scrubber = useListScrubber();
   const sections = useMemo(() => monthSections(ENTRIES), []);
+  const scrubber = useListScrubber({ sections });
   return (
     <>
       <AnimatedFlashList
@@ -217,8 +210,8 @@ function FlashListDemo() {
         ListHeaderComponent={<View style={{ height: HEADER }} />}
         renderItem={({ item }) => <EntryRow item={item} colors={colors} />}
       />
-      <MonthHeader scrubber={scrubber} sections={sections} />
-      <Scrubber scrubber={scrubber} sections={sections} />
+      <MonthHeader scrubber={scrubber} />
+      <Scrubber scrubber={scrubber} />
     </>
   );
 }
@@ -226,8 +219,8 @@ function FlashListDemo() {
 // Legend List: exact sizes with getFixedItemSize, Reanimated entry point.
 function LegendListDemo() {
   const colors = useColors();
-  const scrubber = useListScrubber();
   const sections = useMemo(() => monthSections(ENTRIES), []);
+  const scrubber = useListScrubber({ sections });
   return (
     <>
       <AnimatedLegendList
@@ -239,8 +232,8 @@ function LegendListDemo() {
         getFixedItemSize={() => ROW}
         recycleItems
       />
-      <MonthHeader scrubber={scrubber} sections={sections} />
-      <Scrubber scrubber={scrubber} sections={sections} />
+      <MonthHeader scrubber={scrubber} />
+      <Scrubber scrubber={scrubber} />
     </>
   );
 }
@@ -253,8 +246,8 @@ const LOREM =
 // ScrollView: a long document with fixed-height chapters.
 function ScrollViewDemo() {
   const colors = useColors();
-  const scrubber = useListScrubber();
-  const sections = CHAPTERS.map((n) => ({ offset: (n - 1) * CHAPTER, label: `Ch. ${n}` }));
+  const sections = useMemo(() => CHAPTERS.map((n) => ({ offset: (n - 1) * CHAPTER, label: `Ch. ${n}` })), []);
+  const scrubber = useListScrubber({ sections });
   return (
     <>
       <Animated.ScrollView {...scrubber.listProps}>
@@ -269,7 +262,7 @@ function ScrollViewDemo() {
           </View>
         ))}
       </Animated.ScrollView>
-      <Scrubber scrubber={scrubber} sections={sections} />
+      <Scrubber scrubber={scrubber} />
     </>
   );
 }

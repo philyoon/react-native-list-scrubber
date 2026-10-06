@@ -43,8 +43,6 @@ import { ListScrubber, useListScrubber, type ListScrubberSection } from 'react-n
 const ROW = 64;
 
 function Contacts({ contacts }: { contacts: Contact[] }) {
-  const scrubber = useListScrubber();
-
   // One section per first letter, at the offset of its first row
   const sections = useMemo(() => {
     const out: ListScrubberSection[] = [];
@@ -54,6 +52,7 @@ function Contacts({ contacts }: { contacts: Contact[] }) {
     });
     return out;
   }, [contacts]);
+  const scrubber = useListScrubber({ sections });
 
   return (
     <View style={{ flex: 1 }}>
@@ -65,7 +64,6 @@ function Contacts({ contacts }: { contacts: Contact[] }) {
       />
       <ListScrubber
         {...scrubber.scrubberProps}
-        sections={sections}
         colors={{ thumb: '#7C7A96', thumbActive: '#4F46E5', bubble: '#1C1B3A', bubbleText: '#FFFFFF' }}
         accessibilityLabel="Scroll position"
       />
@@ -102,13 +100,16 @@ list:
 
 ```tsx
 <PinnedSectionHeader
-  scrollY={scrubber.scrollY}
-  sections={sections}
+  {...scrubber.headerProps}
   height={HEADER_HEIGHT}
   style={styles.header}
   textStyle={styles.headerText}
 />
 ```
+
+`headerProps` carries `scrollY` and the `sections` given to `useListScrubber`, so the header and the scrubber
+always read the same sections. (Both components also take `scrollY` and `sections` directly, for wiring by
+hand.)
 
 - It shows the current section's label, drawn on the UI thread: it changes in the same frame as the list, even
   during scrubber jumps. It renders every label once and slides them, which suits up to a few hundred
