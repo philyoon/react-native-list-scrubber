@@ -251,7 +251,9 @@ The scrubber places everything with `left` and `right`, never with flex alignmen
 - **iOS and Android:** React Native swaps `left` and `right` in RTL layouts by default, so in an RTL app the
   thumb moves to the left edge with the bubble on its right, without any change. Don't flip `side` for RTL:
   that would mirror it twice, back to the right. (Only if your app turned this off with
-  `I18nManager.swapLeftAndRightInRTL(false)`, pick the side yourself.)
+  `I18nManager.swapLeftAndRightInRTL(false)`, pick the side yourself.) Checked in the example app with
+  `I18nManager.forceRTL(true)` on an iOS simulator (iPhone 17 Pro Max) and an Android emulator (Pixel 8): the
+  thumb is at the left edge, and while dragging the bubble is on its right with the full label.
 - **Web:** React Native Web keeps `left` and `right` as written, so on an RTL page pass `side="left"`
   yourself. Checked on Expo web in an RTL layout, with the bubble beside the thumb on either side.
 
