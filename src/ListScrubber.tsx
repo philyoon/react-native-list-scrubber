@@ -212,7 +212,9 @@ export function ListScrubber({
         accessible
         accessibilityRole="adjustable"
         accessibilityLabel={accessibilityLabel}
-        accessibilityValue={{ text: a11y.value }}
+        // aria-valuetext rather than accessibilityValue: the same value on iOS and Android, and React Native
+        // Web only reads the aria- form
+        aria-valuetext={a11y.value}
         accessibilityActions={A11Y_ACTIONS}
         onAccessibilityAction={(e) => a11y.step(e.nativeEvent.actionName === 'increment' ? 1 : -1)}
         pointerEvents="none"

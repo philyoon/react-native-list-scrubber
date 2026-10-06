@@ -58,11 +58,11 @@ describe('sections', () => {
   it('screen readers step section by section and hear the section label', async () => {
     await setup({ sections });
     const el = screen.getByRole('adjustable', { name: 'Scroll position' });
-    expect(el.props.accessibilityValue).toEqual({ text: 'A' });
+    expect(el.props['aria-valuetext']).toBe('A');
     await fireEvent(el, 'accessibilityAction', { nativeEvent: { actionName: 'increment' } });
     await act(() => jest.advanceTimersByTime(20));
     expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 500, false);
-    expect(el.props.accessibilityValue).toEqual({ text: 'M' });
+    expect(el.props['aria-valuetext']).toBe('M');
   });
 });
 

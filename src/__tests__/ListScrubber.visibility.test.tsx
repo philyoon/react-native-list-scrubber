@@ -68,12 +68,10 @@ describe('appearing and hiding', () => {
       ],
     });
     const el = screen.getByRole('adjustable', { name: 'Scroll position' });
-    expect(el.props.accessibilityValue).toEqual({ text: 'A' });
+    expect(el.props['aria-valuetext']).toBe('A');
     scrollY.set(600); // the user scrolled by hand
     await act(async () => reactions()[1].react(false, true));
-    expect(screen.getByRole('adjustable', { name: 'Scroll position' }).props.accessibilityValue).toEqual({
-      text: 'M',
-    });
+    expect(screen.getByRole('adjustable', { name: 'Scroll position' }).props['aria-valuetext']).toBe('M');
   });
 });
 

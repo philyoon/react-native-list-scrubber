@@ -36,6 +36,8 @@
 - Large system text sizes: labels follow the system text size up to 1.5× (`maxFontSizeMultiplier` on
   `CurrentSectionLabel` and `PinnedSectionHeader`), and `CurrentSectionLabel` sizes its rows from the scaled
   text. Before, large text was clipped, or showed parts of two labels.
+- The screen-reader value is set with `aria-valuetext` (same value on iOS and Android), so React Native Web
+  exposes it too; it was empty on web. The README describes what works on web.
 - Section bubble: each label gets its own font size by its length, so one long label no longer shrinks every
   letter.
 - **Breaking:** `right` is replaced by `side` + `edgeOffset`.

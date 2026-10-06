@@ -5,7 +5,7 @@ describe('screen readers', () => {
   it('is an adjustable "Scroll position" control even while the thumb is hidden', async () => {
     await setup();
     const el = screen.getByRole('adjustable', { name: 'Scroll position' });
-    expect(el.props.accessibilityValue).toEqual({ text: '0%' });
+    expect(el.props['aria-valuetext']).toBe('0%');
   });
 
   it('steps one screen at a time and announces the percentage', async () => {
@@ -14,7 +14,7 @@ describe('screen readers', () => {
     await fireEvent(el, 'accessibilityAction', { nativeEvent: { actionName: 'increment' } });
     await act(() => jest.advanceTimersByTime(20)); // the scroll runs on the UI thread (next frame)
     expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 90, false);
-    expect(el.props.accessibilityValue).toEqual({ text: '10 percent' });
+    expect(el.props['aria-valuetext']).toBe('10 percent');
   });
 
   it('with steps (e.g. section headers) jumps to the next one and announces its label', async () => {
@@ -23,7 +23,7 @@ describe('screen readers', () => {
     await fireEvent(el, 'accessibilityAction', { nativeEvent: { actionName: 'increment' } });
     await act(() => jest.advanceTimersByTime(20)); // the scroll runs on the UI thread (next frame)
     expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 500, false);
-    expect(el.props.accessibilityValue).toEqual({ text: 'M' });
+    expect(el.props['aria-valuetext']).toBe('M');
   });
 });
 
