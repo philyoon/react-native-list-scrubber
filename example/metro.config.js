@@ -12,7 +12,7 @@ config.resolver.disableHierarchicalLookup = true;
 config.resolver.blockList = [new RegExp(`^${path.join(root, 'node_modules').replace(/[/\\.]/g, '\\$&')}/.*`)];
 config.resolver.resolveRequest = (context, moduleName, platform) =>
   moduleName === 'react-native-list-scrubber'
-    ? { type: 'sourceFile', filePath: path.join(root, 'src/index.tsx') }
+    ? { type: 'sourceFile', filePath: path.join(root, 'src/index.ts') }
     : context.resolveRequest(context, moduleName, platform);
 
 module.exports = config;
