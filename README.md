@@ -210,7 +210,10 @@ fastest after a jump.
 - **Vertical lists only.** Horizontal lists aren't supported.
 - **No automatic RTL mirroring.** The thumb stays on `side`; pick the side from `I18nManager.isRTL`.
 - **Inverted lists** aren't handled: the thumb follows the content offset, not the visual direction.
-- **Native only (iOS, Android).** Not tested on web.
+- **Web: works, with limits.** Checked in the example app on Expo web (React Native Web 0.21) in desktop
+  Chromium with a mouse: the thumb appears on scroll, dragging scrolls every list type, and the bubble, pinned
+  header and screen-reader value follow. But the screen-reader control can't be reached with the keyboard
+  there, and with no separate UI thread on web everything runs on JS. Not tested on mobile browsers.
 - `PinnedSectionHeader` renders every section label once, so it suits up to a few hundred sections.
 
 ## Example app
