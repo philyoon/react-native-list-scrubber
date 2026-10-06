@@ -51,7 +51,6 @@ export function Bubble({
         },
         shift,
       ]}
-      pointerEvents="none"
     >
       <Animated.View
         style={[
@@ -90,6 +89,6 @@ export function bubbleTextStyle(
 const ANCHOR_WIDTH = 1000;
 
 const styles = StyleSheet.create({
-  anchor: { position: 'absolute', alignSelf: 'center', width: ANCHOR_WIDTH },
+  anchor: { position: 'absolute', alignSelf: 'center', width: ANCHOR_WIDTH, pointerEvents: 'none' },
   box: { alignItems: 'center', justifyContent: 'center' },
 });

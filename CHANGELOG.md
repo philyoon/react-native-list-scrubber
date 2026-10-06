@@ -3,6 +3,8 @@
 ## Unreleased
 
 - Fix: the bubble widens to fit long labels; on Android, "Jul 2025" was cut to "Ju…".
+- Web: no more "props.pointerEvents is deprecated" warning; `pointerEvents` is set in styles (React Native
+  0.78+ supports it there on every platform).
 - `onSectionChange`: called when a drag crosses into another section (e.g. a haptic tick per letter).
 - Screen-reader value follows manual scrolling (re-read when the thumb hides).
 - `useListScrubber` returns stable `listProps` / `scrubberProps`.

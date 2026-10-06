@@ -16,7 +16,7 @@ jobs:
       - run: npm run format:check
       - run: npm run typecheck
       - run: npm run lint
-      - run: npm test
+      - run: npm test -- --coverage
       - run: npm run build
       # The package as users get it: entry points, built imports, and an app typechecking against it
       - run: npm run smoke:package
