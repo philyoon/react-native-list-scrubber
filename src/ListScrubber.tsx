@@ -44,8 +44,6 @@ interface ListScrubberBaseProps {
   edgeOffset?: number;
   /** Space at the top and bottom of the list the handle stays out of (e.g. a pinned header or a toolbar) */
   insets?: { top?: number; bottom?: number };
-  /** Width of the strip the handle sits in (default 20) */
-  railWidth?: number;
   /** false hides the scrubber and its screen-reader control, keeping its state (default true) */
   enabled?: boolean;
   /** Size overrides (defaults: LIST_SCRUBBER_DEFAULTS.metrics) */
@@ -112,7 +110,6 @@ export function ListScrubber({
   side = 'right',
   edgeOffset = 0,
   insets,
-  railWidth = LIST_SCRUBBER_DEFAULTS.railWidth,
   enabled = true,
   metrics,
   timing,
@@ -202,13 +199,12 @@ export function ListScrubber({
   if (!enabled || maxScroll <= 0 || track <= 0) return null;
 
   const thumbWidth = active ? m.thumbActiveWidth : m.thumbWidth;
-  const left = side === 'left';
   const bubbleProps = { metrics: m, colors, railHeight, dragging, dragTop, side, style: bubbleStyle };
 
   return (
     <View
       pointerEvents="box-none"
-      style={[styles.rail, { top: insetTop, bottom: insetBottom, [side]: edgeOffset, width: railWidth }]}
+      style={[styles.rail, { top: insetTop, bottom: insetBottom, [side]: edgeOffset, width: TOUCH_WIDTH }]}
     >
       {/* Screen readers: an adjustable control that is always present; the handle itself is drag-only, so it's hidden */}
       <View
@@ -219,7 +215,7 @@ export function ListScrubber({
         accessibilityActions={A11Y_ACTIONS}
         onAccessibilityAction={(e) => a11y.step(e.nativeEvent.actionName === 'increment' ? 1 : -1)}
         pointerEvents="none"
-        style={[styles.rail, { [side]: 0, width: railWidth }]}
+        style={StyleSheet.absoluteFill}
         testID={`${testID}-a11y`}
       />
       <GestureDetector gesture={pan}>
@@ -256,7 +252,6 @@ export function ListScrubber({
             style={{
               width: thumbWidth,
               height: m.thumbLength,
-              [left ? 'marginLeft' : 'marginRight']: (railWidth - thumbWidth) / 2,
               borderRadius: m.thumbRadius,
               backgroundColor: active ? colors.thumbActive : colors.thumb,
             }}
@@ -275,8 +270,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     width: TOUCH_WIDTH,
-    alignItems: 'flex-end',
+    // The thumb is centred in the touch area
+    alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'row',
   },
 });

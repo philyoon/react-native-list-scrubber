@@ -152,7 +152,6 @@ Optional:
   `I18nManager.isRTL ? 'left' : 'right'`.
 - `edgeOffset`: distance from that edge, negative to sit in a margin outside the list. Default: `0`.
 - `insets`: `{ top, bottom }` space the handle stays out of, e.g. under a pinned header or above a toolbar.
-- `railWidth`: width of the handle's strip. Default: `20`.
 - `enabled`: `false` hides the scrubber and its screen-reader control, keeping its state. Default: `true`.
 - `testID`: prefix of the test IDs (`<testID>` for the drag gesture, `-handle`, `-a11y`, `-label-strip`).
   Default: `list-scrubber`.

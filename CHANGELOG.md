@@ -25,6 +25,9 @@
   `usePinnedSectionHeaderStyle`; both stay exported for custom headers.
 - **Breaking:** `steps` and `formatPercent` are renamed `accessibilitySteps` and `formatAccessibilityPercent`:
   they only affect screen readers.
+- **Breaking:** `railWidth` is removed. The thumb is centred in its 44 pt touch area (it was centred off a 20
+  pt rail it didn't sit in), about 3 pt closer to the edge than before; use `edgeOffset` to move it. The
+  screen-reader control now covers the same 44 pt strip (it was 20 pt).
 - Section bubble: each label gets its own font size by its length, so one long label no longer shrinks every
   letter.
 - **Breaking:** `right` is replaced by `side` + `edgeOffset`.

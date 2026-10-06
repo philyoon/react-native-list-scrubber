@@ -369,9 +369,11 @@ describe('layout', () => {
     ).toBeTruthy();
   });
 
-  it('railWidth sets the strip width', async () => {
-    await setup({ railWidth: 30 });
-    expect(style('list-scrubber-a11y')).toMatchObject({ width: 30, right: 0 });
+  it('the screen-reader control covers the handle strip, as wide as the touch area', async () => {
+    await setup();
+    const rail = screen.getByTestId('list-scrubber-a11y', { includeHiddenElements: true }).parent!;
+    expect(StyleSheet.flatten(rail.props.style)).toMatchObject({ right: 0, width: 44 });
+    expect(style('list-scrubber-a11y')).toMatchObject({ position: 'absolute', top: 0, bottom: 0 });
   });
 
   it('keeps the section bubble inside the list at the top', async () => {
@@ -499,9 +501,9 @@ describe('while the finger is down', () => {
     await setup();
     await hold(26);
     expect(style('list-scrubber-handle').transform).toEqual([{ translateY: 26 }]);
-    expect(bar()).toMatchObject({ width: 8, marginRight: 6, backgroundColor: 'red' }); // (20 − 8) / 2
+    expect(bar()).toMatchObject({ width: 8, backgroundColor: 'red' });
     await release();
-    expect(bar()).toMatchObject({ width: 6, marginRight: 7, backgroundColor: 'gray' });
+    expect(bar()).toMatchObject({ width: 6, backgroundColor: 'gray' });
   });
 
   it('shows the labelAt bubble, keeps the last label on null, and clears it on release', async () => {
@@ -674,7 +676,7 @@ describe('API options', () => {
     expect(onDragEnd).toHaveBeenCalledTimes(1);
   });
 
-  it('side="left" mirrors the rail, handle, thumb and bubble', async () => {
+  it('side="left" mirrors the rail, handle and bubble', async () => {
     await setup({ side: 'left', edgeOffset: 4, labelAt: () => 'Jan' });
     const rail = screen.getByTestId('list-scrubber-a11y', { includeHiddenElements: true }).parent!;
     expect(StyleSheet.flatten(rail.props.style)).toMatchObject({ left: 4 });
@@ -684,11 +686,6 @@ describe('API options', () => {
       pan().onBegin({});
       pan().onUpdate({ translationY: 10 });
     });
-    const handle = screen.getByTestId('list-scrubber-handle', { includeHiddenElements: true });
-    const bar = StyleSheet.flatten(
-      (handle.children.at(-1) as unknown as { props: { style: ViewStyle } }).props.style,
-    );
-    expect(bar).toMatchObject({ marginLeft: 6 });
     let bubble = screen.getByText('Jan', { includeHiddenElements: true }).parent!;
     while (!StyleSheet.flatten(bubble.props.style)?.transform) bubble = bubble.parent!;
     expect(StyleSheet.flatten(bubble.props.style)).toMatchObject({ left: 44 + 40 });

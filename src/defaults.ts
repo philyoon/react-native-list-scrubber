@@ -35,7 +35,6 @@ export interface ListScrubberTiming {
 export const LIST_SCRUBBER_DEFAULTS: Readonly<{
   metrics: Readonly<ListScrubberMetrics>;
   timing: Readonly<ListScrubberTiming>;
-  railWidth: number;
 }> = Object.freeze({
   metrics: Object.freeze({
     thumbLength: 48,
@@ -51,7 +50,6 @@ export const LIST_SCRUBBER_DEFAULTS: Readonly<{
     bubbleShortLabelMax: 2,
   }),
   timing: Object.freeze({ hideAfterMs: 1500, fadeMs: 150 }),
-  railWidth: 20,
 });
 
 // Fixed values
