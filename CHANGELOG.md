@@ -10,6 +10,11 @@
 - README: a Troubleshooting section.
 - `listLayout` and `sectionListLayout`: compute `sections` and the list's `getItemLayout` from row heights,
   for flat lists and SectionList.
+- Performance: the section bubble and `PinnedSectionHeader` / `CurrentSectionLabel` draw the current section
+  in one native text field, its text set on the UI thread (no React render), instead of mounting every section
+  label and sliding them. Thousands of sections now cost what a few do. **Breaking (test IDs):** the bubble's
+  label is `<testID>-label` (was `-label-strip`), and `CurrentSectionLabel`'s is `<testID>-text` (was
+  `-strip`); they hold the shown label as the field's text, not one text per section.
 - `colors` is optional, and each colour can be overridden on its own; defaults are in
   `LIST_SCRUBBER_DEFAULTS.colors`.
 - Performance: measuring the list no longer re-renders the component calling `useListScrubber`; only

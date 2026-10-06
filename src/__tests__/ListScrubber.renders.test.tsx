@@ -5,34 +5,35 @@ import { render } from '@testing-library/react-native';
 import { ListScrubber, PinnedSectionHeader } from '../index';
 import { sharedZero } from './support';
 
-// Counts real renders of the section label strip: it draws every section label, so each render is costly.
+// Counts real renders of the section label. It no longer draws every label, but a render still recomputes
+// its UI-thread worklets and sizing copies, so it should happen only when something it draws changes.
 // Wraps the actual component's inner function in a new memo, so it counts what the actual memo would let through.
 // The counter lives in the mocked module: the factory runs when ./support first imports the library.
-jest.mock('../LabelStrip', () => {
+jest.mock('../SectionText', () => {
   const React = require('react');
-  const actual = jest.requireActual('../LabelStrip').LabelStrip;
+  const actual = jest.requireActual('../SectionText').SectionText;
   const counter = { renders: 0, isMemo: actual.$$typeof === Symbol.for('react.memo') };
   const Counted = (props: object) => {
     counter.renders++;
     return actual.type(props);
   };
-  return { LabelStrip: React.memo(Counted), counter };
+  return { SectionText: React.memo(Counted), counter };
 });
-const mockStrip: { renders: number; isMemo: boolean } = require('../LabelStrip').counter;
+const mockLabel: { renders: number; isMemo: boolean } = require('../SectionText').counter;
 
 type Handlers = Record<'onBegin' | 'onUpdate' | 'onFinalize', (e: object) => void>;
 const pan = () => (getByGestureTestId('list-scrubber') as unknown as { handlers: Handlers }).handlers;
 const sections = Array.from({ length: 300 }, (_, i) => ({ offset: i * 10, label: `S${i}` }));
 
-beforeEach(() => (mockStrip.renders = 0));
+beforeEach(() => (mockLabel.renders = 0));
 
-it('LabelStrip is memoized', () => {
-  expect(mockStrip.isMemo).toBe(true);
+it('SectionText is memoized', () => {
+  expect(mockLabel.isMemo).toBe(true);
 });
 
-it('the label strip renders once, not again as the thumb shows, drags and hides', async () => {
+it('the section label renders once, not again as the thumb shows, drags and hides', async () => {
   await setup({ sections, contentHeight: 20000 });
-  expect(mockStrip.renders).toBe(1);
+  expect(mockLabel.renders).toBe(1);
   const [fade, visible] = reactions();
   await act(async () => {
     fade.react(10, 0); // scrolling starts
@@ -44,7 +45,7 @@ it('the label strip renders once, not again as the thumb shows, drags and hides'
   });
   await act(async () => pan().onFinalize({}));
   await act(async () => visible.react(false, true)); // the thumb hides
-  expect(mockStrip.renders).toBe(1);
+  expect(mockLabel.renders).toBe(1);
 });
 
 it('inline colours and text style with the same values do not re-render it; a change does', async () => {
@@ -52,9 +53,9 @@ it('inline colours and text style with the same values do not re-render it; a ch
   const view = await setup({ sections, contentHeight: 20000, colors: { bubbleText: 'white' } });
   await view.rerender(<ListScrubber {...props} colors={{ bubbleText: 'white' }} bubbleTextStyle={{}} />);
   await view.rerender(<ListScrubber {...props} colors={{ bubbleText: 'white' }} bubbleTextStyle={{}} />);
-  expect(mockStrip.renders).toBe(2); // mount, then once for the text style it didn't have
+  expect(mockLabel.renders).toBe(2); // mount, then once for the text style it didn't have
   await view.rerender(<ListScrubber {...props} colors={{ bubbleText: 'red' }} bubbleTextStyle={{}} />);
-  expect(mockStrip.renders).toBe(3);
+  expect(mockLabel.renders).toBe(3);
 });
 
 it("the pinned header's labels don't re-render when the app renders with the same inline textStyle", async () => {
@@ -65,7 +66,7 @@ it("the pinned header's labels don't re-render when the app renders with the sam
   const view = await render(header(14));
   await view.rerender(header(14));
   await view.rerender(header(14));
-  expect(mockStrip.renders).toBe(1);
+  expect(mockLabel.renders).toBe(1);
   await view.rerender(header(16)); // a real change does
-  expect(mockStrip.renders).toBe(2);
+  expect(mockLabel.renders).toBe(2);
 });

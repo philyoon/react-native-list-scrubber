@@ -141,8 +141,8 @@ always read the same sections. (Both components also take `scrollY` and `section
 hand.)
 
 - It shows the current section's label, drawn on the UI thread: it changes in the same frame as the list, even
-  during scrubber jumps. It renders every label once and slides them, which suits up to a few hundred
-  sections.
+  during scrubber jumps. It's one native text field whose text is set on the UI thread, so its cost doesn't
+  grow with the number of sections.
 - As the next section's header reaches it, it's pushed up and out, like iOS Contacts. If the list has no
   section headers of its own, pass `push={false}`.
 - Give the scrubber `insets={{ top: HEADER_HEIGHT }}` to keep the thumb out from under it.
@@ -205,8 +205,8 @@ Optional:
 - `edgeOffset`: distance from that edge, negative to sit in a margin outside the list. Default: `0`.
 - `insets`: `{ top, bottom }` space the thumb stays out of, e.g. under a pinned header or above a toolbar.
 - `enabled`: `false` hides the scrubber and its screen-reader control, keeping its state. Default: `true`.
-- `testID`: prefix of the test IDs (`<testID>` for the drag gesture, `-thumb`, `-a11y`, `-label-strip`).
-  Default: `list-scrubber`.
+- `testID`: prefix of the test IDs (`<testID>` for the drag gesture, `-thumb`, `-a11y`, `-label`). Default:
+  `list-scrubber`.
 - `metrics`, `timing`: partial overrides of the defaults below.
 - `bubbleStyle`, `bubbleTextStyle`: extra styles, e.g. a shadow or a font.
 
@@ -338,7 +338,9 @@ checked and copied to the UI thread again on every render.
   screen-reader value follow. The screen-reader control is a Tab stop there: ↓/→ and ↑/← step like a screen
   reader, Page Down/Up move one screen, Home/End go to the ends. With no separate UI thread on web, everything
   runs on JS. Not tested on mobile browsers.
-- `PinnedSectionHeader` renders every section label once, so it suits up to a few hundred sections.
+- The section bubble sizes to the longest labels (the 32 longest, measured once). A shorter label that's drawn
+  wider than all of them (e.g. "WWW" against "iiii") can be clipped; pass `bubbleStyle={{ minWidth }}` if your
+  labels are like that.
 
 ## Example app
 

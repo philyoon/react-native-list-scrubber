@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Platform,
   StyleSheet,
@@ -23,8 +23,8 @@ import {
   type ListScrubberMetrics,
   type ListScrubberTiming,
 } from './defaults';
-import { LabelStrip } from './LabelStrip';
 import { clamp, labelPosition } from './math';
+import { SectionText } from './SectionText';
 import type { ListScrubberColors, ListScrubberSection } from './types';
 import { useA11yStepper } from './useA11yStepper';
 import { useAutoHide } from './useAutoHide';
@@ -70,7 +70,7 @@ interface ListScrubberBaseProps {
   /** Extra style for the bubble box (e.g. a shadow) */
   bubbleStyle?: StyleProp<ViewStyle>;
   bubbleTextStyle?: StyleProp<TextStyle>;
-  /** Prefix of the test IDs: `<testID>` (the drag gesture), `-thumb`, `-a11y`, `-label-strip` (default 'list-scrubber') */
+  /** Prefix of the test IDs: `<testID>` (the drag gesture), `-thumb`, `-a11y`, `-label` (default 'list-scrubber') */
   testID?: string;
   /**
    * With `sections`: the finger moved into another section while dragging (e.g. a haptic tick per letter).
@@ -146,18 +146,29 @@ export function ListScrubber({
   const metricsKey = JSON.stringify(metrics ?? null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const m = useMemo(() => ({ ...LIST_SCRUBBER_DEFAULTS.metrics, ...metrics }), [metricsKey]);
-  // Colours and the label style keep their identity between renders too: the section bubble renders every
-  // section label at once (LabelStrip, memoized), and a new style function each render re-rendered them all
-  // whenever the thumb showed, hid, or a drag started or ended. Keyed by value, so inline objects are fine.
+  // Colours and the section label's style keep their identity between renders too, keyed by value so inline
+  // objects are fine: the section label (SectionText) is memoized and re-renders only when they change
   const colorsKey = JSON.stringify(colorsProp ?? null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const colors = useMemo(() => ({ ...LIST_SCRUBBER_DEFAULTS.colors, ...colorsProp }), [colorsKey]);
   const textStyleKey = JSON.stringify(StyleSheet.flatten(bubbleTextStyleProp) ?? null);
-  const labelStyle = useCallback(
-    // Sized per label: one long label doesn't shrink all the letters
-    (text: string) => [bubbleTextStyle(text, m, colors), bubbleTextStyleProp],
+  const sectionLabelStyle = useMemo(
+    (): TextStyle => ({
+      color: colors.bubbleText,
+      fontWeight: '700',
+      textAlign: 'center',
+      ...StyleSheet.flatten(bubbleTextStyleProp),
+    }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [m, colors, textStyleKey],
+    [colors, textStyleKey],
+  );
+  // Sized per label (one long label doesn't shrink all the letters), unless bubbleTextStyle sets fontSize
+  const sectionFontSizes = useMemo(
+    () =>
+      sectionLabelStyle.fontSize === undefined
+        ? { short: m.bubbleFontSize, long: m.bubbleLongFontSize, shortMaxLength: m.bubbleShortLabelMaxLength }
+        : undefined,
+    [m, sectionLabelStyle],
   );
   const { hideAfterMs, fadeMs } = { ...LIST_SCRUBBER_DEFAULTS.timing, ...timing };
   const offsets = useSectionOffsets(sections);
@@ -287,13 +298,15 @@ export function ListScrubber({
         >
           {sections?.length ? (
             <Bubble {...bubbleProps} shown={dragging}>
-              <LabelStrip
-                testID={`${testID}-label-strip`}
+              <SectionText
+                testID={`${testID}-label`}
                 index={sectionIdx}
                 labels={labels}
                 height={m.bubbleSize}
+                style={sectionLabelStyle}
+                fontSizes={sectionFontSizes}
+                sizeToLabels
                 maxFontSizeMultiplier={MAX_FONT_SCALE}
-                style={labelStyle}
               />
             </Bubble>
           ) : (

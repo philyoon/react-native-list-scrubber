@@ -1,9 +1,9 @@
-import { sharedZero } from './support';
+import { sectionText, sharedZero } from './support';
 import { render, renderHook, screen } from '@testing-library/react-native';
 import { StyleSheet, type ViewStyle } from 'react-native';
 import { CurrentSectionLabel, PinnedSectionHeader, usePinnedSectionHeaderStyle } from '../index';
 
-it('CurrentSectionLabel slides its label strip to the section at the top of the list', async () => {
+it('CurrentSectionLabel shows the section at the top of the list', async () => {
   const scrollY = sharedZero();
   scrollY.set(620);
   await render(
@@ -16,9 +16,8 @@ it('CurrentSectionLabel slides its label strip to the section at the top of the 
       ]}
     />,
   );
-  // the Reanimated mock computes animated styles once, from the current values: 'M' is the second line
-  const strip = screen.getByTestId('list-scrubber-section-label-strip', { includeHiddenElements: true });
-  expect(StyleSheet.flatten(strip.props.style)).toMatchObject({ transform: [{ translateY: -20 }] });
+  // the Reanimated mock computes animated props on render, from the current values
+  expect(sectionText('list-scrubber-section-label-text')).toMatchObject({ text: 'M', style: { height: 20 } });
 });
 
 describe('usePinnedSectionHeaderStyle', () => {
@@ -51,32 +50,29 @@ describe('CurrentSectionLabel line height', () => {
     { offset: 500, label: 'M' },
   ];
   // The test environment reports a system text size of 2×: rows scale with it, capped at 1.5× by default.
-  const shiftWith = async (style?: object, maxFontSizeMultiplier?: number) => {
-    const scrollY = sharedZero();
-    scrollY.set(600); // second section: the strip moves up one line
+  const lineWith = async (style?: object, maxFontSizeMultiplier?: number) => {
     await render(
       <CurrentSectionLabel
-        scrollY={scrollY}
+        scrollY={sharedZero()}
         sections={sections}
         style={style}
         maxFontSizeMultiplier={maxFontSizeMultiplier}
       />,
     );
-    const strip = screen.getByTestId('list-scrubber-section-label-strip', { includeHiddenElements: true });
-    return (StyleSheet.flatten(strip.props.style).transform as { translateY: number }[])[0]!.translateY;
+    return sectionText('list-scrubber-section-label-text').style.height;
   };
 
-  it('uses the style lineHeight, scaled', async () => expect(await shiftWith({ lineHeight: 30 })).toBe(-45));
-  it('else 1.3 × fontSize, scaled', async () => expect(await shiftWith({ fontSize: 20 })).toBe(-39));
-  it('else 1.3 × 14, scaled and rounded up', async () => expect(await shiftWith()).toBe(-28)); // 27.3
+  it('uses the style lineHeight, scaled', async () => expect(await lineWith({ lineHeight: 30 })).toBe(45));
+  it('else 1.3 × fontSize, scaled', async () => expect(await lineWith({ fontSize: 20 })).toBe(39));
+  it('else 1.3 × 14, scaled and rounded up', async () => expect(await lineWith()).toBe(28)); // 27.3
 
   it('scales with the system text size below the cap', async () => {
-    expect(await shiftWith({ lineHeight: 30 }, 3)).toBe(-60); // 2×, under a 3× cap
+    expect(await lineWith({ lineHeight: 30 }, 3)).toBe(60); // 2×, under a 3× cap
   });
 
   it('caps the label text at the same multiple', async () => {
-    await shiftWith({ lineHeight: 30 });
-    expect(screen.getByText('M', { includeHiddenElements: true }).props.maxFontSizeMultiplier).toBe(1.5);
+    await lineWith({ lineHeight: 30 });
+    expect(sectionText('list-scrubber-section-label-text').field.props.maxFontSizeMultiplier).toBe(1.5);
   });
 });
 
@@ -114,7 +110,24 @@ describe('PinnedSectionHeader', () => {
       backgroundColor: 'red',
       transform: [{ translateY: -16 }],
     });
-    expect(screen.getByText('A', { includeHiddenElements: true })).toBeTruthy();
+    expect(sectionText('list-scrubber-pinned-header-label-text').text).toBe('A');
+  });
+
+  it('is blank, not broken, before there are sections', async () => {
+    await render(<PinnedSectionHeader scrollY={sharedZero()} sections={[]} height={36} />);
+    expect(sectionText('list-scrubber-pinned-header-label-text').text).toBe('');
+    expect(sectionText('list-scrubber-pinned-header-label-text').field.props.defaultValue).toBe('');
+  });
+
+  it('its text field is display only: no focus (a Tab stop on web), no editing, screen readers skip it', async () => {
+    await render(<PinnedSectionHeader scrollY={sharedZero()} sections={sections} height={36} />);
+    expect(sectionText('list-scrubber-pinned-header-label-text').field.props).toMatchObject({
+      editable: false,
+      focusable: false,
+      'aria-hidden': true,
+      accessible: false,
+      pointerEvents: 'none',
+    });
   });
 
   it('push={false} keeps it in place', async () => {
@@ -131,7 +144,7 @@ describe('PinnedSectionHeader', () => {
         <PinnedSectionHeader scrollY={sharedZero()} sections={sections} height={36} testID="calls" />
       </>,
     );
-    for (const id of ['contacts', 'contacts-label', 'contacts-label-strip', 'calls', 'calls-label-strip']) {
+    for (const id of ['contacts', 'contacts-label', 'contacts-label-text', 'calls', 'calls-label-text']) {
       expect(screen.getByTestId(id, { includeHiddenElements: true })).toBeTruthy();
     }
   });

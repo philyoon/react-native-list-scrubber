@@ -1,4 +1,5 @@
-import { act, render } from '@testing-library/react-native';
+import { act, render, screen } from '@testing-library/react-native';
+import { StyleSheet, type TextStyle } from 'react-native';
 import { State } from 'react-native-gesture-handler';
 import { fireGestureHandler, getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
 import type { SharedValue } from 'react-native-reanimated';
@@ -106,3 +107,13 @@ beforeEach(() => {
 
 /** The two reactions of the latest render: [scroll → fade, opacity → visible] */
 export const reactions = () => mockReactions.slice(-2) as [Reaction, Reaction];
+
+/**
+ * A section label as drawn: the text its native field shows (set from the UI thread) and its style.
+ * The mock computes it on render, from the current shared values.
+ */
+export function sectionText(testID: string) {
+  const field = screen.getByTestId(testID, { includeHiddenElements: true });
+  const style: TextStyle = StyleSheet.flatten(field.props.style);
+  return { text: field.props.animatedProps.text as string, style, field };
+}
