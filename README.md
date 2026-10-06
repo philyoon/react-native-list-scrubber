@@ -23,6 +23,9 @@ A draggable thumb for scrubbing through long React Native lists, with a label bu
   can override one by one.
 - **Works with** FlatList, SectionList, ScrollView, Legend List and FlashList. See
   [Compatibility](#compatibility).
+- **Requires the New Architecture.** It's built on Reanimated 4, which runs only on React Native's New
+  Architecture (the default since 0.76): React Native 0.78+, Reanimated 4.1+. Apps still on the old
+  architecture with Reanimated 3 can't use it. See [Install](#install).
 
 ## Install
 
@@ -32,7 +35,9 @@ npm install react-native-list-scrubber
 
 Peer dependencies (already in most Expo apps):
 
-- `react-native-reanimated` ≥ 4 and `react-native-worklets`
+- React Native ≥ 0.78 with the New Architecture (the default since 0.76), and React ≥ 19
+- `react-native-reanimated` ≥ 4.1 and `react-native-worklets` ≥ 0.5, in a pair Reanimated supports (see its
+  [compatibility table](https://docs.swmansion.com/react-native-reanimated/docs/guides/compatibility/))
 - `react-native-gesture-handler` ≥ 2.20, with `GestureHandlerRootView` at your app root
 
 Keep exactly one copy of react-native-gesture-handler, matching your native runtime. Check with

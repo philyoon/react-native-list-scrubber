@@ -13,6 +13,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # The installed Reanimated must list the installed React Native and Worklets as compatible
+      - run: node scripts/check-reanimated-compat.mjs
       - run: npm run format:check
       - run: npm run typecheck
       - run: npm run lint
@@ -24,3 +26,19 @@ jobs:
       - run: npm --prefix example run typecheck
       # Builds the example for web: catches anything that breaks the web bundle
       - run: npm --prefix example run export:web
+  # The oldest versions the peer dependency ranges allow: a pair Reanimated supports, the library's types, the
+  # unit tests, and an app using every export must all still work with them.
+  min-versions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node scripts/install-min-peers.mjs
+      - run: node scripts/check-reanimated-compat.mjs
+      - run: npx tsc --noEmit -p tsconfig.build.json
+      - run: npm test -- --coverage
+      - run: npm run smoke:package

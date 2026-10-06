@@ -9,7 +9,12 @@ jest.mock('react-native-reanimated', () => {
 });
 jest.mock('react-native-worklets', () => {
   mockLoaded.push('react-native-worklets');
-  return require('react-native-worklets/src/mock');
+  // Worklets' own mock where it has one (0.7+); older Worklets run as they are under Jest
+  try {
+    return require('react-native-worklets/src/mock');
+  } catch {
+    return jest.requireActual('react-native-worklets');
+  }
 });
 jest.mock('react-native-gesture-handler', () => {
   mockLoaded.push('react-native-gesture-handler');
