@@ -227,15 +227,15 @@ component that takes the hook's result with sections:
 | `bubble`      | `#3A3A3C` | Dark grey, with white `bubbleText` (`#FFFFFF`)  |
 | `bubbleText`  | `#FFFFFF` |                                                 |
 
-| `metrics`                               | pt      |                                                     |
-| --------------------------------------- | ------- | --------------------------------------------------- |
-| `thumbLength`                           | 48      | Longer than a fingertip                             |
-| `thumbWidth` / `thumbActiveWidth`       | 6 / 8   | Thin when idle, thicker while grabbed               |
-| `thumbRadius`                           | 4       |                                                     |
-| `bubbleSize`                            | 64      | Height and minimum width                            |
-| `bubbleGap`                             | 40      | Keeps the bubble clear of the finger                |
-| `bubbleRadius` / `bubblePadding`        | 16 / 16 |                                                     |
-| `bubbleFontSize` / `bubbleLongFontSize` | 24 / 16 | Up to `bubbleShortLabelMax` (2) characters / longer |
+| `metrics`                               | pt      |                                                           |
+| --------------------------------------- | ------- | --------------------------------------------------------- |
+| `thumbLength`                           | 48      | Longer than a fingertip                                   |
+| `thumbWidth` / `thumbActiveWidth`       | 6 / 8   | Thin when idle, thicker while grabbed                     |
+| `thumbRadius`                           | 4       |                                                           |
+| `bubbleSize`                            | 64      | Height and minimum width                                  |
+| `bubbleGap`                             | 40      | Keeps the bubble clear of the finger                      |
+| `bubbleRadius` / `bubblePadding`        | 16 / 16 |                                                           |
+| `bubbleFontSize` / `bubbleLongFontSize` | 24 / 16 | Up to `bubbleShortLabelMaxLength` (2) characters / longer |
 
 | `timing`      | ms   |                                          |
 | ------------- | ---- | ---------------------------------------- |

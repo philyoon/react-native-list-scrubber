@@ -12,7 +12,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { clamp, labelPosition, sectionIndexAt } from './math';
 
 /**
- * The drag: maps the thumb's travel (`track`) onto the list's scroll range and scrolls it, all on the
+ * The drag: maps the distance the thumb can move (`travel`) onto the list's scroll range and scrolls it, all on the
  * UI thread. With section `offsets` it also picks the section under the finger (`sectionIdx`).
  * The JS callbacks must be stable (useLatest): the gesture is rebuilt only when its numbers change.
  */
@@ -21,7 +21,7 @@ export function useScrubGesture({
   scrollY,
   opacity,
   dragging,
-  track,
+  travel,
   maxScroll,
   contentHeight,
   viewportHeight,
@@ -32,7 +32,7 @@ export function useScrubGesture({
   testID,
   onBegin,
   onEnd,
-  onOffset,
+  onDragOffset,
   onSection,
 }: {
   listRef: AnimatedRef<any>;
@@ -40,7 +40,7 @@ export function useScrubGesture({
   opacity: SharedValue<number>;
   dragging: SharedValue<boolean>;
   /** How far the thumb travels (pt) */
-  track: number;
+  travel: number;
   maxScroll: number;
   contentHeight: number;
   viewportHeight: number;
@@ -52,7 +52,7 @@ export function useScrubGesture({
   onBegin: () => void;
   onEnd: () => void;
   /** Without sections: the scroll offset of every drag frame */
-  onOffset?: (offset: number) => void;
+  onDragOffset?: (offset: number) => void;
   /** With sections: the finger moved into another section */
   onSection?: (index: number) => void;
 }) {
@@ -65,30 +65,30 @@ export function useScrubGesture({
     () =>
       Gesture.Pan()
         .withTestId(testID)
-        .enabled(enabled && track > 0 && maxScroll > 0)
+        .enabled(enabled && travel > 0 && maxScroll > 0)
         .minDistance(0)
         .onBegin(() => {
           dragging.set(true);
-          startTop.set(clamp((scrollY.get() / maxScroll) * track, 0, track));
+          startTop.set(clamp((scrollY.get() / maxScroll) * travel, 0, travel));
           dragTop.set(startTop.get());
           if (offsets.length) {
-            const y = labelPosition((startTop.get() / track) * maxScroll, contentHeight, viewportHeight);
+            const y = labelPosition((startTop.get() / travel) * maxScroll, contentHeight, viewportHeight);
             sectionIdx.set(sectionIndexAt(offsets, y));
           }
           opacity.set(withTiming(1, { duration: fadeMs }));
           scheduleOnRN(onBegin);
         })
         .onUpdate((e) => {
-          const top = clamp(startTop.get() + e.translationY, 0, track);
+          const top = clamp(startTop.get() + e.translationY, 0, travel);
           dragTop.set(top);
-          const offset = (top / track) * maxScroll;
+          const offset = (top / travel) * maxScroll;
           scrollTo(listRef, 0, offset, false);
           if (offsets.length) {
             const idx = sectionIndexAt(offsets, labelPosition(offset, contentHeight, viewportHeight));
             // Only real moves count: the section the drag started in is not a change.
             if (idx !== sectionIdx.get() && onSection) scheduleOnRN(onSection, idx);
             sectionIdx.set(idx);
-          } else if (onOffset) scheduleOnRN(onOffset, offset);
+          } else if (onDragOffset) scheduleOnRN(onDragOffset, offset);
         })
         .onFinalize(() => {
           dragging.set(false);
@@ -104,7 +104,7 @@ export function useScrubGesture({
       dragTop,
       startTop,
       sectionIdx,
-      track,
+      travel,
       maxScroll,
       contentHeight,
       viewportHeight,
@@ -115,7 +115,7 @@ export function useScrubGesture({
       testID,
       onBegin,
       onEnd,
-      onOffset,
+      onDragOffset,
       onSection,
     ],
   );

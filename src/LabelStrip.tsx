@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Text, View, type StyleProp, type TextStyle } from 'react-native';
 import Animated, { useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
 import { clamp } from './math';
@@ -6,8 +7,9 @@ import { clamp } from './math';
  * All labels stacked in a column, one per `height`, inside a window one label tall. The UI thread
  * slides the column so `index` shows: a transform, so it never waits for JS or a React render.
  * The column is as wide as its widest label, so a bubble around it sizes itself.
+ * Memoized: it renders every label, possibly thousands, so it re-renders only when its props change.
  */
-export function LabelStrip({
+export const LabelStrip = memo(function LabelStrip({
   index,
   labels,
   height,
@@ -44,4 +46,4 @@ export function LabelStrip({
       </Animated.View>
     </View>
   );
-}
+});

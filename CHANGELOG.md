@@ -76,6 +76,11 @@
   flips in RTL while React Native Web keeps `left`/`right`, so it landed off-screen). The docs no longer say
   to flip `side` for RTL: React Native already mirrors `left`/`right` on iOS and Android, so that flipped it
   twice. A README section describes RTL on each platform.
+- Performance: the section bubble's labels (all of them, rendered at once) no longer re-render when the thumb
+  shows or hides or a drag starts or ends. The strip is memoized, and `colors` and `bubbleTextStyle` are
+  compared by value, so inline objects don't defeat it.
+- **Breaking:** `metrics.bubbleShortLabelMax` is renamed `bubbleShortLabelMaxLength` (labels up to this many
+  characters count as short).
 - Section bubble: each label gets its own font size by its length, so one long label no longer shrinks every
   letter.
 - **Breaking:** `right` is replaced by `side` + `edgeOffset`.

@@ -118,9 +118,14 @@ describe('dragging with sections', () => {
     );
 
   it('moves the label strip to the section under the finger', async () => {
-    // The mock draws styles only on render, so re-render to read the UI-thread state after a drag.
+    // The mock draws animated styles only on render, so re-render the strip to read the UI-thread state
+    // after a drag. It's memoized, so it needs new props: a new text style (by value) does it.
     const view = await setup({ sections });
-    const again = () => view.rerender(<ListScrubber {...baseProps} sections={sections} />);
+    let renders = 0;
+    const again = () =>
+      view.rerender(
+        <ListScrubber {...baseProps} sections={sections} bubbleTextStyle={{ letterSpacing: ++renders }} />,
+      );
     await drag(26); // offset 450, probe 500 → "M"
     await again();
     expect(strip().transform).toEqual([{ translateY: -64 }]);

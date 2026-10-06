@@ -20,7 +20,7 @@ export interface ListScrubberMetrics {
   /** Font size for longer labels (e.g. dates), keeps the bubble from getting too wide */
   bubbleLongFontSize: number;
   /** Labels up to this many characters count as short */
-  bubbleShortLabelMax: number;
+  bubbleShortLabelMaxLength: number;
 }
 
 /** Adjustable durations (ms). Override any subset with `timing`. */
@@ -54,7 +54,7 @@ export const LIST_SCRUBBER_DEFAULTS: Readonly<{
     bubblePadding: 16,
     bubbleFontSize: 24,
     bubbleLongFontSize: 16,
-    bubbleShortLabelMax: 2,
+    bubbleShortLabelMaxLength: 2,
   }),
   timing: Object.freeze({ hideAfterMs: 1500, fadeMs: 150 }),
 });
