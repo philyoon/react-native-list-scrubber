@@ -547,6 +547,23 @@ describe('while the finger is down', () => {
     ]);
   });
 
+  it('onSectionChange is skipped if the section is gone by the time JS runs it', async () => {
+    const onSectionChange = jest.fn();
+    const sections = [
+      { offset: 0, label: 'A' },
+      { offset: 500, label: 'M' },
+      { offset: 800, label: 'Zebra' },
+    ];
+    const view = await setup({ sections, onSectionChange });
+    await hold(5);
+    const uiThread = pan(); // still running with the old offsets
+    await view.rerender(
+      <ListScrubber {...baseProps} sections={sections.slice(0, 1)} onSectionChange={onSectionChange} />,
+    );
+    await act(async () => uiThread.onUpdate({ translationY: 52 })); // picks "Zebra", gone on the JS side
+    expect(onSectionChange).not.toHaveBeenCalled();
+  });
+
   describe('section bubble', () => {
     const sections = [
       { offset: 0, label: 'A' },
@@ -605,4 +622,25 @@ it('the visibility reaction ignores repeats', async () => {
   const handle = screen.getByTestId('list-scrubber-handle', { includeHiddenElements: true });
   await act(async () => reactions()[1].react(false, false));
   expect(handle.props.pointerEvents).toBe('none');
+});
+
+describe('render cost', () => {
+  it('asks labelAt for the screen-reader value only when the position changes', async () => {
+    const labelAt = jest.fn(() => 'A');
+    const view = await setup({ labelAt });
+    const calls = labelAt.mock.calls.length;
+    await view.rerender(<ListScrubber {...baseProps} labelAt={labelAt} />);
+    expect(labelAt).toHaveBeenCalledTimes(calls);
+  });
+
+  it('keeps the same gesture between renders', async () => {
+    const view = await setup();
+    const first = getByGestureTestId('list-scrubber');
+    await view.rerender(<ListScrubber {...baseProps} metrics={{}} />);
+    expect(getByGestureTestId('list-scrubber')).toBe(first);
+  });
+
+  it('freezes the defaults', () => {
+    expect(Object.isFrozen(LIST_SCRUBBER_DEFAULTS.metrics)).toBe(true);
+  });
 });

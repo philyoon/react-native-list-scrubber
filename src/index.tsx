@@ -9,7 +9,7 @@
 //   `labelAt` is the JS fallback for arbitrary labels: it can lag a frame or two while JS is busy.
 // - Screen readers get an adjustable control: swipe up/down to move one step (steps, or one screen),
 //   announced as the label or a percentage.
-import { useCallback, useMemo, useState, type Component, type ReactNode } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, type Component } from 'react';
 import {
   StyleSheet,
   Text,
@@ -67,12 +67,12 @@ export interface ListScrubberTiming {
   fadeMs: number;
 }
 
-export const LIST_SCRUBBER_DEFAULTS: {
-  metrics: ListScrubberMetrics;
-  timing: ListScrubberTiming;
+export const LIST_SCRUBBER_DEFAULTS: Readonly<{
+  metrics: Readonly<ListScrubberMetrics>;
+  timing: Readonly<ListScrubberTiming>;
   railWidth: number;
-} = {
-  metrics: {
+}> = Object.freeze({
+  metrics: Object.freeze({
     thumbLength: 48,
     thumbWidth: 6,
     thumbActiveWidth: 8,
@@ -84,10 +84,10 @@ export const LIST_SCRUBBER_DEFAULTS: {
     bubbleFontSize: 24,
     bubbleLongFontSize: 16,
     bubbleShortLabelMax: 2,
-  },
-  timing: { hideAfterMs: 1500, fadeMs: 150 },
+  }),
+  timing: Object.freeze({ hideAfterMs: 1500, fadeMs: 150 }),
   railWidth: 20,
-};
+});
 
 // Fixed values
 /** Handle touch width: the 44pt minimum touch target */
@@ -123,6 +123,27 @@ export function sectionIndexAt(starts: readonly number[], y: number): number {
     else hi = mid - 1;
   }
   return Math.max(0, lo);
+}
+
+/** Index of the first of `values` that passes `test`, which flips from false to true once (`length` if none). */
+function firstIndexWhere(values: readonly number[], test: (value: number) => boolean): number {
+  let lo = 0;
+  let hi = values.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (test(values[mid]!)) hi = mid;
+    else lo = mid + 1;
+  }
+  return lo;
+}
+
+/** A function with a stable identity that always calls the latest `fn`: safe to capture in worklets. */
+function useLatest<A extends unknown[]>(fn: (...args: A) => void): (...args: A) => void {
+  const ref = useRef(fn);
+  useLayoutEffect(() => {
+    ref.current = fn;
+  });
+  return useCallback((...args: A) => ref.current(...args), []);
 }
 
 /**
@@ -226,7 +247,9 @@ export function SectionLabel({
   height?: number;
   style?: StyleProp<TextStyle>;
 }) {
-  const offsets = sections.map((s) => s.offset);
+  // Memoized: worklets copy what they capture to the UI thread whenever its identity changes.
+  const offsets = useMemo(() => sections.map((s) => s.offset), [sections]);
+  const labels = useMemo(() => sections.map((s) => s.label), [sections]);
   const flat = StyleSheet.flatten(style) ?? {};
   const lineHeight = height ?? flat.lineHeight ?? Math.ceil((flat.fontSize ?? 14) * 1.3);
   const index = useDerivedValue(() => sectionIndexAt(offsets, scrollY.get()));
@@ -237,7 +260,7 @@ export function SectionLabel({
       importantForAccessibility="no-hide-descendants"
       testID="list-scrubber-section-label"
     >
-      <LabelStrip index={index} labels={sections.map((s) => s.label)} height={lineHeight} style={style} />
+      <LabelStrip index={index} labels={labels} height={lineHeight} style={style} />
     </View>
   );
 }
@@ -253,7 +276,7 @@ export function usePinnedHeaderStyle(
   sections: readonly ListScrubberSection[],
   height: number,
 ) {
-  const offsets = sections.map((s) => s.offset);
+  const offsets = useMemo(() => sections.map((s) => s.offset), [sections]);
   return useAnimatedStyle(() => {
     const y = scrollY.get();
     const next = offsets[sectionIndexAt(offsets, y) + 1];
@@ -305,8 +328,9 @@ export interface ListScrubberProps {
   /** Extra style for the bubble box (e.g. a shadow) */
   bubbleStyle?: StyleProp<ViewStyle>;
   bubbleTextStyle?: StyleProp<TextStyle>;
-  children?: ReactNode;
 }
+
+const defaultFormatPercent = (percent: number) => `${percent}%`;
 
 export function ListScrubber({
   scrollY,
@@ -318,7 +342,7 @@ export function ListScrubber({
   labelAt,
   steps: stepsProp,
   accessibilityLabel,
-  formatPercent = (p) => `${p}%`,
+  formatPercent = defaultFormatPercent,
   onDragStart,
   onSectionChange,
   right = 0,
@@ -328,7 +352,10 @@ export function ListScrubber({
   bubbleStyle,
   bubbleTextStyle,
 }: ListScrubberProps) {
-  const m = { ...LIST_SCRUBBER_DEFAULTS.metrics, ...metrics };
+  // Memoized by value: worklets copy what they capture to the UI thread whenever its identity changes,
+  // and inline `metrics={{…}}` / `sections` built in render would otherwise do that on every render.
+  const metricsKey = JSON.stringify(metrics ?? null);
+  const m = useMemo(() => ({ ...LIST_SCRUBBER_DEFAULTS.metrics, ...metrics }), [metricsKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const { hideAfterMs, fadeMs } = { ...LIST_SCRUBBER_DEFAULTS.timing, ...timing };
   const track = Math.max(0, viewportHeight - m.thumbLength);
   const maxScroll = Math.max(0, contentHeight - viewportHeight);
@@ -342,28 +369,34 @@ export function ListScrubber({
   const [label, setLabel] = useState<string | null>(null);
   /** Offset the screen-reader value describes: set by its own steps, and re-read when scrolling stops */
   const [a11yOffset, setA11yOffset] = useState(0);
-  const offsets = sections?.map((s) => s.offset) ?? [];
-  const labels = sections?.map((s) => s.label) ?? [];
+  const offsets = useMemo(() => sections?.map((s) => s.offset) ?? [], [sections]);
+  const labels = useMemo(() => sections?.map((s) => s.label) ?? [], [sections]);
   const steps = stepsProp ?? (sections ? offsets : undefined);
   /** Section under the finger (UI thread), -1 before the first drag */
   const sectionIdx = useSharedValue(-1);
 
-  const updateLabel = (offset: number) => {
+  // Stable JS callbacks for the worklets to schedule: they read the latest props when they run.
+  const updateLabel = useLatest((offset: number) => {
     const next = labelAt?.(offset);
     if (next != null) setLabel(next);
-  };
-  const begin = () => {
+  });
+  const begin = useLatest(() => {
     onDragStart?.();
     setActive(true);
-  };
+  });
   /** Screen-reader value follows manual scrolling too: re-read the position once scrolling stops */
-  const syncA11y = () => setA11yOffset(scrollY.get());
-  // Only scheduled from the drag when both exist
-  const sectionChanged = (index: number) => onSectionChange!(index, sections![index]!);
-  const end = () => {
+  const syncA11y = useLatest(() => setA11yOffset(scrollY.get()));
+  const sectionChanged = useLatest((index: number) => {
+    // Runs on JS a frame or more after the UI thread picked `index`: `sections` may have changed since.
+    const section = sections?.[index];
+    if (section) onSectionChange?.(index, section);
+  });
+  const end = useLatest(() => {
     setActive(false);
     setLabel(null);
-  };
+  });
+  const hasLabelAt = labelAt != null;
+  const hasOnSectionChange = onSectionChange != null;
 
   useAnimatedReaction(
     () => scrollY.get(),
@@ -391,38 +424,54 @@ export function ListScrubber({
     },
   );
 
-  const pan = Gesture.Pan()
-    .withTestId('list-scrubber')
-    .enabled(track > 0 && maxScroll > 0)
-    .minDistance(0)
-    .onBegin(() => {
-      dragging.set(true);
-      startTop.set(Math.min(track, Math.max(0, (scrollY.get() / maxScroll) * track)));
-      dragTop.set(startTop.get());
-      if (offsets.length) {
-        const y = labelProbe((startTop.get() / track) * maxScroll, contentHeight, viewportHeight);
-        sectionIdx.set(sectionIndexAt(offsets, y));
-      }
-      opacity.set(withTiming(1, { duration: fadeMs }));
-      scheduleOnRN(begin);
-    })
-    .onUpdate((e) => {
-      const top = Math.min(track, Math.max(0, startTop.get() + e.translationY));
-      dragTop.set(top);
-      const offset = (top / track) * maxScroll;
-      scrollTo(listRef, 0, offset, false);
-      if (offsets.length) {
-        const idx = sectionIndexAt(offsets, labelProbe(offset, contentHeight, viewportHeight));
-        // Only real moves count: the section the drag started in is not a change.
-        if (idx !== sectionIdx.get() && onSectionChange) scheduleOnRN(sectionChanged, idx);
-        sectionIdx.set(idx);
-      } else if (labelAt) scheduleOnRN(updateLabel, offset);
-    })
-    .onFinalize(() => {
-      dragging.set(false);
-      opacity.set(withDelay(hideAfterMs, withTiming(0, { duration: fadeMs })));
-      scheduleOnRN(end);
-    });
+  const pan = useMemo(
+    () =>
+      Gesture.Pan()
+        .withTestId('list-scrubber')
+        .enabled(track > 0 && maxScroll > 0)
+        .minDistance(0)
+        .onBegin(() => {
+          dragging.set(true);
+          startTop.set(Math.min(track, Math.max(0, (scrollY.get() / maxScroll) * track)));
+          dragTop.set(startTop.get());
+          if (offsets.length) {
+            const y = labelProbe((startTop.get() / track) * maxScroll, contentHeight, viewportHeight);
+            sectionIdx.set(sectionIndexAt(offsets, y));
+          }
+          opacity.set(withTiming(1, { duration: fadeMs }));
+          scheduleOnRN(begin);
+        })
+        .onUpdate((e) => {
+          const top = Math.min(track, Math.max(0, startTop.get() + e.translationY));
+          dragTop.set(top);
+          const offset = (top / track) * maxScroll;
+          scrollTo(listRef, 0, offset, false);
+          if (offsets.length) {
+            const idx = sectionIndexAt(offsets, labelProbe(offset, contentHeight, viewportHeight));
+            // Only real moves count: the section the drag started in is not a change.
+            if (idx !== sectionIdx.get() && hasOnSectionChange) scheduleOnRN(sectionChanged, idx);
+            sectionIdx.set(idx);
+          } else if (hasLabelAt) scheduleOnRN(updateLabel, offset);
+        })
+        .onFinalize(() => {
+          dragging.set(false);
+          opacity.set(withDelay(hideAfterMs, withTiming(0, { duration: fadeMs })));
+          scheduleOnRN(end);
+        }),
+    // Shared values, refs and useLatest callbacks are stable; the rest is what the worklets read.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      track,
+      maxScroll,
+      offsets,
+      contentHeight,
+      viewportHeight,
+      fadeMs,
+      hideAfterMs,
+      hasLabelAt,
+      hasOnSectionChange,
+    ],
+  );
 
   const handleStyle = useAnimatedStyle(() => {
     const top = dragging.get() ? dragTop.get() : maxScroll > 0 ? (scrollY.get() / maxScroll) * track : 0;
@@ -438,6 +487,14 @@ export function ListScrubber({
   });
   const sectionBubbleStyle = useAnimatedStyle(() => ({ opacity: dragging.get() ? 1 : 0 }));
 
+  // Computed when the position it describes changes, not on every render (labelAt can be costly)
+  const a11yValue = useMemo(
+    () =>
+      (labels.length ? labels[sectionIndexAt(offsets, a11yOffset)] : labelAt?.(a11yOffset)) ??
+      formatPercent(maxScroll > 0 ? Math.round((a11yOffset / maxScroll) * 100) : 0),
+    [labels, offsets, labelAt, a11yOffset, formatPercent, maxScroll],
+  );
+
   if (maxScroll <= 0 || track <= 0) return null;
 
   // Screen reader: one step back or forward from here (the next of `steps`, or one screen)
@@ -445,19 +502,17 @@ export function ListScrubber({
     const from = scrollY.get();
     let to: number;
     if (steps && steps.length) {
+      // Binary search: steps can be section starts, thousands of them
       const next =
         dir > 0
-          ? steps.find((s) => s > from + STEP_SLACK)
-          : [...steps].reverse().find((s) => s < from - STEP_SLACK);
+          ? steps[firstIndexWhere(steps, (s) => s > from + STEP_SLACK)]
+          : steps[firstIndexWhere(steps, (s) => s >= from - STEP_SLACK) - 1];
       to = next ?? (dir > 0 ? maxScroll : 0);
     } else to = from + dir * viewportHeight * A11Y_PAGE;
     to = Math.min(maxScroll, Math.max(0, to));
     scheduleOnUI(scrollTo, listRef, 0, to, false);
     setA11yOffset(to);
   };
-  const a11yValue =
-    (sections?.length ? labels[sectionIndexAt(offsets, a11yOffset)] : labelAt?.(a11yOffset)) ??
-    formatPercent(Math.round((a11yOffset / maxScroll) * 100));
   // With sections, one font size for all: the longest label decides
   const longest = labels.reduce((a, b) => (b.length > a.length ? b : a), '');
   const bubbleBox: ViewStyle = {

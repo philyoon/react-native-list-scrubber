@@ -8,6 +8,13 @@
 - Example app: Maestro end-to-end flows on iOS and Android (`npm run e2e`, `npm run e2e:android`), an e2e mode
   that pins the list for them, `?demo=` links, and haptics via `onDragStart` / `onSectionChange`.
 - Peer dependencies: `react >=19`, `react-native >=0.78`.
+- Performance: section offsets, labels, metrics and the drag gesture keep their identity between renders, so
+  they're no longer re-sent to the UI thread on every render (or every drag frame with `labelAt`).
+- The screen-reader value calls `labelAt` only when the position changes, not on every render.
+- Screen-reader steps use a binary search.
+- `onSectionChange` is skipped if `sections` changed and the section no longer exists when it would fire.
+- `LIST_SCRUBBER_DEFAULTS` is frozen.
+- Removed the unused `children` prop.
 
 ## 0.1.0
 
