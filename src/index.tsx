@@ -9,7 +9,7 @@
 //   `labelAt` is the JS fallback for arbitrary labels: it can lag a frame or two while JS is busy.
 // - Screen readers get an adjustable control: swipe up/down to move one step (steps, or one screen),
 //   announced as the label or a percentage.
-import { useState, type Component, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, type Component, type ReactNode } from 'react';
 import {
   StyleSheet,
   Text,
@@ -137,7 +137,7 @@ export function sectionIndexAt(starts: readonly number[], y: number): number {
  * The offset comes from scroll events, so it keeps working when the list remounts (e.g. a new `key`).
  * If the list needs its own onLayout / onContentSizeChange, pass your own sizes to ListScrubber instead.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- any scrollable component
+// `any`: works with any scrollable component
 export function useListScrubber<TList extends Component<any, any> = any>() {
   const listRef = useAnimatedRef<TList>();
   const scrollY = useSharedValue(0);
@@ -146,24 +146,25 @@ export function useListScrubber<TList extends Component<any, any> = any>() {
   const onScroll = useAnimatedScrollHandler((e) => {
     scrollY.set(e.contentOffset.y);
   });
-  const onContentSizeChange = (_width: number, height: number) => setContentHeight(height);
-  const onLayout = (e: LayoutChangeEvent) => setViewportHeight(e.nativeEvent.layout.height);
-  return {
-    listRef,
-    scrollY,
-    onScroll,
-    contentHeight,
-    viewportHeight,
-    listProps: {
+  // Stable identities: the list gets the same props on every render, so it doesn't re-render for them.
+  const onContentSizeChange = useCallback((_width: number, height: number) => setContentHeight(height), []);
+  const onLayout = useCallback((e: LayoutChangeEvent) => setViewportHeight(e.nativeEvent.layout.height), []);
+  const listProps = useMemo(
+    () => ({
       ref: listRef,
       onScroll,
       scrollEventThrottle: 16,
       showsVerticalScrollIndicator: false,
       onContentSizeChange,
       onLayout,
-    },
-    scrubberProps: { listRef, scrollY, contentHeight, viewportHeight },
-  };
+    }),
+    [listRef, onScroll, onContentSizeChange, onLayout],
+  );
+  const scrubberProps = useMemo(
+    () => ({ listRef, scrollY, contentHeight, viewportHeight }),
+    [listRef, scrollY, contentHeight, viewportHeight],
+  );
+  return { listRef, scrollY, onScroll, contentHeight, viewportHeight, listProps, scrubberProps };
 }
 
 /** A labelled section start, e.g. `{ offset: 0, label: 'A' }`. Offsets ascend. */
@@ -272,7 +273,7 @@ export interface ListScrubberColors {
 
 export interface ListScrubberProps {
   scrollY: SharedValue<number>;
-  listRef: AnimatedRef<any>; // eslint-disable-line @typescript-eslint/no-explicit-any -- any scrollable component
+  listRef: AnimatedRef<any>; // any scrollable component
   contentHeight: number;
   viewportHeight: number;
   colors: ListScrubberColors;
@@ -336,7 +337,7 @@ export function ListScrubber({
   const [visible, setVisible] = useState(false);
   const [active, setActive] = useState(false);
   const [label, setLabel] = useState<string | null>(null);
-  /** Offset last reached via the screen reader (for its value) */
+  /** Offset the screen-reader value describes: set by its own steps, and re-read when scrolling stops */
   const [a11yOffset, setA11yOffset] = useState(0);
   const offsets = sections?.map((s) => s.offset) ?? [];
   const labels = sections?.map((s) => s.label) ?? [];
@@ -352,6 +353,8 @@ export function ListScrubber({
     onDragStart?.();
     setActive(true);
   };
+  /** Screen-reader value follows manual scrolling too: re-read the position once scrolling stops */
+  const syncA11y = () => setA11yOffset(scrollY.get());
   const end = () => {
     setActive(false);
     setLabel(null);
@@ -377,7 +380,9 @@ export function ListScrubber({
   useAnimatedReaction(
     () => opacity.get() > VISIBLE_MIN,
     (on, prev) => {
-      if (on !== prev) scheduleOnRN(setVisible, on);
+      if (on === prev) return;
+      scheduleOnRN(setVisible, on);
+      if (!on) scheduleOnRN(syncA11y);
     },
   );
 

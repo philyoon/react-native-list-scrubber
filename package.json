@@ -45,12 +45,13 @@
     "build": "bob build",
     "prepare": "bob build",
     "typecheck": "tsc --noEmit",
+    "format:check": "prettier --check src example/src README.md CHANGELOG.md",
     "test": "jest",
     "example": "npm --prefix example run"
   },
   "peerDependencies": {
-    "react": "*",
-    "react-native": "*",
+    "react": ">=19.0.0",
+    "react-native": ">=0.78.0",
     "react-native-gesture-handler": ">=2.20.0",
     "react-native-reanimated": ">=4.0.0",
     "react-native-worklets": ">=0.5.0"
