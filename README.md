@@ -348,15 +348,16 @@ npm install
 npx expo start
 ```
 
-It opens in Expo Go and has one screen per list type. It uses the library source from `../src`. `npm run web`
-opens it in the browser instead (Expo web); CI builds that web bundle on every push.
+It opens in Expo Go and has one screen per list type, plus an Index screen: a tappable A–Z bar above a
+SectionList that jumps with `scrollToSection`. It uses the library source from `../src`. `npm run web` opens
+it in the browser instead (Expo web); CI builds that web bundle on every push.
 
 ### End-to-end tests
 
 [Maestro](https://maestro.dev) flows in `example/e2e` drive the example in Expo Go on an iOS simulator or an
 Android emulator: dragging the thumb to the end and back on each list type, touches passing through the hidden
-thumb, and the screen-reader control. They run on iPhone SE, iPhone 17 Pro, iPhone 17 Pro Max and a Pixel 8
-emulator.
+thumb, the screen-reader control, and jumping from the A–Z index. They run on iPhone SE, iPhone 17 Pro, iPhone
+17 Pro Max and a Pixel 8 emulator.
 
 Start Metro in e2e mode and keep it running:
 
