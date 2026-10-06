@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- `side` defaults to `'left'` in RTL layouts (`I18nManager.isRTL`), `'right'` otherwise.
+- Development builds also warn about section offsets or `accessibilitySteps` that aren't finite numbers, and
+  about empty section labels.
+- Screen-reader actions other than increment and decrement are ignored (they used to step back).
 - Fix: the bubble widens to fit long labels; on Android, "Jul 2025" was cut to "Ju…".
 - Web: no more "props.pointerEvents is deprecated" warning; `pointerEvents` is set in styles (React Native
   0.78+ supports it there on every platform).

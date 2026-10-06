@@ -29,6 +29,16 @@ describe('screen readers', () => {
 });
 
 describe('screen reader edges', () => {
+  it('ignores actions other than increment and decrement', async () => {
+    const scrollY = sharedZero();
+    scrollY.set(600);
+    await setup({ scrollY, accessibilitySteps: [0, 500, 800] });
+    const el = screen.getByRole('adjustable', { name: 'Scroll position' });
+    await fireEvent(el, 'accessibilityAction', { nativeEvent: { actionName: 'activate' } });
+    await act(() => jest.advanceTimersByTime(20));
+    expect(mockScrollTo).not.toHaveBeenCalled();
+  });
+
   it('decrement goes back to the previous step and stops at the start', async () => {
     const scrollY = sharedZero();
     scrollY.set(600);

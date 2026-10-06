@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
+  I18nManager,
   Platform,
   StyleSheet,
   Text,
@@ -30,7 +31,7 @@ import { useA11yStepper } from './useA11yStepper';
 import { useAutoHide } from './useAutoHide';
 import { useLatest } from './useLatest';
 import { useScrubGesture } from './useScrubGesture';
-import { warnIfUnsorted } from './validate';
+import { useSectionOffsets, warnIfInvalid } from './validate';
 
 interface ListScrubberBaseProps {
   scrollY: SharedValue<number>;
@@ -48,7 +49,7 @@ interface ListScrubberBaseProps {
   onDragStart?: () => void;
   /** Drag ended (finger lifted or gesture cancelled) */
   onDragEnd?: () => void;
-  /** Which edge of the list the thumb sits on (default 'right'). For RTL, pass `I18nManager.isRTL ? 'left' : 'right'`. */
+  /** Which edge of the list the thumb sits on (default: the trailing edge, 'right', or 'left' in RTL layouts) */
   side?: 'left' | 'right';
   /** Distance from that edge (negative to sit in a margin outside the list) */
   edgeOffset?: number;
@@ -120,7 +121,7 @@ export function ListScrubber({
   onDragStart,
   onDragEnd,
   onSectionChange,
-  side = 'right',
+  side = I18nManager.isRTL ? 'left' : 'right',
   edgeOffset = 0,
   insets,
   enabled = true,
@@ -136,13 +137,9 @@ export function ListScrubber({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const m = useMemo(() => ({ ...LIST_SCRUBBER_DEFAULTS.metrics, ...metrics }), [metricsKey]);
   const { hideAfterMs, fadeMs } = { ...LIST_SCRUBBER_DEFAULTS.timing, ...timing };
-  const offsets = useMemo(() => {
-    const values = sections?.map((s) => s.offset) ?? [];
-    if (sections) warnIfUnsorted(values, sections, 'sections');
-    return values;
-  }, [sections]);
+  const offsets = useSectionOffsets(sections);
   // Checked once per array (the result is cached), so calling it on every render is free
-  if (accessibilitySteps) warnIfUnsorted(accessibilitySteps, accessibilitySteps, 'accessibilitySteps');
+  if (accessibilitySteps) warnIfInvalid(accessibilitySteps, accessibilitySteps, 'accessibilitySteps');
   const labels = useMemo(() => sections?.map((s) => s.label) ?? [], [sections]);
   const insetTop = insets?.top ?? 0;
   const insetBottom = insets?.bottom ?? 0;
@@ -244,7 +241,10 @@ export function ListScrubber({
         // Web only reads the aria- form
         aria-valuetext={a11y.value}
         accessibilityActions={A11Y_ACTIONS}
-        onAccessibilityAction={(e) => a11y.step(e.nativeEvent.actionName === 'increment' ? 1 : -1)}
+        onAccessibilityAction={(e) => {
+          const dir = A11Y_STEP[e.nativeEvent.actionName];
+          if (dir) a11y.step(dir);
+        }}
         {...(Platform.OS === 'web' && webKeyboardProps(onKeyDown))}
         style={styles.a11y}
         testID={`${testID}-a11y`}
@@ -302,6 +302,8 @@ export function ListScrubber({
 }
 
 const A11Y_ACTIONS = [{ name: 'increment' }, { name: 'decrement' }];
+/** Only the declared actions step; anything else (e.g. `activate`) is ignored */
+const A11Y_STEP: Record<string, 1 | -1> = { increment: 1, decrement: -1 };
 
 /** Web: a Tab stop driven by the keyboard (React Native Web forwards these to the DOM; native ignores them) */
 function webKeyboardProps(onKeyDown: (e: never) => void): object {

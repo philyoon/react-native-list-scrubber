@@ -1,6 +1,6 @@
 import { baseProps, drag, mockScrollTo, setup, sharedZero } from './support';
 import { act, fireEvent, screen } from '@testing-library/react-native';
-import { StyleSheet, type ViewStyle } from 'react-native';
+import { I18nManager, StyleSheet, type ViewStyle } from 'react-native';
 import { getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
 import { LIST_SCRUBBER_DEFAULTS, ListScrubber } from '../index';
 
@@ -333,6 +333,18 @@ describe('API options', () => {
     let bubble = screen.getByText('Jan', { includeHiddenElements: true }).parent!;
     while (!StyleSheet.flatten(bubble.props.style)?.transform) bubble = bubble.parent!;
     expect(StyleSheet.flatten(bubble.props.style)).toMatchObject({ left: 44 + 40 });
+  });
+
+  it('defaults to the left edge in RTL layouts', async () => {
+    const rtl = jest.replaceProperty(I18nManager, 'isRTL', true);
+    try {
+      await setup();
+      const rail = screen.getByTestId('list-scrubber-a11y', { includeHiddenElements: true }).parent!;
+      expect(StyleSheet.flatten(rail.props.style)).toMatchObject({ left: 0 });
+      expect(StyleSheet.flatten(rail.props.style).right).toBeUndefined();
+    } finally {
+      rtl.restore();
+    }
   });
 
   it('insets shrink the rail and the thumb travel', async () => {

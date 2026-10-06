@@ -150,8 +150,8 @@ Required:
 Optional:
 
 - `sections`: `{ offset, label }[]`. `offset` is where the section starts in the list's content, in points
-  (its header's top, or its first row's), ascending (development builds warn if they aren't). Drives the
-  bubble and the screen-reader steps.
+  (its header's top, or its first row's), ascending (development builds warn if they aren't, or if an offset
+  isn't a finite number or a label is empty). Drives the bubble and the screen-reader steps.
 - `labelAt(position, scrollOffset)`: a JS-thread label when there are no `sections`. The types accept one or
   the other.
 - `accessibilitySteps`: screen-reader step targets. Default: the section offsets, else one screen. Dragging
@@ -160,8 +160,8 @@ Optional:
 - `onDragStart`, `onDragEnd`: the drag started or ended, e.g. for haptics.
 - `onSectionChange(index, section)`: with `sections`, the finger crossed into another section while dragging,
   e.g. for a haptic tick.
-- `side`: `'left'` or `'right'` edge of the list. Default: `'right'`. For RTL layouts, pass
-  `I18nManager.isRTL ? 'left' : 'right'`.
+- `side`: `'left'` or `'right'` edge of the list. Default: the trailing edge, `'right'`, or `'left'` when
+  `I18nManager.isRTL`.
 - `edgeOffset`: distance from that edge, negative to sit in a margin outside the list. Default: `0`.
 - `insets`: `{ top, bottom }` space the thumb stays out of, e.g. under a pinned header or above a toolbar.
 - `enabled`: `false` hides the scrubber and its screen-reader control, keeping its state. Default: `true`.
@@ -222,7 +222,8 @@ fastest after a jump.
 ## Limits
 
 - **Vertical lists only.** Horizontal lists aren't supported.
-- **No automatic RTL mirroring.** The thumb stays on `side`; pick the side from `I18nManager.isRTL`.
+- **RTL picks the edge, not the direction.** In RTL layouts the thumb defaults to the left edge; the bubble
+  and the drag direction aren't otherwise mirrored.
 - **Inverted lists** aren't handled: the thumb follows the content offset, not the visual direction.
 - **Web: works, with limits.** Checked in the example app on Expo web (React Native Web 0.21) in desktop
   Chromium: the thumb appears on scroll, dragging scrolls every list type, and the bubble, pinned header and
