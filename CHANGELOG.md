@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- `colors` is optional, and each colour can be overridden on its own; defaults are in
+  `LIST_SCRUBBER_DEFAULTS.colors`.
+- Performance: measuring the list no longer re-renders the component calling `useListScrubber`; only
+  `ListScrubber` re-renders.
+- **Breaking:** `useListScrubber` returns `contentHeight` and `viewportHeight` as shared values (read them
+  with `.get()`). `ListScrubber` accepts numbers or shared values for both.
 - `side` defaults to `'left'` in RTL layouts (`I18nManager.isRTL`), `'right'` otherwise.
 - Development builds also warn about section offsets or `accessibilitySteps` that aren't finite numbers, and
   about empty section labels.

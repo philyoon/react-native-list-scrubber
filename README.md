@@ -19,7 +19,8 @@ A draggable thumb for scrubbing through long React Native lists, with a label bu
   the next section, and VoiceOver or TalkBack reads its label.
 - **Large text.** Labels follow the system text size up to 1.5×, so they grow without overflowing the bubble
   or the pinned header.
-- **Unstyled.** You pass the colours, text and haptics. Sizes and timings have defaults you can override.
+- **Bring your own look.** You pass the text and haptics. Colours, sizes and timings have neutral defaults you
+  can override one by one.
 - **Works with** FlatList, SectionList, ScrollView, Legend List and FlashList. See
   [Compatibility](#compatibility).
 
@@ -85,8 +86,12 @@ const scrubber = useListScrubber({ onLayout, onContentSizeChange, onScroll: mySc
 ```
 
 `onScroll` there is a worklet (it runs on the UI thread); keep its identity stable. The hook also returns the
-pieces `listProps` and `scrubberProps` are made of (`listRef`, `scrollY`, `onScroll`, `contentHeight`,
-`viewportHeight`) for wiring them by hand; all of these are public API.
+pieces `listProps` and `scrubberProps` are made of (`listRef`, `scrollY`, `onScroll`, and the `contentHeight`
+and `viewportHeight` shared values) for wiring them by hand; all of these are public API.
+
+Measuring the list doesn't re-render your component: the heights are shared values, and only `ListScrubber`
+re-renders when they change. This matters for lists whose content size changes often while scrolling
+(FlashList, Legend List, infinite lists).
 
 The list must be an **Animated** component, so the scroll handler runs on the UI thread:
 
@@ -143,12 +148,13 @@ list of your own.
 
 Required:
 
-- `scrollY`, `listRef`, `contentHeight`, `viewportHeight`: from `scrubberProps`.
-- `colors`: `thumb`, `thumbActive`, `bubble`, `bubbleText`.
-- `accessibilityLabel`: the screen-reader name.
+- `scrollY`, `listRef`, `contentHeight`, `viewportHeight`: from `scrubberProps`. When wiring by hand, the
+  heights can be plain numbers or shared values.
+- `accessibilityLabel`: the screen-reader name. Required so it's always in your app's language.
 
 Optional:
 
+- `colors`: any of `thumb`, `thumbActive`, `bubble`, `bubbleText`. Defaults below.
 - `sections`: `{ offset, label }[]`. `offset` is where the section starts in the list's content, in points
   (its header's top, or its first row's), ascending (development builds warn if they aren't, or if an offset
   isn't a finite number or a label is empty). Drives the bubble and the screen-reader steps.
@@ -179,6 +185,13 @@ component that takes the hook's result with sections:
 `UseListScrubberResult<any, readonly ListScrubberSection[]>`.
 
 ### Defaults (`LIST_SCRUBBER_DEFAULTS`)
+
+| `colors`      |           |                                                 |
+| ------------- | --------- | ----------------------------------------------- |
+| `thumb`       | `#8E8E93` | Grey, at least 3:1 against both white and black |
+| `thumbActive` | `#007AFF` | Blue while dragging                             |
+| `bubble`      | `#3A3A3C` | Dark grey, with white `bubbleText` (`#FFFFFF`)  |
+| `bubbleText`  | `#FFFFFF` |                                                 |
 
 | `metrics`                               | pt      |                                                     |
 | --------------------------------------- | ------- | --------------------------------------------------- |

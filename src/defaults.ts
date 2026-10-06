@@ -1,3 +1,5 @@
+import type { ListScrubberColors } from './types';
+
 /** Adjustable sizes (pt). Override any subset with `metrics`. */
 export interface ListScrubberMetrics {
   /** Thumb length, longer than a fingertip */
@@ -30,9 +32,17 @@ export interface ListScrubberTiming {
 }
 
 export const LIST_SCRUBBER_DEFAULTS: Readonly<{
+  colors: Readonly<ListScrubberColors>;
   metrics: Readonly<ListScrubberMetrics>;
   timing: Readonly<ListScrubberTiming>;
 }> = Object.freeze({
+  // Neutral greys and blue that read on light and dark backgrounds alike (thumb ≥ 3:1 on white and black)
+  colors: Object.freeze({
+    thumb: '#8E8E93',
+    thumbActive: '#007AFF',
+    bubble: '#3A3A3C',
+    bubbleText: '#FFFFFF',
+  }),
   metrics: Object.freeze({
     thumbLength: 48,
     thumbWidth: 6,

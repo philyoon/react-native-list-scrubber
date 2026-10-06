@@ -29,6 +29,7 @@ import { clamp, labelPosition } from './math';
 import type { ListScrubberColors, ListScrubberSection } from './types';
 import { useA11yStepper } from './useA11yStepper';
 import { useAutoHide } from './useAutoHide';
+import { useJsValue } from './useJsValue';
 import { useLatest } from './useLatest';
 import { useScrubGesture } from './useScrubGesture';
 import { useSectionOffsets, warnIfInvalid } from './validate';
@@ -36,9 +37,11 @@ import { useSectionOffsets, warnIfInvalid } from './validate';
 interface ListScrubberBaseProps {
   scrollY: SharedValue<number>;
   listRef: AnimatedRef<any>; // any scrollable component
-  contentHeight: number;
-  viewportHeight: number;
-  colors: ListScrubberColors;
+  /** The list's content and viewport heights: numbers, or shared values (as `useListScrubber` gives) */
+  contentHeight: number | SharedValue<number>;
+  viewportHeight: number | SharedValue<number>;
+  /** Colour overrides (defaults: LIST_SCRUBBER_DEFAULTS.colors) */
+  colors?: Partial<ListScrubberColors>;
   /** Screen-reader step targets (ascending offsets); defaults to the section offsets, else one screen. Dragging doesn't snap to them. */
   accessibilitySteps?: readonly number[];
   /** Screen-reader name (e.g. "Scroll position") */
@@ -97,7 +100,8 @@ export type ListScrubberProps = ListScrubberBaseProps & (ListScrubberSectionProp
 const defaultFormatPercent = (percent: number) => `${percent}%`;
 
 /**
- * A draggable thumb for scrubbing through long lists. Colours, text and haptics come from the app.
+ * A draggable thumb for scrubbing through long lists. Text and haptics come from the app; colours and sizes
+ * have defaults to override.
  * - Drag, thumb position and list scroll run on the UI thread (Gesture Handler + Reanimated),
  *   so the thumb follows the finger even while JS is busy rendering rows.
  * - Appears on scroll and hides a moment after it stops.
@@ -110,9 +114,9 @@ const defaultFormatPercent = (percent: number) => `${percent}%`;
 export function ListScrubber({
   scrollY,
   listRef,
-  contentHeight,
-  viewportHeight,
-  colors,
+  contentHeight: contentHeightProp,
+  viewportHeight: viewportHeightProp,
+  colors: colorsProp,
   sections,
   labelAt,
   accessibilitySteps,
@@ -131,6 +135,10 @@ export function ListScrubber({
   bubbleTextStyle: bubbleTextStyleProp,
   testID = 'list-scrubber',
 }: ListScrubberProps) {
+  // Shared values from useListScrubber are mirrored here, so a new size re-renders only the scrubber
+  const contentHeight = useJsValue(contentHeightProp);
+  const viewportHeight = useJsValue(viewportHeightProp);
+  const colors = { ...LIST_SCRUBBER_DEFAULTS.colors, ...colorsProp };
   // Memoized: worklets copy what they capture to the UI thread whenever its identity changes, and an
   // inline `metrics={{…}}` would otherwise do that on every render (hence keyed by value).
   const metricsKey = JSON.stringify(metrics ?? null);

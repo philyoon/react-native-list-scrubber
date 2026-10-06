@@ -1,4 +1,4 @@
-import { baseProps, drag, mockScrollTo, setup, sharedZero } from './support';
+import { baseProps, drag, mockReactions, mockScrollTo, setup, sharedZero } from './support';
 import { act, fireEvent, screen } from '@testing-library/react-native';
 import { I18nManager, StyleSheet, type ViewStyle } from 'react-native';
 import { getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
@@ -333,6 +333,42 @@ describe('API options', () => {
     let bubble = screen.getByText('Jan', { includeHiddenElements: true }).parent!;
     while (!StyleSheet.flatten(bubble.props.style)?.transform) bubble = bubble.parent!;
     expect(StyleSheet.flatten(bubble.props.style)).toMatchObject({ left: 44 + 40 });
+  });
+
+  it('draws with default colours, overridable one by one', async () => {
+    const thumbColor = () =>
+      StyleSheet.flatten(
+        (
+          screen
+            .getByTestId('list-scrubber-thumb', { includeHiddenElements: true })
+            .children.at(-1) as unknown as {
+            props: { style: ViewStyle };
+          }
+        ).props.style,
+      )!.backgroundColor;
+    const view = await setup({ colors: undefined });
+    expect(thumbColor()).toBe(LIST_SCRUBBER_DEFAULTS.colors.thumb);
+    await view.rerender(<ListScrubber {...baseProps} colors={{ thumb: 'pink' }} />);
+    expect(thumbColor()).toBe('pink');
+  });
+
+  it('takes the heights as shared values and re-renders when they change', async () => {
+    const contentHeight = sharedZero();
+    const viewportHeight = sharedZero();
+    contentHeight.set(80);
+    viewportHeight.set(100);
+    await setup({ contentHeight, viewportHeight });
+    // Content shorter than the viewport: nothing to scrub
+    expect(screen.queryByTestId('list-scrubber-a11y', { includeHiddenElements: true })).toBeNull();
+    // Each render adds the two height mirrors, then the two fade reactions
+    const contentMirror = mockReactions.at(-4)!;
+    contentHeight.set(1000);
+    expect(contentMirror.prepare()).toBe(1000);
+    await act(async () => contentMirror.react(1000, 80));
+    expect(screen.getByTestId('list-scrubber-a11y', { includeHiddenElements: true })).toBeTruthy();
+    // An unchanged value schedules nothing
+    await act(async () => contentMirror.react(1000, 1000));
+    expect(screen.getByTestId('list-scrubber-a11y', { includeHiddenElements: true })).toBeTruthy();
   });
 
   it('defaults to the left edge in RTL layouts', async () => {
