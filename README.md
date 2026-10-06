@@ -253,6 +253,34 @@ During very fast drags a list can show blank rows for a moment while JS renders 
 never waits for that. For FlatList, a small `windowSize` with a large `maxToRenderPerBatch` fills the screen
 fastest after a jump.
 
+## Troubleshooting
+
+**The thumb never appears.** It shows while the list scrolls and hides a moment after, so scroll first. If it
+still doesn't show:
+
+- The list isn't an Animated component (`Animated.FlatList`, `Animated.createAnimatedComponent(…)`; see
+  [Usage](#usage)), so the scroll handler never runs.
+- A prop after `{...scrubber.listProps}` replaces one of its own. Pass `onScroll`, `onLayout` and
+  `onContentSizeChange` to `useListScrubber` instead, and use `scrubber.listRef` rather than your own `ref`.
+- The content isn't taller than the list: there's nothing to scrub, so nothing is drawn.
+- `enabled` is `false`, or the list and the scrubber aren't in the same container (the scrubber is positioned
+  over its parent).
+
+**Dragging the thumb does nothing.** The app root needs `GestureHandlerRootView`. If the list doesn't move but
+the thumb does, the list's `ref` was replaced (see above).
+
+**The bubble or the pinned header shows the wrong section.** The `offset`s don't match where the sections
+really are. Item separators must be counted in the row heights, and offsets include the list header. Build
+them with [`listLayout` / `sectionListLayout`](#computing-sections) when the heights are known; development
+builds warn when offsets aren't ascending or finite. With SectionList, turn off `stickySectionHeadersEnabled`.
+
+**"`sections` is a new array with the same contents…"** `sections` is rebuilt on every render, e.g.
+`useListScrubber({ sections: items.map(…) })`. Wrap it in `useMemo`. It works without, but the sections are
+checked and copied to the UI thread again on every render.
+
+**The app crashes at startup with a Gesture Handler error.** There are two copies of
+`react-native-gesture-handler`; see [Install](#install).
+
 ## Limits
 
 - **Vertical lists only.** Horizontal lists aren't supported.

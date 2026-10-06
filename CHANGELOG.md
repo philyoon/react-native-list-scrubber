@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Development builds warn when `sections` keeps arriving as a new array with the same contents (not memoized).
+- README: a Troubleshooting section.
 - `listLayout` and `sectionListLayout`: compute `sections` and the list's `getItemLayout` from row heights,
   for flat lists and SectionList.
 - `colors` is optional, and each colour can be overridden on its own; defaults are in
