@@ -29,6 +29,13 @@ jest.mock('react-native-reanimated', () => {
       ref.current ??= mock.useSharedValue(init);
       return ref.current;
     },
+    // Same for derived values: the real one keeps its identity across renders (and memoized children rely on it)
+    useDerivedValue: (processor: () => unknown) => {
+      const ref = React.useRef(null);
+      ref.current ??= mock.useSharedValue(undefined);
+      ref.current.set(processor());
+      return ref.current;
+    },
     useAnimatedRef: () => React.useRef(null),
     // like the real one: the same function between renders
     useAnimatedScrollHandler: (handler: (e: unknown) => void) => {

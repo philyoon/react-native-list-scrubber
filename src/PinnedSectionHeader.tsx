@@ -95,7 +95,11 @@ export function CurrentSectionLabel({
 }: CurrentSectionLabelProps) {
   const offsets = useSectionOffsets(sections);
   const labels = useMemo(() => sections.map((s) => s.label), [sections]);
-  const flat = StyleSheet.flatten(style) ?? {};
+  // Compared by value: the strip renders every label, and an inline `style={{…}}` (or a PinnedSectionHeader
+  // `textStyle`) is a new object on each render, which would re-render all of them every time the app renders
+  const styleKey = JSON.stringify(StyleSheet.flatten(style) ?? {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const flat: TextStyle = useMemo(() => StyleSheet.flatten(style) ?? {}, [styleKey]);
   // Text scales with the system text size, so its row must too, or the strip's window clips it
   const scale = Math.min(useWindowDimensions().fontScale, maxFontSizeMultiplier);
   const lineHeight = height ?? Math.ceil((flat.lineHeight ?? (flat.fontSize ?? 14) * 1.3) * scale);
@@ -113,7 +117,7 @@ export function CurrentSectionLabel({
         labels={labels}
         height={lineHeight}
         maxFontSizeMultiplier={maxFontSizeMultiplier}
-        style={style}
+        style={flat}
       />
     </View>
   );

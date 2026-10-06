@@ -1,7 +1,9 @@
 import { baseProps, reactions, setup } from './support';
 import { act } from '@testing-library/react-native';
 import { getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
-import { ListScrubber } from '../index';
+import { render } from '@testing-library/react-native';
+import { ListScrubber, PinnedSectionHeader } from '../index';
+import { sharedZero } from './support';
 
 // Counts real renders of the section label strip: it draws every section label, so each render is costly.
 // Wraps the actual component's inner function in a new memo, so it counts what the actual memo would let through.
@@ -53,4 +55,17 @@ it('inline colours and text style with the same values do not re-render it; a ch
   expect(mockStrip.renders).toBe(2); // mount, then once for the text style it didn't have
   await view.rerender(<ListScrubber {...props} colors={{ bubbleText: 'red' }} bubbleTextStyle={{}} />);
   expect(mockStrip.renders).toBe(3);
+});
+
+it("the pinned header's labels don't re-render when the app renders with the same inline textStyle", async () => {
+  const scrollY = sharedZero();
+  const header = (fontSize: number) => (
+    <PinnedSectionHeader scrollY={scrollY} sections={sections} height={32} textStyle={{ fontSize }} />
+  );
+  const view = await render(header(14));
+  await view.rerender(header(14));
+  await view.rerender(header(14));
+  expect(mockStrip.renders).toBe(1);
+  await view.rerender(header(16)); // a real change does
+  expect(mockStrip.renders).toBe(2);
 });

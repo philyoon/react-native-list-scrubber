@@ -79,6 +79,10 @@
 - Performance: the section bubble's labels (all of them, rendered at once) no longer re-render when the thumb
   shows or hides or a drag starts or ends. The strip is memoized, and `colors` and `bubbleTextStyle` are
   compared by value, so inline objects don't defeat it.
+- Performance: `PinnedSectionHeader` / `CurrentSectionLabel` compare their text style by value, so an inline
+  `textStyle={{…}}` no longer re-renders every section label each time the app renders.
+- Performance: with `labelAt`, a busy JS thread no longer collects one stale call per drag frame. One call is
+  in flight at a time; frames arriving meanwhile only keep the newest offset, sent when JS has answered.
 - **Breaking:** `metrics.bubbleShortLabelMax` is renamed `bubbleShortLabelMaxLength` (labels up to this many
   characters count as short).
 - Section bubble: each label gets its own font size by its length, so one long label no longer shrinks every

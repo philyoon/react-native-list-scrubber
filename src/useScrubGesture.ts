@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useLayoutEffect, useMemo, useRef } from 'react';
 import { Gesture } from 'react-native-gesture-handler';
 import {
   scrollTo,
@@ -8,7 +8,8 @@ import {
   type AnimatedRef,
   type SharedValue,
 } from 'react-native-reanimated';
-import { scheduleOnRN } from 'react-native-worklets';
+import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
+import { useLatest } from './useLatest';
 import { clamp, labelPosition, sectionIndexAt } from './math';
 
 /**
@@ -60,6 +61,21 @@ export function useScrubGesture({
   const startTop = useSharedValue(0);
   /** Section under the finger (UI thread), -1 before the first drag */
   const sectionIdx = useSharedValue(-1);
+  // onDragOffset (labelAt) runs on JS, which can be busy rendering rows exactly while the thumb is dragged.
+  // One frame at a time is in flight: frames arriving meanwhile only keep the newest offset, sent when JS
+  // acknowledges. Otherwise a busy JS thread would queue a stale call per frame and run them all later.
+  const offsetInFlight = useSharedValue(false);
+  const offsetWaiting = useSharedValue(false);
+  const latestOffset = useSharedValue(0);
+  // The acknowledgement hands this same callback back to the UI thread, so it reaches itself through a ref
+  const deliverSelf = useRef<(offset: number) => void>(null);
+  const deliverOffset = useLatest((offset: number) => {
+    onDragOffset?.(offset);
+    scheduleOnUI(ackOffset, offsetInFlight, offsetWaiting, latestOffset, deliverSelf.current!);
+  });
+  useLayoutEffect(() => {
+    deliverSelf.current = deliverOffset;
+  }, [deliverOffset]);
 
   const pan = useMemo(
     () =>
@@ -75,6 +91,7 @@ export function useScrubGesture({
             const y = labelPosition((startTop.get() / travel) * maxScroll, contentHeight, viewportHeight);
             sectionIdx.set(sectionIndexAt(offsets, y));
           }
+          offsetWaiting.set(false);
           opacity.set(withTiming(1, { duration: fadeMs }));
           scheduleOnRN(onBegin);
         })
@@ -88,7 +105,14 @@ export function useScrubGesture({
             // Only real moves count: the section the drag started in is not a change.
             if (idx !== sectionIdx.get() && onSection) scheduleOnRN(onSection, idx);
             sectionIdx.set(idx);
-          } else if (onDragOffset) scheduleOnRN(onDragOffset, offset);
+          } else if (onDragOffset) {
+            latestOffset.set(offset);
+            if (offsetInFlight.get()) offsetWaiting.set(true);
+            else {
+              offsetInFlight.set(true);
+              scheduleOnRN(deliverOffset, offset);
+            }
+          }
         })
         .onFinalize(() => {
           dragging.set(false);
@@ -117,8 +141,26 @@ export function useScrubGesture({
       onEnd,
       onDragOffset,
       onSection,
+      offsetInFlight,
+      offsetWaiting,
+      latestOffset,
+      deliverOffset,
     ],
   );
 
   return { pan, dragTop, sectionIdx };
+}
+
+/** JS finished one onDragOffset call: send the newest offset if frames came in meanwhile, else stand by */
+function ackOffset(
+  inFlight: SharedValue<boolean>,
+  waiting: SharedValue<boolean>,
+  latest: SharedValue<number>,
+  deliver: (offset: number) => void,
+) {
+  'worklet';
+  if (waiting.get()) {
+    waiting.set(false);
+    scheduleOnRN(deliver, latest.get());
+  } else inFlight.set(false);
 }

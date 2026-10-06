@@ -185,6 +185,25 @@ describe('while the finger is down', () => {
     expect(screen.queryByText('Jan', { includeHiddenElements: true })).toBeNull();
   });
 
+  it('while JS is busy, labelAt gets the first and the newest drag frame, not every frame', async () => {
+    const labelAt = jest.fn((_position: number, offset: number) => `at ${Math.round(offset)}`);
+    await setup({ labelAt });
+    const dragCalls = () => labelAt.mock.calls.filter(([, offset]) => offset > 0);
+    // Ten frames before JS gets to run: one synchronous block, so no microtask (JS call) runs in between
+    await act(async () => {
+      pan().onBegin({});
+      for (let y = 1; y <= 10; y++) pan().onUpdate({ translationY: y * 5 });
+    });
+    expect(dragCalls()).toHaveLength(1); // the first frame; the rest wait for its acknowledgement
+    await act(() => jest.advanceTimersByTime(20)); // the UI thread hears back and sends the newest
+    expect(dragCalls()).toHaveLength(2);
+    const newest = dragCalls().at(-1)![1];
+    expect(newest).toBeCloseTo((50 / 52) * 900); // translation 50 of 52 → offset of 900
+    expect(screen.getByText(`at ${Math.round(newest)}`, { includeHiddenElements: true })).toBeTruthy();
+    await act(() => jest.advanceTimersByTime(20)); // nothing newer: the handshake stands down
+    expect(dragCalls()).toHaveLength(2);
+  });
+
   it('picks the font size by label length', async () => {
     await setup({ labelAt: (o) => (o < 300 ? 'A' : 'March 2026') });
     await hold(5);
@@ -192,6 +211,8 @@ describe('while the finger is down', () => {
       StyleSheet.flatten(screen.getByText('A', { includeHiddenElements: true }).props.style).fontSize,
     ).toBe(24);
     await act(async () => pan().onUpdate({ translationY: 40 }));
+    // The first label is still being acknowledged: the newest offset follows once the UI thread hears back
+    await act(() => jest.advanceTimersByTime(20));
     expect(
       StyleSheet.flatten(screen.getByText('March 2026', { includeHiddenElements: true }).props.style)
         .fontSize,
