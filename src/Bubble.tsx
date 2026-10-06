@@ -5,7 +5,7 @@ import { TOUCH_WIDTH, type ListScrubberMetrics } from './defaults';
 import type { ListScrubberColors } from './types';
 
 /**
- * The label bubble beside the handle. Kept inside the list at both ends: it is taller than the handle
+ * The label bubble beside the thumb. Kept inside the list at both ends: it is taller than the thumb
  * it is centred on. `shown` (UI thread) fades it with the drag; without it, it's shown while mounted.
  */
 export function Bubble({
@@ -23,7 +23,7 @@ export function Bubble({
   colors: ListScrubberColors;
   /** The bubble stays inside this height */
   railHeight: number;
-  /** The handle's edge: the bubble goes on the other side of it */
+  /** The thumb's edge: the bubble goes on the other side of it */
   side: 'left' | 'right';
   dragging: SharedValue<boolean>;
   dragTop: SharedValue<number>;

@@ -1,4 +1,4 @@
-// Drag-to-scrub handle for long React Native lists. Works with any Reanimated-scrollable list:
+// Drag-to-scrub thumb for long React Native lists. Works with any Reanimated-scrollable list:
 // FlatList, SectionList, ScrollView, FlashList, Legend List.
 export { ListScrubber, type ListScrubberProps } from './ListScrubber';
 export { useListScrubber } from './useListScrubber';

@@ -1,4 +1,4 @@
-# ScrollView: the handle reaches the last chapter and comes back to the first.
+# ScrollView: the thumb reaches the last chapter and comes back to the first.
 # Expo Go: host.exp.Exponent on iOS; on Android run with -e APP_ID=host.exp.exponent
 appId: ${APP_ID}
 env:

@@ -11,7 +11,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { VISIBLE_MIN } from './defaults';
 
 /**
- * The handle's opacity: fades in when the list scrolls and out `hideAfterMs` after it stops.
+ * The thumb's opacity: fades in when the list scrolls and out `hideAfterMs` after it stops.
  * The fade-in starts only once: restarting it every scroll frame kept it invisible until scrolling stopped.
  * `visible` mirrors it on the JS thread (touches pass through while hidden); `onHide` runs as it hides.
  */

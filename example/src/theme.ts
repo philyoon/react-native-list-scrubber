@@ -9,7 +9,7 @@ const light = {
   header: '#ECEAF6',
   accent: '#4F46E5',
   onAccent: '#FFFFFF',
-  // Scrubber: idle handle needs 3:1 against the card
+  // Scrubber: idle thumb needs 3:1 against the card
   thumb: '#7C7A96',
   bubble: '#1C1B3A',
   bubbleText: '#FFFFFF',

@@ -1,4 +1,4 @@
-# While the handle is hidden, a swipe on its strip scrolls the list instead of grabbing the handle.
+# While the thumb is hidden, a swipe on its strip scrolls the list instead of grabbing the thumb.
 # Expo Go: host.exp.Exponent on iOS; on Android run with -e APP_ID=host.exp.exponent
 appId: ${APP_ID}
 env:
@@ -8,7 +8,7 @@ env:
     file: subflows/open.yaml
     env:
       DEMO: FlatList
-# Along the handle's strip, from its bottom to halfway up: an ordinary scroll
+# Along the thumb's strip, from its bottom to halfway up: an ordinary scroll
 - swipe:
     start: 91%, 95%
     end: 91%, 50%
