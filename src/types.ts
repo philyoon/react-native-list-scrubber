@@ -5,6 +5,7 @@ export interface ListScrubberSection {
   label: string;
 }
 
+/** Override any subset with `colors`; the rest come from LIST_SCRUBBER_DEFAULTS.colors. */
 export interface ListScrubberColors {
   /** Idle thumb; aim for 3:1 contrast against the background */
   thumb: string;

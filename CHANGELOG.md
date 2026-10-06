@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- `listLayout` and `sectionListLayout`: compute `sections` and the list's `getItemLayout` from row heights,
+  for flat lists and SectionList.
+- `colors` is optional, and each colour can be overridden on its own; defaults are in
+  `LIST_SCRUBBER_DEFAULTS.colors`.
+- Performance: measuring the list no longer re-renders the component calling `useListScrubber`; only
+  `ListScrubber` re-renders.
+- **Breaking:** `useListScrubber` returns `contentHeight` and `viewportHeight` as shared values (read them
+  with `.get()`). `ListScrubber` accepts numbers or shared values for both.
+- Development builds also warn about section offsets or `accessibilitySteps` that aren't finite numbers, and
+  about empty section labels.
+- Screen-reader actions other than increment and decrement are ignored (they used to step back).
 - Fix: the bubble widens to fit long labels; on Android, "Jul 2025" was cut to "Ju…".
 - Web: no more "props.pointerEvents is deprecated" warning; `pointerEvents` is set in styles (React Native
   0.78+ supports it there on every platform).

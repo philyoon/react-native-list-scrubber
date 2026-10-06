@@ -19,7 +19,8 @@ A draggable thumb for scrubbing through long React Native lists, with a label bu
   the next section, and VoiceOver or TalkBack reads its label.
 - **Large text.** Labels follow the system text size up to 1.5×, so they grow without overflowing the bubble
   or the pinned header.
-- **Unstyled.** You pass the colours, text and haptics. Sizes and timings have defaults you can override.
+- **Bring your own look.** You pass the text and haptics. Colours, sizes and timings have neutral defaults you
+  can override one by one.
 - **Works with** FlatList, SectionList, ScrollView, Legend List and FlashList. See
   [Compatibility](#compatibility).
 
@@ -42,20 +43,16 @@ crashes at startup.
 
 ```tsx
 import Animated from 'react-native-reanimated';
-import { ListScrubber, useListScrubber, type ListScrubberSection } from 'react-native-list-scrubber';
+import { ListScrubber, listLayout, useListScrubber } from 'react-native-list-scrubber';
 
 const ROW = 64;
 
 function Contacts({ contacts }: { contacts: Contact[] }) {
-  // One section per first letter, at the offset of its first row
-  const sections = useMemo(() => {
-    const out: ListScrubberSection[] = [];
-    contacts.forEach((c, i) => {
-      const label = c.name[0]!.toUpperCase();
-      if (out.at(-1)?.label !== label) out.push({ offset: i * ROW, label });
-    });
-    return out;
-  }, [contacts]);
+  // One section per first letter, and the matching getItemLayout
+  const { sections, getItemLayout } = useMemo(
+    () => listLayout(contacts, { label: (c) => c.name[0]!.toUpperCase(), itemHeight: ROW }),
+    [contacts],
+  );
   const scrubber = useListScrubber({ sections });
 
   return (
@@ -64,7 +61,7 @@ function Contacts({ contacts }: { contacts: Contact[] }) {
         {...scrubber.listProps}
         data={contacts}
         renderItem={renderContact}
-        getItemLayout={(_, index) => ({ length: ROW, offset: ROW * index, index })}
+        getItemLayout={getItemLayout}
       />
       <ListScrubber
         {...scrubber.scrubberProps}
@@ -85,8 +82,12 @@ const scrubber = useListScrubber({ onLayout, onContentSizeChange, onScroll: mySc
 ```
 
 `onScroll` there is a worklet (it runs on the UI thread); keep its identity stable. The hook also returns the
-pieces `listProps` and `scrubberProps` are made of (`listRef`, `scrollY`, `onScroll`, `contentHeight`,
-`viewportHeight`) for wiring them by hand; all of these are public API.
+pieces `listProps` and `scrubberProps` are made of (`listRef`, `scrollY`, `onScroll`, and the `contentHeight`
+and `viewportHeight` shared values) for wiring them by hand; all of these are public API.
+
+Measuring the list doesn't re-render your component: the heights are shared values, and only `ListScrubber`
+re-renders when they change. This matters for lists whose content size changes often while scrolling
+(FlashList, Legend List, infinite lists).
 
 The list must be an **Animated** component, so the scroll handler runs on the UI thread:
 
@@ -96,6 +97,30 @@ The list must be an **Animated** component, so the scroll handler runs on the UI
 | SectionList           | `Animated.createAnimatedComponent(SectionList)`        |
 | Legend List           | `AnimatedLegendList` from `@legendapp/list/reanimated` |
 | FlashList             | `Animated.createAnimatedComponent(FlashList)`          |
+
+### Computing sections
+
+Each section's `offset` is where it starts in the list's content, in points. When you know the rows' heights,
+two helpers compute the sections and the list's `getItemLayout` from the same numbers, so they can't disagree:
+
+- `listLayout(items, { label, itemHeight, listHeaderHeight? })` for flat lists (FlatList, FlashList, Legend
+  List, or a ScrollView of fixed blocks). A new section starts wherever `label(item, index)` changes from one
+  row to the next.
+- `sectionListLayout(sections, { itemHeight, sectionHeaderHeight?, sectionFooterHeight?, listHeaderHeight?, label? })`
+  for SectionList: one scrubber section per list section, labelled with its `title` by default. Its
+  `getItemLayout` follows SectionList's indexing (a header, the rows and a footer per section).
+
+```tsx
+const { sections, getItemLayout } = useMemo(
+  () => sectionListLayout(data, { itemHeight: ROW, sectionHeaderHeight: HEADER }),
+  [data],
+);
+```
+
+`itemHeight` is one number for every row, or a function for each row's own height. Include any item separator
+in it. The first section starts at 0, so it also covers a list header above it. Lists that measure rows
+themselves (FlashList, Legend List) ignore `getItemLayout`; use just `sections`. For rows of unknown height,
+build `{ offset, label }[]` yourself.
 
 ### Pinned header
 
@@ -143,15 +168,17 @@ list of your own.
 
 Required:
 
-- `scrollY`, `listRef`, `contentHeight`, `viewportHeight`: from `scrubberProps`.
-- `colors`: `thumb`, `thumbActive`, `bubble`, `bubbleText`.
-- `accessibilityLabel`: the screen-reader name.
+- `scrollY`, `listRef`, `contentHeight`, `viewportHeight`: from `scrubberProps`. When wiring by hand, the
+  heights can be plain numbers or shared values.
+- `accessibilityLabel`: the screen-reader name. Required so it's always in your app's language.
 
 Optional:
 
-- `sections`: `{ offset, label }[]`. `offset` is where the section starts in the list's content, in points
-  (its header's top, or its first row's), ascending (development builds warn if they aren't). Drives the
-  bubble and the screen-reader steps.
+- `colors`: any of `thumb`, `thumbActive`, `bubble`, `bubbleText`. Defaults below.
+- `sections`: `{ offset, label }[]` (see [Computing sections](#computing-sections)). `offset` is where the
+  section starts in the list's content, in points (its header's top, or its first row's), ascending
+  (development builds warn if they aren't, or if an offset isn't a finite number or a label is empty). Drives
+  the bubble and the screen-reader steps.
 - `labelAt(position, scrollOffset)`: a JS-thread label when there are no `sections`. The types accept one or
   the other.
 - `accessibilitySteps`: screen-reader step targets. Default: the section offsets, else one screen. Dragging
@@ -179,6 +206,13 @@ component that takes the hook's result with sections:
 `UseListScrubberResult<any, readonly ListScrubberSection[]>`.
 
 ### Defaults (`LIST_SCRUBBER_DEFAULTS`)
+
+| `colors`      |           |                                                 |
+| ------------- | --------- | ----------------------------------------------- |
+| `thumb`       | `#8E8E93` | Grey, at least 3:1 against both white and black |
+| `thumbActive` | `#007AFF` | Blue while dragging                             |
+| `bubble`      | `#3A3A3C` | Dark grey, with white `bubbleText` (`#FFFFFF`)  |
+| `bubbleText`  | `#FFFFFF` |                                                 |
 
 | `metrics`                               | pt      |                                                     |
 | --------------------------------------- | ------- | --------------------------------------------------- |

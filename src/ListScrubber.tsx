@@ -28,16 +28,19 @@ import { clamp, labelPosition } from './math';
 import type { ListScrubberColors, ListScrubberSection } from './types';
 import { useA11yStepper } from './useA11yStepper';
 import { useAutoHide } from './useAutoHide';
+import { useJsValue } from './useJsValue';
 import { useLatest } from './useLatest';
 import { useScrubGesture } from './useScrubGesture';
-import { warnIfUnsorted } from './validate';
+import { useSectionOffsets, warnIfInvalid } from './validate';
 
 interface ListScrubberBaseProps {
   scrollY: SharedValue<number>;
   listRef: AnimatedRef<any>; // any scrollable component
-  contentHeight: number;
-  viewportHeight: number;
-  colors: ListScrubberColors;
+  /** The list's content and viewport heights: numbers, or shared values (as `useListScrubber` gives) */
+  contentHeight: number | SharedValue<number>;
+  viewportHeight: number | SharedValue<number>;
+  /** Colour overrides (defaults: LIST_SCRUBBER_DEFAULTS.colors) */
+  colors?: Partial<ListScrubberColors>;
   /** Screen-reader step targets (ascending offsets); defaults to the section offsets, else one screen. Dragging doesn't snap to them. */
   accessibilitySteps?: readonly number[];
   /** Screen-reader name (e.g. "Scroll position") */
@@ -100,7 +103,8 @@ export type ListScrubberProps = ListScrubberBaseProps & (ListScrubberSectionProp
 const defaultFormatPercent = (percent: number) => `${percent}%`;
 
 /**
- * A draggable thumb for scrubbing through long lists. Colours, text and haptics come from the app.
+ * A draggable thumb for scrubbing through long lists. Text and haptics come from the app; colours and sizes
+ * have defaults to override.
  * - Drag, thumb position and list scroll run on the UI thread (Gesture Handler + Reanimated),
  *   so the thumb follows the finger even while JS is busy rendering rows.
  * - Appears on scroll and hides a moment after it stops.
@@ -113,9 +117,9 @@ const defaultFormatPercent = (percent: number) => `${percent}%`;
 export function ListScrubber({
   scrollY,
   listRef,
-  contentHeight,
-  viewportHeight,
-  colors,
+  contentHeight: contentHeightProp,
+  viewportHeight: viewportHeightProp,
+  colors: colorsProp,
   sections,
   labelAt,
   accessibilitySteps,
@@ -134,19 +138,19 @@ export function ListScrubber({
   bubbleTextStyle: bubbleTextStyleProp,
   testID = 'list-scrubber',
 }: ListScrubberProps) {
+  // Shared values from useListScrubber are mirrored here, so a new size re-renders only the scrubber
+  const contentHeight = useJsValue(contentHeightProp);
+  const viewportHeight = useJsValue(viewportHeightProp);
+  const colors = { ...LIST_SCRUBBER_DEFAULTS.colors, ...colorsProp };
   // Memoized: worklets copy what they capture to the UI thread whenever its identity changes, and an
   // inline `metrics={{…}}` would otherwise do that on every render (hence keyed by value).
   const metricsKey = JSON.stringify(metrics ?? null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const m = useMemo(() => ({ ...LIST_SCRUBBER_DEFAULTS.metrics, ...metrics }), [metricsKey]);
   const { hideAfterMs, fadeMs } = { ...LIST_SCRUBBER_DEFAULTS.timing, ...timing };
-  const offsets = useMemo(() => {
-    const values = sections?.map((s) => s.offset) ?? [];
-    if (sections) warnIfUnsorted(values, sections, 'sections');
-    return values;
-  }, [sections]);
+  const offsets = useSectionOffsets(sections);
   // Checked once per array (the result is cached), so calling it on every render is free
-  if (accessibilitySteps) warnIfUnsorted(accessibilitySteps, accessibilitySteps, 'accessibilitySteps');
+  if (accessibilitySteps) warnIfInvalid(accessibilitySteps, accessibilitySteps, 'accessibilitySteps');
   const labels = useMemo(() => sections?.map((s) => s.label) ?? [], [sections]);
   const insetTop = insets?.top ?? 0;
   const insetBottom = insets?.bottom ?? 0;
@@ -248,7 +252,10 @@ export function ListScrubber({
         // Web only reads the aria- form
         aria-valuetext={a11y.value}
         accessibilityActions={A11Y_ACTIONS}
-        onAccessibilityAction={(e) => a11y.step(e.nativeEvent.actionName === 'increment' ? 1 : -1)}
+        onAccessibilityAction={(e) => {
+          const dir = A11Y_STEP[e.nativeEvent.actionName];
+          if (dir) a11y.step(dir);
+        }}
         {...(Platform.OS === 'web' && webKeyboardProps(onKeyDown))}
         style={styles.a11y}
         testID={`${testID}-a11y`}
@@ -306,6 +313,8 @@ export function ListScrubber({
 }
 
 const A11Y_ACTIONS = [{ name: 'increment' }, { name: 'decrement' }];
+/** Only the declared actions step; anything else (e.g. `activate`) is ignored */
+const A11Y_STEP: Record<string, 1 | -1> = { increment: 1, decrement: -1 };
 
 /** Web: a Tab stop driven by the keyboard (React Native Web forwards these to the DOM; native ignores them) */
 function webKeyboardProps(onKeyDown: (e: never) => void): object {

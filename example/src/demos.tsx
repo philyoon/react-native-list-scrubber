@@ -8,6 +8,8 @@ import Animated from 'react-native-reanimated';
 import {
   ListScrubber,
   PinnedSectionHeader,
+  listLayout,
+  sectionListLayout,
   useListScrubber,
   type ListScrubberSection,
   type UseListScrubberResult,
@@ -97,26 +99,23 @@ function MonthHeader(props: { scrubber: SectionScrubber }) {
 
 /** Month sections for fixed-height rows under a HEADER spacer, newest first */
 function monthSections(entries: Entry[]): ListScrubberSection[] {
-  const out: ListScrubberSection[] = [];
-  entries.forEach((e, i) => {
-    const label = monthLabel(e.date);
-    if (out[out.length - 1]?.label !== label) out.push({ offset: i === 0 ? 0 : HEADER + i * ROW, label });
-  });
-  return out;
+  return listLayout(entries, { label: (e) => monthLabel(e.date), itemHeight: ROW, listHeaderHeight: HEADER })
+    .sections;
 }
 
 // FlatList: fixed rows via getItemLayout, sections from the first row of each letter,
 // and a pinned letter header drawn on the UI thread (PinnedSectionHeader; the list has no headers to push it).
 function FlatListDemo() {
   const colors = useColors();
-  const sections = useMemo(() => {
-    const out: ListScrubberSection[] = [];
-    CONTACTS.forEach((c, i) => {
-      const label = c.last[0]!.toUpperCase();
-      if (out[out.length - 1]?.label !== label) out.push({ offset: i === 0 ? 0 : HEADER + i * ROW, label });
-    });
-    return out;
-  }, []);
+  const { sections, getItemLayout } = useMemo(
+    () =>
+      listLayout(CONTACTS, {
+        label: (c) => c.last[0]!.toUpperCase(),
+        itemHeight: ROW,
+        listHeaderHeight: HEADER,
+      }),
+    [],
+  );
   const scrubber = useListScrubber({ sections });
   return (
     <>
@@ -126,7 +125,7 @@ function FlatListDemo() {
         keyExtractor={(c) => c.id}
         ListHeaderComponent={<View style={{ height: HEADER }} />}
         renderItem={({ item }) => <ContactRow item={item} colors={colors} />}
-        getItemLayout={(_, index) => ({ length: ROW, offset: HEADER + ROW * index, index })}
+        getItemLayout={getItemLayout}
         // Fill the screen quickly after a jump: a small window, rendered in big batches
         windowSize={5}
         maxToRenderPerBatch={24}
@@ -148,26 +147,14 @@ const AnimatedSectionList = Animated.createAnimatedComponent(SectionList<Contact
 
 // SectionList with the recommended pinned header: native sticky headers only pin headers that are already
 // rendered, so they lag behind scrubber jumps. PinnedSectionHeader draws it on the UI thread,
-// and the next header pushes it out like iOS Contacts. getItemLayout counts a header and a footer per section.
+// and the next header pushes it out like iOS Contacts. sectionListLayout counts a header and a footer per section.
 function SectionListDemo() {
   const colors = useColors();
   const data = useMemo(() => groupByLetter(CONTACTS), []);
-  const { layout, sections } = useMemo(() => {
-    const layout: { length: number; offset: number }[] = [];
-    const sections: ListScrubberSection[] = [];
-    let y = 0;
-    for (const s of data) {
-      sections.push({ offset: y, label: s.title });
-      layout.push({ length: HEADER, offset: y });
-      y += HEADER;
-      for (let i = 0; i < s.data.length; i++) {
-        layout.push({ length: ROW, offset: y });
-        y += ROW;
-      }
-      layout.push({ length: 0, offset: y });
-    }
-    return { layout, sections };
-  }, [data]);
+  const { sections, getItemLayout } = useMemo(
+    () => sectionListLayout(data, { itemHeight: ROW, sectionHeaderHeight: HEADER }),
+    [data],
+  );
   const scrubber = useListScrubber({ sections });
   return (
     <>
@@ -182,7 +169,7 @@ function SectionListDemo() {
           </View>
         )}
         renderItem={({ item }) => <ContactRow item={item} colors={colors} />}
-        getItemLayout={(_, index) => ({ ...layout[index]!, index })}
+        getItemLayout={getItemLayout}
       />
       <PinnedSectionHeader
         {...scrubber.headerProps}
@@ -247,7 +234,10 @@ const LOREM =
 // ScrollView: a long document with fixed-height chapters.
 function ScrollViewDemo() {
   const colors = useColors();
-  const sections = useMemo(() => CHAPTERS.map((n) => ({ offset: (n - 1) * CHAPTER, label: `Ch. ${n}` })), []);
+  const { sections } = useMemo(
+    () => listLayout(CHAPTERS, { label: (n) => `Ch. ${n}`, itemHeight: CHAPTER }),
+    [],
+  );
   const scrubber = useListScrubber({ sections });
   return (
     <>

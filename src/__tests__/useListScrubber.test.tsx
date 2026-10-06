@@ -9,8 +9,29 @@ describe('useListScrubber', () => {
       result.current.listProps.onLayout({ nativeEvent: { layout: { height: 600 } } } as never);
       result.current.listProps.onContentSizeChange(390, 12000);
     });
-    expect(result.current.scrubberProps).toMatchObject({ viewportHeight: 600, contentHeight: 12000 });
+    expect(result.current.viewportHeight.get()).toBe(600);
+    expect(result.current.contentHeight.get()).toBe(12000);
+    expect(result.current.scrubberProps).toMatchObject({
+      viewportHeight: result.current.viewportHeight,
+      contentHeight: result.current.contentHeight,
+    });
     expect(result.current.listProps.scrollEventThrottle).toBe(16);
+  });
+
+  it("doesn't re-render the component calling it when the list is measured", async () => {
+    let renders = 0;
+    const { result } = await renderHook(() => {
+      renders++;
+      return useListScrubber();
+    });
+    const before = renders;
+    const scrubberProps = result.current.scrubberProps;
+    await act(() => {
+      result.current.listProps.onLayout({ nativeEvent: { layout: { height: 600 } } } as never);
+      result.current.listProps.onContentSizeChange(390, 12000);
+    });
+    expect(renders).toBe(before);
+    expect(result.current.scrubberProps).toBe(scrubberProps);
   });
 });
 
@@ -43,7 +64,8 @@ it("useListScrubber calls the list's own handlers after its own", async () => {
   expect(onLayout).toHaveBeenCalledWith(layout);
   expect(onContentSizeChange).toHaveBeenCalledWith(390, 12000);
   expect(onScroll).toHaveBeenCalledWith({ contentOffset: { y: 5 } });
-  expect(result.current.scrubberProps).toMatchObject({ viewportHeight: 600, contentHeight: 12000 });
+  expect(result.current.viewportHeight.get()).toBe(600);
+  expect(result.current.contentHeight.get()).toBe(12000);
 });
 
 describe('useListScrubber({ sections })', () => {

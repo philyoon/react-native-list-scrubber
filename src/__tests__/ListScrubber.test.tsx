@@ -1,6 +1,6 @@
-import { baseProps, drag, mockScrollTo, setup, sharedZero } from './support';
+import { baseProps, drag, mockReactions, mockScrollTo, setup, sharedZero } from './support';
 import { act, fireEvent, screen } from '@testing-library/react-native';
-import { StyleSheet, type ViewStyle } from 'react-native';
+import { I18nManager, StyleSheet, type ViewStyle } from 'react-native';
 import { getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
 import { LIST_SCRUBBER_DEFAULTS, ListScrubber } from '../index';
 
@@ -351,6 +351,56 @@ describe('API options', () => {
       expect(StyleSheet.flatten(box.parent!.props.style).alignItems).toBeUndefined();
     },
   );
+
+  it('draws with default colours, overridable one by one', async () => {
+    const thumbColor = () =>
+      StyleSheet.flatten(
+        (
+          screen
+            .getByTestId('list-scrubber-thumb', { includeHiddenElements: true })
+            .children.at(-1) as unknown as {
+            props: { style: ViewStyle };
+          }
+        ).props.style,
+      )!.backgroundColor;
+    const view = await setup({ colors: undefined });
+    expect(thumbColor()).toBe(LIST_SCRUBBER_DEFAULTS.colors.thumb);
+    await view.rerender(<ListScrubber {...baseProps} colors={{ thumb: 'pink' }} />);
+    expect(thumbColor()).toBe('pink');
+  });
+
+  it('takes the heights as shared values and re-renders when they change', async () => {
+    const contentHeight = sharedZero();
+    const viewportHeight = sharedZero();
+    contentHeight.set(80);
+    viewportHeight.set(100);
+    await setup({ contentHeight, viewportHeight });
+    // Content shorter than the viewport: nothing to scrub
+    expect(screen.queryByTestId('list-scrubber-a11y', { includeHiddenElements: true })).toBeNull();
+    // Each render adds the two height mirrors, then the two fade reactions
+    const contentMirror = mockReactions.at(-4)!;
+    contentHeight.set(1000);
+    expect(contentMirror.prepare()).toBe(1000);
+    await act(async () => contentMirror.react(1000, 80));
+    expect(screen.getByTestId('list-scrubber-a11y', { includeHiddenElements: true })).toBeTruthy();
+    // An unchanged value schedules nothing
+    await act(async () => contentMirror.react(1000, 1000));
+    expect(screen.getByTestId('list-scrubber-a11y', { includeHiddenElements: true })).toBeTruthy();
+  });
+
+  it("defaults to 'right' in RTL layouts too: React Native mirrors it to the left edge", async () => {
+    // On iOS and Android, React Native swaps left/right in RTL by default, so 'right' already lands on the
+    // left edge; defaulting to 'left' in RTL would be mirrored back to the right
+    const rtl = jest.replaceProperty(I18nManager, 'isRTL', true);
+    try {
+      await setup();
+      const rail = screen.getByTestId('list-scrubber-a11y', { includeHiddenElements: true }).parent!;
+      expect(StyleSheet.flatten(rail.props.style)).toMatchObject({ right: 0 });
+      expect(StyleSheet.flatten(rail.props.style).left).toBeUndefined();
+    } finally {
+      rtl.restore();
+    }
+  });
 
   it('insets shrink the rail and the thumb travel', async () => {
     await setup({ insets: { top: 10, bottom: 2 } }); // rail 100 − 12 = 88, travel 88 − 48 = 40
