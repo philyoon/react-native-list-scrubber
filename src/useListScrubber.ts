@@ -1,4 +1,4 @@
-import { useMemo, useState, type Component } from 'react';
+import { useMemo, type Component } from 'react';
 import type { LayoutChangeEvent } from 'react-native';
 import {
   useAnimatedRef,
@@ -40,8 +40,9 @@ export interface UseListScrubberOptions<S extends readonly ListScrubberSection[]
  * If the list needs its own onScroll / onLayout / onContentSizeChange, pass them in `options`.
  *
  * Without `sections` (e.g. with `labelAt`), `scrubberProps` has none and `headerProps` isn't useful.
- * Returns the props to spread, and the pieces they're made of (`listRef`, `scrollY`, `onScroll`,
- * `contentHeight`, `viewportHeight`) for wiring them by hand: all of it is public API.
+ * Returns the props to spread, and the pieces they're made of (`listRef`, `scrollY`, `onScroll`, and the
+ * `contentHeight` / `viewportHeight` shared values) for wiring them by hand: all of it is public API.
+ * Measuring the list doesn't re-render the component calling this hook.
  */
 // `any`: works with any scrollable component
 export function useListScrubber<
@@ -51,8 +52,10 @@ export function useListScrubber<
   const { onScroll: userOnScroll, sections } = options;
   const listRef = useAnimatedRef<TList>();
   const scrollY = useSharedValue(0);
-  const [contentHeight, setContentHeight] = useState(0);
-  const [viewportHeight, setViewportHeight] = useState(0);
+  // Shared values, not state: the component calling this hook (and its list) doesn't re-render when the
+  // list is measured. ListScrubber mirrors them and re-renders on its own.
+  const contentHeight = useSharedValue(0);
+  const viewportHeight = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler(
     (e) => {
       scrollY.set(e.contentOffset.y);
@@ -60,13 +63,13 @@ export function useListScrubber<
     },
     [userOnScroll],
   );
-  // Stable identities: the list gets the same props on every render, so it doesn't re-render for them.
+  // Stable identities: the list and the scrubber get the same props on every render.
   const onContentSizeChange = useLatest((width: number, height: number) => {
-    setContentHeight(height);
+    contentHeight.set(height);
     options.onContentSizeChange?.(width, height);
   });
   const onLayout = useLatest((e: LayoutChangeEvent) => {
-    setViewportHeight(e.nativeEvent.layout.height);
+    viewportHeight.set(e.nativeEvent.layout.height);
     options.onLayout?.(e);
   });
   const listProps = useMemo(
@@ -98,8 +101,8 @@ const NO_SECTIONS: readonly ListScrubberSection[] = [];
 type ScrubberProps<TList extends Component<any, any>, S> = {
   listRef: AnimatedRef<TList>;
   scrollY: SharedValue<number>;
-  contentHeight: number;
-  viewportHeight: number;
+  contentHeight: SharedValue<number>;
+  viewportHeight: SharedValue<number>;
 } & (S extends readonly ListScrubberSection[] ? { sections: S } : unknown);
 
 /**
@@ -115,8 +118,10 @@ export interface UseListScrubberResult<
   /** Scroll offset, updated on the UI thread */
   scrollY: SharedValue<number>;
   onScroll: ScrollHandlerProcessed<Record<string, unknown>>;
-  contentHeight: number;
-  viewportHeight: number;
+  /** The list's content height, set as it's measured (a shared value: measuring doesn't re-render you) */
+  contentHeight: SharedValue<number>;
+  /** The list's own height, set as it's measured */
+  viewportHeight: SharedValue<number>;
   /** Spread on the list */
   listProps: {
     ref: AnimatedRef<TList>;
