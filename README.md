@@ -170,6 +170,17 @@ npx expo start
 
 It opens in Expo Go and has one screen per list type. It uses the library source from `../src`.
 
+### End-to-end tests
+
+[Maestro](https://maestro.dev) flows in `example/e2e` drive the example in Expo Go on an iOS simulator: dragging the handle to the end and back on each list type, touches passing through the hidden handle, and the screen-reader control. With Metro running (`npm start`) and a simulator booted:
+
+```sh
+cd example
+npm run e2e
+```
+
+If an Android emulator is also running, pick the simulator with `maestro --device <udid> test e2e`.
+
 ## License
 
 MIT

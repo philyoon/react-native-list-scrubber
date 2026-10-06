@@ -1,0 +1,24 @@
+# SectionList, FlashList and Legend List: the handle reaches the end of each list.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: subflows/open.yaml
+    env:
+      DEMO: SectionList
+- runFlow: subflows/show-handle.yaml
+- swipe: { start: '93%, 25%', end: '93%, 98%', duration: 1500 }
+- waitForAnimationToEnd
+- assertVisible: '.* Zel.*'
+- runFlow:
+    file: subflows/open.yaml
+    env:
+      DEMO: Legend List
+- assertVisible: Scroll position
+- runFlow: subflows/show-handle.yaml
+- swipe: { start: '93%, 25%', end: '93%, 98%', duration: 1500 }
+# Rows show no year; the screen reader value does, once the handle hides (hideAfterMs 1.5 s)
+- extendedWaitUntil:
+    visible:
+      id: list-scrubber-a11y
+      text: '.*202[0-3].*'
+    timeout: 5000

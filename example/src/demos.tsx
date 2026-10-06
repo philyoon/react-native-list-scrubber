@@ -1,5 +1,6 @@
 // One screen per list type. Each wires the same scrubber the same way: useListScrubber + sections.
 import { AnimatedLegendList } from '@legendapp/list/reanimated';
+import * as Haptics from 'expo-haptics';
 import { FlashList } from '@shopify/flash-list';
 import { useMemo, type ComponentType } from 'react';
 import { SectionList, StyleSheet, Text, View } from 'react-native';
@@ -44,6 +45,9 @@ function Scrubber(props: {
         bubbleText: colors.bubbleText,
       }}
       accessibilityLabel="Scroll position"
+      onDragStart={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+      // A tick per section crossed, like the iOS Contacts index
+      onSectionChange={() => Haptics.selectionAsync()}
     />
   );
 }

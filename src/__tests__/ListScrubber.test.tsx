@@ -528,6 +528,25 @@ describe('while the finger is down', () => {
     ).toBe(16);
   });
 
+  it('onSectionChange fires once per section crossed, not for the starting one', async () => {
+    const onSectionChange = jest.fn();
+    const sections = [
+      { offset: 0, label: 'A' },
+      { offset: 500, label: 'M' },
+      { offset: 800, label: 'Zebra' },
+    ];
+    await setup({ sections, onSectionChange });
+    await hold(5); // still "A"
+    expect(onSectionChange).not.toHaveBeenCalled();
+    await act(async () => pan().onUpdate({ translationY: 26 })); // "M"
+    await act(async () => pan().onUpdate({ translationY: 27 })); // still "M"
+    await act(async () => pan().onUpdate({ translationY: 52 })); // "Zebra"
+    expect(onSectionChange.mock.calls).toEqual([
+      [1, sections[1]],
+      [2, sections[2]],
+    ]);
+  });
+
   describe('section bubble', () => {
     const sections = [
       { offset: 0, label: 'A' },

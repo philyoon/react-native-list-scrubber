@@ -1,0 +1,7 @@
+# The handle appears only after the list scrolls. A short drag in the middle of the list shows it near the top.
+appId: host.exp.Exponent
+---
+- swipe:
+    start: 50%, 60%
+    end: 50%, 56%
+    duration: 300

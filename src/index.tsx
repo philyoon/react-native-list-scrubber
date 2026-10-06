@@ -292,6 +292,8 @@ export interface ListScrubberProps {
   formatPercent?: (percent: number) => string;
   /** Drag started (e.g. haptics) */
   onDragStart?: () => void;
+  /** With `sections`: the finger moved into another section while dragging (e.g. a haptic tick per letter) */
+  onSectionChange?: (index: number, section: ListScrubberSection) => void;
   /** Offset from the right edge (negative to sit in a margin outside the list) */
   right?: number;
   /** Width of the strip the handle sits in (default 20) */
@@ -318,6 +320,7 @@ export function ListScrubber({
   accessibilityLabel,
   formatPercent = (p) => `${p}%`,
   onDragStart,
+  onSectionChange,
   right = 0,
   railWidth = LIST_SCRUBBER_DEFAULTS.railWidth,
   metrics,
@@ -355,6 +358,8 @@ export function ListScrubber({
   };
   /** Screen-reader value follows manual scrolling too: re-read the position once scrolling stops */
   const syncA11y = () => setA11yOffset(scrollY.get());
+  // Only scheduled from the drag when both exist
+  const sectionChanged = (index: number) => onSectionChange!(index, sections![index]!);
   const end = () => {
     setActive(false);
     setLabel(null);
@@ -407,7 +412,10 @@ export function ListScrubber({
       const offset = (top / track) * maxScroll;
       scrollTo(listRef, 0, offset, false);
       if (offsets.length) {
-        sectionIdx.set(sectionIndexAt(offsets, labelProbe(offset, contentHeight, viewportHeight)));
+        const idx = sectionIndexAt(offsets, labelProbe(offset, contentHeight, viewportHeight));
+        // Only real moves count: the section the drag started in is not a change.
+        if (idx !== sectionIdx.get() && onSectionChange) scheduleOnRN(sectionChanged, idx);
+        sectionIdx.set(idx);
       } else if (labelAt) scheduleOnRN(updateLabel, offset);
     })
     .onFinalize(() => {

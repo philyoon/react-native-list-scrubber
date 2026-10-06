@@ -35,6 +35,7 @@ function Main() {
           <Pressable
             key={d.name}
             onPress={() => setDemo(i)}
+            testID={`demo-${d.name}`}
             accessibilityRole="tab"
             accessibilityState={{ selected: i === demo }}
             style={[

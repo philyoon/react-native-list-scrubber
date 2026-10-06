@@ -7,12 +7,14 @@
     "start": "expo start",
     "ios": "expo start --ios",
     "android": "expo start --android",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "e2e": "maestro test e2e"
   },
   "dependencies": {
     "@legendapp/list": "^3.6.0",
     "@shopify/flash-list": "2.0.2",
     "expo": "~57.0.25",
+    "expo-haptics": "~57.0.3",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
     "react-native": "0.86.3",

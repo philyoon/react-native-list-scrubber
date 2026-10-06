@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- `onSectionChange`: called when a drag crosses into another section (e.g. a haptic tick per letter).
+- Screen-reader value follows manual scrolling (re-read when the handle hides).
+- `useListScrubber` returns stable `listProps` / `scrubberProps`.
+- Example app: Maestro end-to-end flows (`npm run e2e`), haptics via `onDragStart` / `onSectionChange`.
+- Peer dependencies: `react >=19`, `react-native >=0.78`.
+
 ## 0.1.0
 
 - `ListScrubber`: drag handle with a label bubble; drag, scroll and section labels on the UI thread.

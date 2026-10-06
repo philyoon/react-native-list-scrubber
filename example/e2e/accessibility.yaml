@@ -1,0 +1,10 @@
+# Screen readers get an adjustable "Scroll position" control, present even while the handle is hidden.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: subflows/open.yaml
+    env:
+      DEMO: FlatList
+- assertVisible:
+    id: list-scrubber-a11y
+- assertVisible: Scroll position

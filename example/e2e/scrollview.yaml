@@ -1,0 +1,22 @@
+# ScrollView: the handle reaches the last chapter, and the middle of the track the middle of the document.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: subflows/open.yaml
+    env:
+      DEMO: ScrollView
+- assertVisible: Chapter 1
+- runFlow: subflows/show-handle.yaml
+- swipe:
+    start: 93%, 25%
+    end: 93%, 98%
+    duration: 1500
+- waitForAnimationToEnd
+- assertVisible: Chapter 60
+- runFlow: subflows/show-handle.yaml
+- swipe:
+    start: 93%, 94%
+    end: 93%, 60%
+    duration: 1500
+- waitForAnimationToEnd
+- assertVisible: 'Chapter (2[5-9]|3[0-9])'

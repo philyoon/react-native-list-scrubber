@@ -1,0 +1,16 @@
+# While the handle is hidden, a swipe on its strip scrolls the list instead of grabbing the handle.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: subflows/open.yaml
+    env:
+      DEMO: FlatList
+- waitForAnimationToEnd:
+    timeout: 3000
+- swipe:
+    start: 93%, 80%
+    end: 93%, 40%
+    duration: 400
+- waitForAnimationToEnd
+- assertNotVisible: Ada Abby
+- assertNotVisible: '.* Zel.*' # a normal scroll, not a jump to the end
