@@ -4,12 +4,20 @@ import {
   useAnimatedRef,
   useAnimatedScrollHandler,
   useSharedValue,
+  type AnimatedRef,
   type ScrollEvent,
+  type SharedValue,
 } from 'react-native-reanimated';
+import type { ListScrubberSection } from './types';
 import { useLatest } from './useLatest';
 
-/** The list's own handlers, called after the scrubber's (listProps sets these props on the list) */
-export interface UseListScrubberOptions {
+export interface UseListScrubberOptions<S extends readonly ListScrubberSection[] | undefined = undefined> {
+  /**
+   * The list's labelled sections (ascending offsets). Given here, `scrubberProps` and `headerProps` carry them,
+   * so the scrubber and a pinned header always read the same ones.
+   */
+  sections?: S;
+  // The list's own handlers, called after the scrubber's (listProps sets these props on the list)
   /** A worklet (runs on the UI thread). Keep its identity stable, e.g. define it outside the component. */
   onScroll?: (event: ScrollEvent) => void;
   onLayout?: (event: LayoutChangeEvent) => void;
@@ -17,10 +25,12 @@ export interface UseListScrubberOptions {
 }
 
 /**
- * State for one list + scrubber pair. Spread `listProps` on the list and `scrubberProps` on the scrubber:
+ * State for one list + scrubber pair. Spread `listProps` on the list, `scrubberProps` on the scrubber and,
+ * with a pinned header, `headerProps` on it:
  *
- *   const scrubber = useListScrubber();
+ *   const scrubber = useListScrubber({ sections });
  *   <Animated.FlatList {...scrubber.listProps} data={…} renderItem={…} />
+ *   <PinnedSectionHeader {...scrubber.headerProps} height={…} />
  *   <ListScrubber {...scrubber.scrubberProps} colors={…} accessibilityLabel="Scroll position" />
  *
  * The list must be an Animated component (Animated.FlatList, Animated.ScrollView, AnimatedLegendList,
@@ -28,14 +38,16 @@ export interface UseListScrubberOptions {
  * The offset comes from scroll events, so it keeps working when the list remounts (e.g. a new `key`).
  * If the list needs its own onScroll / onLayout / onContentSizeChange, pass them in `options`.
  *
- * Returns `listProps` and `scrubberProps` to spread, and the pieces they're made of (`listRef`, `scrollY`,
- * `onScroll`, `contentHeight`, `viewportHeight`) for wiring them by hand: all of it is public API.
+ * Without `sections` (e.g. with `labelAt`), `scrubberProps` has none and `headerProps` isn't useful.
+ * Returns the props to spread, and the pieces they're made of (`listRef`, `scrollY`, `onScroll`,
+ * `contentHeight`, `viewportHeight`) for wiring them by hand: all of it is public API.
  */
 // `any`: works with any scrollable component
-export function useListScrubber<TList extends Component<any, any> = any>(
-  options: UseListScrubberOptions = {},
-) {
-  const { onScroll: userOnScroll } = options;
+export function useListScrubber<
+  TList extends Component<any, any> = any,
+  S extends readonly ListScrubberSection[] | undefined = undefined,
+>(options: UseListScrubberOptions<S> = {}) {
+  const { onScroll: userOnScroll, sections } = options;
   const listRef = useAnimatedRef<TList>();
   const scrollY = useSharedValue(0);
   const [contentHeight, setContentHeight] = useState(0);
@@ -67,9 +79,24 @@ export function useListScrubber<TList extends Component<any, any> = any>(
     }),
     [listRef, onScroll, onContentSizeChange, onLayout],
   );
+  // With sections, they ride along (typed only then, so `labelAt` users can still spread scrubberProps)
   const scrubberProps = useMemo(
-    () => ({ listRef, scrollY, contentHeight, viewportHeight }),
-    [listRef, scrollY, contentHeight, viewportHeight],
+    () =>
+      ({ listRef, scrollY, contentHeight, viewportHeight, ...(sections && { sections }) }) as ScrubberProps<
+        TList,
+        S
+      >,
+    [listRef, scrollY, contentHeight, viewportHeight, sections],
   );
-  return { listRef, scrollY, onScroll, contentHeight, viewportHeight, listProps, scrubberProps };
+  const headerProps = useMemo(() => ({ scrollY, sections: sections ?? NO_SECTIONS }), [scrollY, sections]);
+  return { listRef, scrollY, onScroll, contentHeight, viewportHeight, listProps, scrubberProps, headerProps };
 }
+
+const NO_SECTIONS: readonly ListScrubberSection[] = [];
+
+type ScrubberProps<TList extends Component<any, any>, S> = {
+  listRef: AnimatedRef<TList>;
+  scrollY: SharedValue<number>;
+  contentHeight: number;
+  viewportHeight: number;
+} & (S extends readonly ListScrubberSection[] ? { sections: S } : unknown);

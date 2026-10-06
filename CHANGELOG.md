@@ -41,6 +41,9 @@
   exposes it too; it was empty on web. The README describes what works on web.
 - Web: the screen-reader control is keyboard-operable: a Tab stop where the arrows step (like a screen
   reader), Page Up/Down move one screen and Home/End go to the ends. iOS and Android are unchanged.
+- `useListScrubber({ sections })`: the hook carries the sections into `scrubberProps` and a new `headerProps`
+  (`scrollY` + `sections`) for `PinnedSectionHeader`, so the scrubber and the header can't be given different
+  ones. Passing `sections` to either component directly still works.
 - Section bubble: each label gets its own font size by its length, so one long label no longer shrinks every
   letter.
 - **Breaking:** `right` is replaced by `side` + `edgeOffset`.
