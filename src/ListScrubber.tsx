@@ -230,7 +230,6 @@ export function ListScrubber({
 
   return (
     <View
-      pointerEvents="box-none"
       style={[styles.rail, { top: insetTop, bottom: insetBottom, [side]: edgeOffset, width: TOUCH_WIDTH }]}
     >
       {/* Screen readers: an adjustable control that is always present; the thumb itself is drag-only, so it's hidden */}
@@ -244,14 +243,16 @@ export function ListScrubber({
         accessibilityActions={A11Y_ACTIONS}
         onAccessibilityAction={(e) => a11y.step(e.nativeEvent.actionName === 'increment' ? 1 : -1)}
         {...(Platform.OS === 'web' && webKeyboardProps(onKeyDown))}
-        pointerEvents="none"
-        style={StyleSheet.absoluteFill}
+        style={styles.a11y}
         testID={`${testID}-a11y`}
       />
       <GestureDetector gesture={pan}>
         <Animated.View
-          pointerEvents={visible ? 'auto' : 'none'}
-          style={[styles.touchArea, { [side]: 0, height: m.thumbLength }, positionStyle]}
+          style={[
+            styles.touchArea,
+            { [side]: 0, height: m.thumbLength, pointerEvents: visible ? 'auto' : 'none' },
+            positionStyle,
+          ]}
           accessible={false}
           importantForAccessibility="no-hide-descendants"
           accessibilityElementsHidden
@@ -320,7 +321,10 @@ const KEY_ACTIONS: Record<string, 'next' | 'previous' | 'pageDown' | 'pageUp' | 
 };
 
 const styles = StyleSheet.create({
-  rail: { position: 'absolute', top: 0, bottom: 0 },
+  // Touches outside the thumb reach the list
+  rail: { position: 'absolute', top: 0, bottom: 0, pointerEvents: 'box-none' },
+  // Screen readers only: touches pass through to the thumb and the list
+  a11y: { ...StyleSheet.absoluteFill, pointerEvents: 'none' },
   touchArea: {
     position: 'absolute',
     top: 0,

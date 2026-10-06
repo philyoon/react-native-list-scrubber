@@ -1,5 +1,9 @@
 import { mockDelays, mockTimings, reactions, setup, sharedZero } from './support';
 import { act, screen } from '@testing-library/react-native';
+import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+
+const pointerEvents = (el: { props: { style?: StyleProp<ViewStyle> } }) =>
+  StyleSheet.flatten(el.props.style)?.pointerEvents;
 
 describe('appearing and hiding', () => {
   const thumb = () => screen.getByTestId('list-scrubber-thumb', { includeHiddenElements: true });
@@ -48,14 +52,14 @@ describe('appearing and hiding', () => {
 
   it('lets touches through while hidden and catches them while visible', async () => {
     await setup();
-    expect(thumb().props.pointerEvents).toBe('none');
+    expect(pointerEvents(thumb())).toBe('none');
     const [fade, visible] = reactions();
     fade.react(10, 0); // opacity becomes 1
     expect(visible.prepare()).toBe(true);
     await act(async () => visible.react(true, false));
-    expect(thumb().props.pointerEvents).toBe('auto');
+    expect(pointerEvents(thumb())).toBe('auto');
     await act(async () => visible.react(false, true));
-    expect(thumb().props.pointerEvents).toBe('none');
+    expect(pointerEvents(thumb())).toBe('none');
   });
 
   it('screen-reader value follows manual scrolling once the thumb hides', async () => {
@@ -79,5 +83,5 @@ it('the visibility reaction ignores repeats', async () => {
   await setup();
   const thumb = screen.getByTestId('list-scrubber-thumb', { includeHiddenElements: true });
   await act(async () => reactions()[1].react(false, false));
-  expect(thumb.props.pointerEvents).toBe('none');
+  expect(pointerEvents(thumb)).toBe('none');
 });

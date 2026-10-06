@@ -47,7 +47,7 @@ export function PinnedSectionHeader({
 }) {
   const pushStyle = usePinnedSectionHeaderStyle(scrollY, sections, height);
   return (
-    <View pointerEvents="none" style={[styles.pinned, { height }]} testID={testID}>
+    <View style={[styles.pinned, { height }]} testID={testID}>
       <Animated.View style={[styles.header, { height }, style, push && pushStyle]}>
         <CurrentSectionLabel
           scrollY={scrollY}
@@ -103,7 +103,7 @@ export function CurrentSectionLabel({
   const index = useDerivedValue(() => sectionIndexAt(offsets, scrollY.get()));
   return (
     <View
-      pointerEvents="none"
+      style={styles.passThrough}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       testID={testID}
@@ -146,6 +146,7 @@ export function usePinnedSectionHeaderStyle(
 }
 
 const styles = StyleSheet.create({
-  pinned: { position: 'absolute', top: 0, left: 0, right: 0, overflow: 'hidden' },
+  pinned: { position: 'absolute', top: 0, left: 0, right: 0, overflow: 'hidden', pointerEvents: 'none' },
+  passThrough: { pointerEvents: 'none' },
   header: { justifyContent: 'center' },
 });
