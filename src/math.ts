@@ -1,9 +1,9 @@
 /**
- * The content offset a label should describe for scroll position `offset`.
+ * The content offset a label should describe at scroll position `offset`.
  * It slides from the top of the viewport (at the start) to its bottom (at the end), so the last
- * section is reachable even when it's shorter than a screen. Feed it to your `labelAt`.
+ * section is reachable even when it's shorter than a screen.
  */
-export function labelProbe(offset: number, contentHeight: number, viewportHeight: number): number {
+export function labelPosition(offset: number, contentHeight: number, viewportHeight: number): number {
   'worklet';
   const maxScroll = Math.max(1, contentHeight - viewportHeight);
   const t = Math.min(1, Math.max(0, offset / maxScroll));

@@ -15,7 +15,7 @@ import {
   type ListScrubberTiming,
 } from './defaults';
 import { LabelStrip } from './LabelStrip';
-import { clamp } from './math';
+import { clamp, labelPosition } from './math';
 import type { ListScrubberColors, ListScrubberSection } from './types';
 import { useA11yStepper } from './useA11yStepper';
 import { useAutoHide } from './useAutoHide';
@@ -72,8 +72,12 @@ interface ListScrubberSectionProps {
 interface ListScrubberLabelAtProps {
   sections?: undefined;
   onSectionChange?: never;
-  /** Bubble label while dragging, computed on the JS thread (can lag); null keeps the previous label */
-  labelAt?: (offset: number) => string | null;
+  /**
+   * Bubble label while dragging, computed on the JS thread (can lag); null keeps the previous label.
+   * `position` is the content offset to describe (it slides from the top of the viewport at the start to
+   * its bottom at the end, so the last rows get a label); `scrollOffset` is the raw scroll position.
+   */
+  labelAt?: (position: number, scrollOffset: number) => string | null;
 }
 
 export type ListScrubberProps = ListScrubberBaseProps & (ListScrubberSectionProps | ListScrubberLabelAtProps);
@@ -139,6 +143,7 @@ export function ListScrubber({
     listRef,
     scrollY,
     maxScroll,
+    contentHeight,
     viewportHeight,
     steps: steps ?? (sections ? offsets : undefined),
     offsets,
@@ -159,7 +164,7 @@ export function ListScrubber({
     onDragEnd?.();
   });
   const onOffset = useLatest((offset: number) => {
-    const next = labelAt?.(offset);
+    const next = labelAt?.(labelPosition(offset, contentHeight, viewportHeight), offset);
     if (next != null) setLabel(next);
   });
   const onSection = useLatest((index: number) => {

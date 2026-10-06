@@ -9,7 +9,7 @@ import {
   type SharedValue,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
-import { clamp, labelProbe, sectionIndexAt } from './math';
+import { clamp, labelPosition, sectionIndexAt } from './math';
 
 /**
  * The drag: maps the handle's travel (`track`) onto the list's scroll range and scrolls it, all on the
@@ -72,7 +72,7 @@ export function useScrubGesture({
           startTop.set(clamp((scrollY.get() / maxScroll) * track, 0, track));
           dragTop.set(startTop.get());
           if (offsets.length) {
-            const y = labelProbe((startTop.get() / track) * maxScroll, contentHeight, viewportHeight);
+            const y = labelPosition((startTop.get() / track) * maxScroll, contentHeight, viewportHeight);
             sectionIdx.set(sectionIndexAt(offsets, y));
           }
           opacity.set(withTiming(1, { duration: fadeMs }));
@@ -84,7 +84,7 @@ export function useScrubGesture({
           const offset = (top / track) * maxScroll;
           scrollTo(listRef, 0, offset, false);
           if (offsets.length) {
-            const idx = sectionIndexAt(offsets, labelProbe(offset, contentHeight, viewportHeight));
+            const idx = sectionIndexAt(offsets, labelPosition(offset, contentHeight, viewportHeight));
             // Only real moves count: the section the drag started in is not a change.
             if (idx !== sectionIdx.get() && onSection) scheduleOnRN(onSection, idx);
             sectionIdx.set(idx);

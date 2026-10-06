@@ -9,10 +9,10 @@ import {
   type ListScrubberProps,
   SectionLabel,
   usePinnedHeaderStyle,
-  labelProbe,
   sectionIndexAt,
   useListScrubber,
 } from '../index';
+import { labelPosition } from '../math';
 
 // Worklets' mock hops to JS with queueMicrotask; keep it real so scheduleOnRN still runs.
 jest.useFakeTimers({ doNotFake: ['queueMicrotask'] });
@@ -117,7 +117,7 @@ it('dragging scrolls the list in proportion and asks for the label at that spot'
   await drag(26); // half of 52
   expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 450, false); // (1000 - 100) / 2
   await act(async () => {}); // the label is drawn on the JS thread
-  expect(labelAt).toHaveBeenCalledWith(450);
+  expect(labelAt).toHaveBeenCalledWith(500, 450); // the position to describe (see labelPosition), the scroll offset
   expect(onDragStart).toHaveBeenCalledTimes(1);
   await drag(900); // past the end: clamps
   expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 900, false);
@@ -210,10 +210,10 @@ describe('useListScrubber', () => {
 });
 
 describe('label helpers', () => {
-  it('labelProbe reads the top at the start and the last pixel at the end', () => {
-    expect(labelProbe(0, 1000, 100)).toBe(0);
-    expect(labelProbe(450, 1000, 100)).toBe(500);
-    expect(labelProbe(900, 1000, 100)).toBe(999);
+  it('labelPosition reads the top at the start and the last pixel at the end', () => {
+    expect(labelPosition(0, 1000, 100)).toBe(0);
+    expect(labelPosition(450, 1000, 100)).toBe(500);
+    expect(labelPosition(900, 1000, 100)).toBe(999);
   });
 
   it('sectionIndexAt finds the section containing an offset', () => {

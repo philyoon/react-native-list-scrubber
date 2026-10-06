@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { scrollTo, type AnimatedRef, type SharedValue } from 'react-native-reanimated';
 import { scheduleOnUI } from 'react-native-worklets';
 import { A11Y_PAGE, STEP_SLACK } from './defaults';
-import { clamp, firstIndexWhere, sectionIndexAt } from './math';
+import { clamp, firstIndexWhere, labelPosition, sectionIndexAt } from './math';
 
 /**
  * The screen-reader side: `step(±1)` scrolls to the next or previous of `steps` (or one screen), and
@@ -13,6 +13,7 @@ export function useA11yStepper({
   listRef,
   scrollY,
   maxScroll,
+  contentHeight,
   viewportHeight,
   steps,
   offsets,
@@ -23,12 +24,13 @@ export function useA11yStepper({
   listRef: AnimatedRef<any>;
   scrollY: SharedValue<number>;
   maxScroll: number;
+  contentHeight: number;
   viewportHeight: number;
   /** Ascending step targets; one screen at a time without them */
   steps: readonly number[] | undefined;
   offsets: readonly number[];
   labels: readonly string[];
-  labelAt: ((offset: number) => string | null) | undefined;
+  labelAt: ((position: number, scrollOffset: number) => string | null) | undefined;
   formatPercent: (percent: number) => string;
 }) {
   /** Offset the value describes: set by its own steps, and re-read when scrolling stops */
@@ -37,9 +39,11 @@ export function useA11yStepper({
   // Computed when the position it describes changes, not on every render (labelAt can be costly)
   const value = useMemo(
     () =>
-      (labels.length ? labels[sectionIndexAt(offsets, offset)] : labelAt?.(offset)) ??
+      (labels.length
+        ? labels[sectionIndexAt(offsets, offset)]
+        : labelAt?.(labelPosition(offset, contentHeight, viewportHeight), offset)) ??
       formatPercent(maxScroll > 0 ? Math.round((offset / maxScroll) * 100) : 0),
-    [labels, offsets, labelAt, offset, formatPercent, maxScroll],
+    [labels, offsets, labelAt, offset, formatPercent, maxScroll, contentHeight, viewportHeight],
   );
 
   // One step back or forward from here (the next of `steps`, or one screen)

@@ -120,10 +120,12 @@ const push = usePinnedHeaderStyle(scrubber.scrollY, sections, HEADER_HEIGHT);
 
 ### Labels that aren't sections
 
-`labelAt(offset)` computes any label on the JS thread, for example "42%". It can lag a frame or two behind a
-fast drag, so prefer `sections` when the labels are known ahead of time. Two helpers come from the same logic:
-`labelProbe(offset, contentHeight, viewportHeight)` gives the content position to describe, and
-`sectionIndexAt(starts, y)` does a binary search over section starts.
+`labelAt(position, scrollOffset)` computes any label on the JS thread, for example "42%". It can lag a frame
+or two behind a fast drag, so prefer `sections` when the labels are known ahead of time. `position` is the
+content offset to describe: it slides from the top of the viewport at the start to its bottom at the end, so
+the last rows get a label even when they're shorter than a screen. `scrollOffset` is the raw scroll position.
+`sectionIndexAt(starts, y)` does a binary search over ascending section starts, if your labels come from a
+list of your own.
 
 ## Props
 
@@ -136,7 +138,8 @@ Required:
 Optional:
 
 - `sections`: `{ offset, label }[]`, ascending. Drives the bubble and the screen-reader steps.
-- `labelAt(offset)`: a JS-thread label when there are no `sections`. The types accept one or the other.
+- `labelAt(position, scrollOffset)`: a JS-thread label when there are no `sections`. The types accept one or
+  the other.
 - `steps`: screen-reader step targets. Default: the section offsets, else one screen.
 - `formatPercent`: the screen-reader value when there's no label. Default: `40%`.
 - `onDragStart`, `onDragEnd`: the drag started or ended, e.g. for haptics.
