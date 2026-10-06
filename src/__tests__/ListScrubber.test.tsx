@@ -53,12 +53,27 @@ describe('sections', () => {
     expect(sectionText('list-scrubber-label').text).toBe('A');
   });
 
-  it('draws one text field, whatever the number of sections', async () => {
-    const many = Array.from({ length: 300 }, (_, i) => ({ offset: i * 10, label: `S${i}` }));
-    await setup({ sections: many, contentHeight: 20000 });
+  it('draws one text field, whatever the number of sections, as wide as the widest label', async () => {
+    const many = Array.from({ length: 300 }, (_, i) => ({ offset: i * 10, label: `S${i % 150}` }));
+    const view = await setup({ sections: many, contentHeight: 20000 });
     expect(screen.getAllByTestId('list-scrubber-label', { includeHiddenElements: true })).toHaveLength(1);
-    // plus a few invisible copies of the longest labels, which give the bubble its width
-    expect(screen.queryAllByText(/^S\d+$/, { includeHiddenElements: true })).toHaveLength(32);
+    // Every distinct label is laid out once, invisibly: the widest gives the bubble its width
+    const copies = () => screen.queryAllByText(/^S\d+$/, { includeHiddenElements: true });
+    expect(copies()).toHaveLength(150);
+    const sizer = copies()[0]!.parent!;
+    expect(StyleSheet.flatten(sizer.props.style)).toMatchObject({ height: 0, alignSelf: 'flex-start' });
+    await fireEvent(sizer, 'layout', { nativeEvent: { layout: { width: 41.2, height: 0 } } });
+    // Measured: the copies are gone, and a spacer keeps the width (rounded up, so nothing is clipped)
+    expect(copies()).toHaveLength(0);
+    const label = sectionText('list-scrubber-label').field.parent!;
+    expect(
+      label.children.map((c) => typeof c !== 'string' && StyleSheet.flatten(c.props.style)),
+    ).toContainEqual({ width: 42 });
+    // Same labels: still measured. New labels: laid out again
+    await view.rerender(<ListScrubber {...baseProps} sections={many} contentHeight={20000} />);
+    expect(copies()).toHaveLength(0);
+    await view.rerender(<ListScrubber {...baseProps} sections={many.slice(0, 200)} contentHeight={20000} />);
+    expect(copies()).toHaveLength(150);
   });
 
   it('screen readers step section by section and hear the section label', async () => {

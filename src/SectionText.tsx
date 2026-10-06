@@ -1,12 +1,17 @@
-import { memo, useMemo } from 'react';
-import { StyleSheet, Text, TextInput, View, type TextInputProps, type TextStyle } from 'react-native';
+import { memo, useMemo, useState } from 'react';
+import {
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  useWindowDimensions,
+  type TextInputProps,
+  type TextStyle,
+} from 'react-native';
 import Animated, { useAnimatedProps, useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
 import { clamp } from './math';
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
-
-/** How many of the longest labels size a label that sizes to its text (see `sizeToLabels`) */
-export const SIZING_LABELS = 32;
 
 /**
  * The label at `index`, drawn on the UI thread: one read-only native text field whose text is set from the
@@ -14,9 +19,10 @@ export const SIZING_LABELS = 32;
  * native view however many labels there are. (It replaces a column of every label, which mounted two native
  * views per label.)
  *
- * A native text field doesn't resize when its text changes outside React, so with `sizeToLabels` an
- * invisible copy of the longest labels gives it its width: exact for those, and in practice for the rest,
- * unless a shorter label is drawn wider (e.g. "WWW" against "iiii").
+ * A native text field doesn't resize when its text changes outside React, so with `sizeToLabels` every
+ * distinct label is laid out once, invisibly, and the field takes the widest: no label is ever clipped.
+ * The copies are unmounted once measured, and laid out again when the labels, style or system text size
+ * change.
  */
 export const SectionText = memo(function SectionText({
   index,
@@ -36,7 +42,7 @@ export const SectionText = memo(function SectionText({
   style?: TextStyle;
   /** A font size per label: `short` for labels up to `shortMaxLength` characters, `long` for longer ones */
   fontSizes?: { short: number; long: number; shortMaxLength: number };
-  /** Gives its parent the width of the widest of the longest labels (for a bubble that sizes to its label) */
+  /** Gives its parent the width of the widest label (for a bubble that sizes to its label) */
   sizeToLabels?: boolean;
   /** Cap on the system text size (the line height must already allow for it) */
   maxFontSizeMultiplier: number;
@@ -60,19 +66,32 @@ export const SectionText = memo(function SectionText({
     const size = fontSizeFor(labelAt(index.get()));
     return size === undefined ? {} : { fontSize: size };
   });
+  const fontScale = useWindowDimensions().fontScale;
+  // The widest label's width, valid only for what it was measured with (all compared by reference)
+  const [measured, setMeasured] = useState<{ width: number; inputs: readonly unknown[] }>();
+  const inputs = [labels, style, fontSizes, fontScale, maxFontSizeMultiplier];
+  const width =
+    measured && measured.inputs.every((input, i) => input === inputs[i]) ? measured.width : undefined;
   const sizers = useMemo(
-    () => (sizeToLabels ? longestLabels(labels, SIZING_LABELS) : []),
-    [sizeToLabels, labels],
+    () => (sizeToLabels && width === undefined ? [...new Set(labels)] : []),
+    [sizeToLabels, width, labels],
   );
   const first = labels[0] ?? '';
 
   return (
-    // Fills its parent: with sizeToLabels the parent sizes to this view's content (the copies below), and a
-    // wider parent (e.g. a minWidth) widens the field with it
+    // Fills its parent: with sizeToLabels the parent sizes to this view's content (the measured width, or
+    // the copies being measured), and a wider parent (e.g. a minWidth) widens the field with it
     <View style={[{ height }, styles.fill]}>
-      {sizeToLabels && (
-        // Zero height, full width: the widest of these sets this view's width; none is ever visible
-        <View style={styles.sizer} pointerEvents="none" accessibilityElementsHidden>
+      {sizeToLabels && width !== undefined && <View style={{ width }} />}
+      {sizers.length > 0 && (
+        // Zero height, as wide as the widest label; none is ever visible
+        <View
+          style={styles.sizer}
+          pointerEvents="none"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          onLayout={(e) => setMeasured({ width: Math.ceil(e.nativeEvent.layout.width), inputs })}
+        >
           {sizers.map((label) => (
             <Text
               key={label}
@@ -110,14 +129,9 @@ export const SectionText = memo(function SectionText({
   );
 });
 
-/** Up to `count` distinct labels, longest first */
-function longestLabels(labels: readonly string[], count: number): string[] {
-  return [...new Set(labels)].sort((a, b) => b.length - a.length).slice(0, count);
-}
-
 const styles = StyleSheet.create({
   fill: { alignSelf: 'stretch' },
-  sizer: { height: 0, overflow: 'hidden' },
+  sizer: { height: 0, overflow: 'hidden', alignSelf: 'flex-start' },
   // Text fields pad and underline themselves (Android); a label shouldn't
   input: {
     ...StyleSheet.absoluteFill,
