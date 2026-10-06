@@ -41,13 +41,15 @@ export function Bubble({
     // The bubble hangs off the thumb's narrow touch area, and an absolute view is measured against its
     // parent's width: sized directly, a long label like "Jul 2025" was cut to "Ju…". So a wide, empty
     // anchor takes the position and the bubble inside it sizes to its label.
+    // Both are placed with left/right only, never flex alignment: React Native mirrors left/right in RTL
+    // (by default on iOS and Android, not on web) but always flips alignment, so mixing the two put the
+    // bubble at the anchor's far end, off-screen, in RTL web apps.
     <Animated.View
       style={[
         styles.anchor,
         {
           [side]: TOUCH_WIDTH + m.bubbleGap,
           height: m.bubbleSize,
-          alignItems: side === 'right' ? 'flex-end' : 'flex-start',
         },
         shift,
       ]}
@@ -56,6 +58,7 @@ export function Bubble({
         style={[
           styles.box,
           {
+            [side]: 0,
             minWidth: m.bubbleSize,
             height: m.bubbleSize,
             paddingHorizontal: m.bubblePadding,
@@ -90,5 +93,5 @@ const ANCHOR_WIDTH = 1000;
 
 const styles = StyleSheet.create({
   anchor: { position: 'absolute', alignSelf: 'center', width: ANCHOR_WIDTH, pointerEvents: 'none' },
-  box: { alignItems: 'center', justifyContent: 'center' },
+  box: { position: 'absolute', top: 0, alignItems: 'center', justifyContent: 'center' },
 });

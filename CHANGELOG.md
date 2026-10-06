@@ -55,6 +55,10 @@
 - The package includes `CHANGELOG.md`. CI tests the packed package (`npm run smoke:package`): its entry
   points, the built modules' imports, and an app using every export, typechecked with strict and legacy React
   Native types.
+- Right-to-left: the bubble no longer disappears in RTL web layouts (it was placed with flex alignment, which
+  flips in RTL while React Native Web keeps `left`/`right`, so it landed off-screen). The docs no longer say
+  to flip `side` for RTL: React Native already mirrors `left`/`right` on iOS and Android, so that flipped it
+  twice. A README section describes RTL on each platform.
 - Section bubble: each label gets its own font size by its length, so one long label no longer shrinks every
   letter.
 - **Breaking:** `right` is replaced by `side` + `edgeOffset`.

@@ -335,6 +335,23 @@ describe('API options', () => {
     expect(StyleSheet.flatten(bubble.props.style)).toMatchObject({ left: 44 + 40 });
   });
 
+  it.each(['left', 'right'] as const)(
+    'side="%s": the bubble is placed with left/right only, so RTL mirroring moves it with the thumb',
+    async (side) => {
+      await setup({ side, labelAt: () => 'Jan' });
+      await act(async () => {
+        pan().onBegin({});
+        pan().onUpdate({ translationY: 10 });
+      });
+      let box = screen.getByText('Jan', { includeHiddenElements: true }).parent!;
+      while (!StyleSheet.flatten(box.props.style)?.backgroundColor) box = box.parent!;
+      // Flex alignment flips with the layout direction even where left/right don't (web), which once put
+      // the bubble off-screen in RTL; so neither the bubble nor its anchor may use it
+      expect(StyleSheet.flatten(box.props.style)).toMatchObject({ position: 'absolute', [side]: 0 });
+      expect(StyleSheet.flatten(box.parent!.props.style).alignItems).toBeUndefined();
+    },
+  );
+
   it('insets shrink the rail and the thumb travel', async () => {
     await setup({ insets: { top: 10, bottom: 2 } }); // rail 100 − 12 = 88, travel 88 − 48 = 40
     const rail = screen.getByTestId('list-scrubber-a11y', { includeHiddenElements: true }).parent!;
