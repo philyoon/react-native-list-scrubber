@@ -14,6 +14,11 @@ export type Reaction = { prepare: () => unknown; react: (cur: unknown, prev: unk
 export const mockReactions: Reaction[] = [];
 export const mockTimings: { to: number; duration: number; done?: () => void }[] = [];
 export const mockDelays: number[] = [];
+/**
+ * What each animated style's or props' worklet captured, render by render, as a list of values (Worklets
+ * versions store them by name or by position)
+ */
+export const mockClosures: { hook: 'style' | 'props'; values: unknown[] }[] = [];
 jest.mock('react-native-reanimated', () => {
   const mock = require('react-native-reanimated/mock');
   const React = require('react');
@@ -36,6 +41,16 @@ jest.mock('react-native-reanimated', () => {
       ref.current ??= mock.useSharedValue(undefined);
       ref.current.set(processor());
       return ref.current;
+    },
+    // Record what the worklet captured: the real hook restarts it (and copies it all to the UI thread) when any
+    // of it changes identity
+    useAnimatedStyle: (updater: { __closure?: object }, ...rest: unknown[]) => {
+      mockClosures.push({ hook: 'style', values: Object.values(updater.__closure ?? {}) });
+      return mock.useAnimatedStyle(updater, ...rest);
+    },
+    useAnimatedProps: (updater: { __closure?: object }, ...rest: unknown[]) => {
+      mockClosures.push({ hook: 'props', values: Object.values(updater.__closure ?? {}) });
+      return mock.useAnimatedProps(updater, ...rest);
     },
     useAnimatedRef: () => React.useRef(null),
     // like the real one: the same function between renders
@@ -103,6 +118,7 @@ beforeEach(() => {
   mockReactions.length = 0;
   mockTimings.length = 0;
   mockDelays.length = 0;
+  mockClosures.length = 0;
 });
 
 /** The two reactions of the latest render: [scroll → fade, opacity → visible] */

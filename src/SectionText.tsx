@@ -44,7 +44,7 @@ export const SectionText = memo(function SectionText({
   /** Must keep its identity while its contents are the same (it's compared by reference) */
   style?: TextStyle;
   /** A font size per label: `short` for labels up to `shortMaxLength` characters, `long` for longer ones */
-  fontSizes?: { short: number; long: number; shortMaxLength: number };
+  fontSizes?: FontSizes;
   /** Gives its parent the width of the widest label (for a bubble that sizes to its label) */
   sizeToLabels?: boolean;
   /** Measure the labels now, without waiting for the app to be idle (e.g. the bubble is about to show) */
@@ -53,22 +53,16 @@ export const SectionText = memo(function SectionText({
   maxFontSizeMultiplier: number;
   testID: string;
 }) {
-  const fontSizeFor = (label: string) => {
-    'worklet';
-    if (!fontSizes) return undefined;
-    return label.length <= fontSizes.shortMaxLength ? fontSizes.short : fontSizes.long;
-  };
-  const labelAt = (i: number) => {
-    'worklet';
-    return labels[clamp(Math.round(i), 0, labels.length - 1)] ?? '';
-  };
+  // Each worklet is restarted, and everything it captures copied to the UI thread again, whenever a captured
+  // value changes identity. So they capture only props (the helpers are module functions): a render with
+  // the same labels copies nothing, though `labels` can be thousands of strings.
   const animatedProps = useAnimatedProps(() => {
-    const text = labelAt(index.get());
+    const text = labelAt(labels, index.get());
     // `defaultValue` too, as Reanimated's own PerformanceMonitor does: the field keeps it if it remounts
     return { text, defaultValue: text } as Partial<TextInputProps>;
   });
   const fontSize = useAnimatedStyle(() => {
-    const size = fontSizeFor(labelAt(index.get()));
+    const size = fontSizeFor(fontSizes, labelAt(labels, index.get()));
     return size === undefined ? {} : { fontSize: size };
   });
   const fontScale = useWindowDimensions().fontScale;
@@ -89,7 +83,12 @@ export const SectionText = memo(function SectionText({
     return whenIdle(() => setIdleFor(labels));
   }, [sizeToLabels, labels]);
   const measure = unmeasured.length > 0 && (measureNow || idleFor === labels);
-  const sizers = measure ? unmeasured : NO_LABELS;
+  // A batch at a time while idle, so thousands of new labels don't make one long task; all the rest at once
+  // when the bubble is about to show
+  const sizers = useMemo(
+    () => (measure ? (measureNow ? unmeasured : unmeasured.slice(0, MEASURE_BATCH)) : NO_LABELS),
+    [measure, measureNow, unmeasured],
+  );
   // A new view per batch: a view that stays mounted reports its layout again only if its size changes
   const key = batchKey(sizers);
   const onMeasured = (width: number) =>
@@ -120,7 +119,7 @@ export const SectionText = memo(function SectionText({
               key={label}
               numberOfLines={1}
               maxFontSizeMultiplier={maxFontSizeMultiplier}
-              style={[style, fontSizes && { fontSize: fontSizeFor(label) }]}
+              style={[style, fontSizes && { fontSize: fontSizeFor(fontSizes, label) }]}
             >
               {label}
             </Text>
@@ -146,11 +145,30 @@ export const SectionText = memo(function SectionText({
         maxFontSizeMultiplier={maxFontSizeMultiplier}
         defaultValue={first}
         animatedProps={animatedProps}
-        style={[styles.input, { height }, style, fontSizes && { fontSize: fontSizeFor(first) }, fontSize]}
+        style={[
+          styles.input,
+          { height },
+          style,
+          fontSizes && { fontSize: fontSizeFor(fontSizes, first) },
+          fontSize,
+        ]}
       />
     </View>
   );
 });
+
+type FontSizes = { short: number; long: number; shortMaxLength: number };
+
+function labelAt(labels: readonly string[], i: number): string {
+  'worklet';
+  return labels[clamp(Math.round(i), 0, labels.length - 1)] ?? '';
+}
+
+function fontSizeFor(fontSizes: FontSizes | undefined, label: string): number | undefined {
+  'worklet';
+  if (!fontSizes) return undefined;
+  return label.length <= fontSizes.shortMaxLength ? fontSizes.short : fontSizes.long;
+}
 
 interface Measured {
   /** The widest label's width (pt, rounded up) */
@@ -161,6 +179,8 @@ interface Measured {
 }
 
 const NO_LABELS: readonly string[] = [];
+/** Labels laid out per commit while the app is idle */
+const MEASURE_BATCH = 200;
 
 const batchKeys = new WeakMap<readonly string[], number>();
 let batches = 0;

@@ -16,10 +16,10 @@
 - Performance: the section bubble and `PinnedSectionHeader` / `CurrentSectionLabel` draw the current section
   in one native text field, its text set on the UI thread (no React render), instead of mounting every section
   label and sliding them. The bubble still fits its widest label: each distinct label is laid out once,
-  invisibly, once the app is idle (or the thumb shows), then unmounted; new labels are measured on their own.
-  **Breaking (test IDs):** the bubble's label is `<testID>-label` (was `-label-strip`), and
-  `CurrentSectionLabel`'s is `<testID>-text` (was `-strip`); they hold the shown label as the field's text,
-  not one text per section.
+  invisibly, once the app is idle (or the thumb shows), then unmounted; new labels are measured on their own,
+  200 per commit, so thousands of them never make one long JS task. **Breaking (test IDs):** the bubble's
+  label is `<testID>-label` (was `-label-strip`), and `CurrentSectionLabel`'s is `<testID>-text` (was
+  `-strip`); they hold the shown label as the field's text, not one text per section.
 - `colors` is optional, and each colour can be overridden on its own; defaults are in
   `LIST_SCRUBBER_DEFAULTS.colors`.
 - Performance: measuring the list no longer re-renders the component calling `useListScrubber`; only
