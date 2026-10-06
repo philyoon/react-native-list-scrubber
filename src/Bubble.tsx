@@ -38,23 +38,36 @@ export function Bubble({
     return { transform: [{ translateY: y }], ...(shown && { opacity: shown.get() ? 1 : 0 }) };
   });
   return (
+    // The bubble hangs off the thumb's narrow touch area, and an absolute view is measured against its
+    // parent's width: sized directly, a long label like "Jul 2025" was cut to "Ju…". So a wide, empty
+    // anchor takes the position and the bubble inside it sizes to its label.
     <Animated.View
       style={[
-        styles.box,
+        styles.anchor,
         {
           [side]: TOUCH_WIDTH + m.bubbleGap,
-          minWidth: m.bubbleSize,
           height: m.bubbleSize,
-          paddingHorizontal: m.bubblePadding,
-          borderRadius: m.bubbleRadius,
-          backgroundColor: colors.bubble,
+          alignItems: side === 'right' ? 'flex-end' : 'flex-start',
         },
-        style,
         shift,
       ]}
       pointerEvents="none"
     >
-      {children}
+      <Animated.View
+        style={[
+          styles.box,
+          {
+            minWidth: m.bubbleSize,
+            height: m.bubbleSize,
+            paddingHorizontal: m.bubblePadding,
+            borderRadius: m.bubbleRadius,
+            backgroundColor: colors.bubble,
+          },
+          style,
+        ]}
+      >
+        {children}
+      </Animated.View>
     </Animated.View>
   );
 }
@@ -73,6 +86,10 @@ export function bubbleTextStyle(
   };
 }
 
+/** Widest a bubble can grow: wider than any phone, so in practice only the label limits it */
+const ANCHOR_WIDTH = 1000;
+
 const styles = StyleSheet.create({
-  box: { position: 'absolute', alignSelf: 'center', alignItems: 'center', justifyContent: 'center' },
+  anchor: { position: 'absolute', alignSelf: 'center', width: ANCHOR_WIDTH },
+  box: { alignItems: 'center', justifyContent: 'center' },
 });
