@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "name": "List Scrubber",
+    "slug": "list-scrubber-example",
+    "scheme": "list-scrubber-example",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "plugins": ["expo-status-bar"]
+  }
+}

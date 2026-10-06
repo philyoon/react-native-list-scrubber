@@ -1,0 +1,10 @@
+node_modules/
+lib/
+*.log
+.DS_Store
+coverage/
+example/.expo/
+example/ios/
+example/android/
+.idea/
+.vscode/
