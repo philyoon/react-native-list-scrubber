@@ -25,6 +25,7 @@ jobs:
             exit 1
           fi
       - run: npm ci
+      - run: node scripts/check-reanimated-compat.mjs
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test -- --coverage
