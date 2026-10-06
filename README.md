@@ -23,6 +23,9 @@ A draggable thumb for scrubbing through long React Native lists, with a label bu
   can override one by one.
 - **Works with** FlatList, SectionList, ScrollView, Legend List and FlashList. See
   [Compatibility](#compatibility).
+- **Requires the New Architecture.** It's built on Reanimated 4, which runs only on React Native's New
+  Architecture (the default since 0.76): React Native 0.78+, Reanimated 4.1+. Apps still on the old
+  architecture with Reanimated 3 can't use it. See [Install](#install).
 
 ## Install
 
