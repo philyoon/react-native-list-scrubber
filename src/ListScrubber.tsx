@@ -1,5 +1,13 @@
 import { useMemo, useState } from 'react';
-import { StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type TextStyle,
+  type ViewStyle,
+} from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
@@ -202,6 +210,17 @@ export function ListScrubber({
   const thumbWidth = active ? m.thumbActiveWidth : m.thumbWidth;
   const bubbleProps = { metrics: m, colors, railHeight, dragging, dragTop, side, style: bubbleStyle };
 
+  // Web keyboard. Typed here rather than with React Native's ViewProps: its legacy and strict typings
+  // disagree on onKeyDown, and apps use either. React Native Web's nativeEvent is the DOM KeyboardEvent.
+  const onKeyDown = (e: { nativeEvent: { key: string }; preventDefault: () => void }) => {
+    const action = KEY_ACTIONS[e.nativeEvent.key];
+    if (!action) return;
+    e.preventDefault(); // the page itself mustn't scroll too
+    if (action === 'next' || action === 'previous') a11y.step(action === 'next' ? 1 : -1);
+    else if (action === 'pageDown' || action === 'pageUp') a11y.page(action === 'pageDown' ? 1 : -1);
+    else a11y.jumpTo(action === 'start' ? 0 : maxScroll);
+  };
+
   return (
     <View
       pointerEvents="box-none"
@@ -217,6 +236,7 @@ export function ListScrubber({
         aria-valuetext={a11y.value}
         accessibilityActions={A11Y_ACTIONS}
         onAccessibilityAction={(e) => a11y.step(e.nativeEvent.actionName === 'increment' ? 1 : -1)}
+        {...(Platform.OS === 'web' && webKeyboardProps(onKeyDown))}
         pointerEvents="none"
         style={StyleSheet.absoluteFill}
         testID={`${testID}-a11y`}
@@ -271,6 +291,26 @@ export function ListScrubber({
 }
 
 const A11Y_ACTIONS = [{ name: 'increment' }, { name: 'decrement' }];
+
+/** Web: a Tab stop driven by the keyboard (React Native Web forwards these to the DOM; native ignores them) */
+function webKeyboardProps(onKeyDown: (e: never) => void): object {
+  return { tabIndex: 0, 'aria-orientation': 'vertical', onKeyDown };
+}
+
+/**
+ * Web keyboard: the arrows step like a screen reader (down/right is further down the list, where the thumb
+ * moves), Page Up/Down move one screen, Home/End go to the ends.
+ */
+const KEY_ACTIONS: Record<string, 'next' | 'previous' | 'pageDown' | 'pageUp' | 'start' | 'end'> = {
+  ArrowDown: 'next',
+  ArrowRight: 'next',
+  ArrowUp: 'previous',
+  ArrowLeft: 'previous',
+  PageDown: 'pageDown',
+  PageUp: 'pageUp',
+  Home: 'start',
+  End: 'end',
+};
 
 const styles = StyleSheet.create({
   rail: { position: 'absolute', top: 0, bottom: 0 },

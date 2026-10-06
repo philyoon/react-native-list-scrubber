@@ -5,9 +5,9 @@ import { A11Y_PAGE, STEP_SLACK } from './defaults';
 import { clamp, firstIndexWhere, labelPosition, sectionIndexAt } from './math';
 
 /**
- * The screen-reader side: `step(±1)` scrolls to the next or previous of `steps` (or one screen), and
- * `value` describes the position as a section label, a `labelAt` label or a percentage.
- * `sync` re-reads the position after manual scrolling.
+ * The screen-reader (and web keyboard) side: `step(±1)` scrolls to the next or previous of `steps`
+ * (or one screen), `page(±1)` one screen, `jumpTo` to an offset, and `value` describes the position as a
+ * section label, a `labelAt` label or a percentage. `sync` re-reads the position after manual scrolling.
  */
 export function useA11yStepper({
   listRef,
@@ -46,24 +46,29 @@ export function useA11yStepper({
     [labels, offsets, labelAt, offset, formatPercent, maxScroll, contentHeight, viewportHeight],
   );
 
-  // One step back or forward from here (the next of `steps`, or one screen)
-  const step = (dir: 1 | -1) => {
-    const from = scrollY.get();
-    let to: number;
-    if (steps && steps.length) {
-      // Binary search: steps can be section starts, thousands of them
-      const next =
-        dir > 0
-          ? steps[firstIndexWhere(steps, (s) => s > from + STEP_SLACK)]
-          : steps[firstIndexWhere(steps, (s) => s >= from - STEP_SLACK) - 1];
-      to = next ?? (dir > 0 ? maxScroll : 0);
-    } else to = from + dir * viewportHeight * A11Y_PAGE;
+  /** Scroll the list to `to` (clamped) and describe that position */
+  const jumpTo = (to: number) => {
     to = clamp(to, 0, maxScroll);
     scheduleOnUI(scrollTo, listRef, 0, to, false);
     setOffset(to);
   };
 
+  /** One screen back or forward; the previous screen's last row stays visible */
+  const page = (dir: 1 | -1) => jumpTo(scrollY.get() + dir * viewportHeight * A11Y_PAGE);
+
+  // One step back or forward from here (the next of `steps`, or one screen)
+  const step = (dir: 1 | -1) => {
+    if (!steps || !steps.length) return page(dir);
+    const from = scrollY.get();
+    // Binary search: steps can be section starts, thousands of them
+    const next =
+      dir > 0
+        ? steps[firstIndexWhere(steps, (s) => s > from + STEP_SLACK)]
+        : steps[firstIndexWhere(steps, (s) => s >= from - STEP_SLACK) - 1];
+    jumpTo(next ?? (dir > 0 ? maxScroll : 0));
+  };
+
   const sync = () => setOffset(scrollY.get());
 
-  return { value, step, sync };
+  return { value, step, page, jumpTo, sync };
 }
