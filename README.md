@@ -370,23 +370,24 @@ Android emulator: dragging the thumb to the end and back on each list type, touc
 thumb, the screen-reader control, and jumping from the A–Z index. They run on iPhone SE, iPhone 17 Pro, iPhone
 17 Pro Max and a Pixel 8 emulator.
 
-Start Metro in e2e mode and keep it running:
+From the repo root, with Expo Go installed on the simulator or emulator, start Metro in e2e mode and keep it
+running:
 
 ```sh
-cd example
-npm run start:e2e
+npm run e2e:start
 ```
 
-Then, with Expo Go installed on the device:
+Then, in another terminal:
 
 ```sh
-npm run e2e                 # iOS simulator
-adb reverse tcp:8081 tcp:8081
-npm run e2e:android         # Android emulator
+npm run e2e:ios                          # iOS simulator
+npm run e2e:android                      # Android emulator (sets up adb reverse for Metro itself)
+npm run e2e:ios -- e2e/index.yaml        # just some flows (paths relative to example/)
 ```
 
-With more than one device running, Maestro may pick the wrong one: add `--device <udid or emulator-5554>`, for
-example `npx maestro --device emulator-5554 test -e APP_ID=host.exp.exponent e2e`.
+With more than one simulator or emulator running, pick one with `MAESTRO_DEVICE`, a simulator UDID or an
+emulator serial: `MAESTRO_DEVICE=emulator-5554 npm run e2e:android`. The scripts (`example/scripts/e2e.sh`)
+need a POSIX shell (macOS, Linux, WSL).
 
 How the flows find the thumb: it is hidden from screen readers, so Maestro, which finds elements through the
 accessibility tree, can't target it, and Maestro's swipe points are fixed screen percentages. In e2e mode

@@ -1,5 +1,5 @@
-# Opens the example in Expo Go (Metro must be running: npm run start:e2e) on the demo named DEMO.
-# Expo Go: host.exp.Exponent on iOS; on Android run with -e APP_ID=host.exp.exponent
+# Opens the example in Expo Go (Metro must be running: npm run e2e:start) on the demo named DEMO.
+# Expo Go: host.exp.Exponent on iOS; npm run e2e:android sets APP_ID=host.exp.exponent
 appId: ${APP_ID}
 env:
   APP_ID: host.exp.Exponent

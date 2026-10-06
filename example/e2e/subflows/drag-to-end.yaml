@@ -1,6 +1,6 @@
 # Shows the thumb (it appears only after the list scrolls), then drags it from the top of its track to
 # past the bottom of the screen: it clamps at the end. Points: see src/e2e.ts.
-# Expo Go: host.exp.Exponent on iOS; on Android run with -e APP_ID=host.exp.exponent
+# Expo Go: host.exp.Exponent on iOS; npm run e2e:android sets APP_ID=host.exp.exponent
 appId: ${APP_ID}
 env:
   APP_ID: host.exp.Exponent
