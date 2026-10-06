@@ -39,6 +39,8 @@
   text. Before, large text was clipped, or showed parts of two labels.
 - The screen-reader value is set with `aria-valuetext` (same value on iOS and Android), so React Native Web
   exposes it too; it was empty on web. The README describes what works on web.
+- Web: the screen-reader control is keyboard-operable: a Tab stop where the arrows step (like a screen
+  reader), Page Up/Down move one screen and Home/End go to the ends. iOS and Android are unchanged.
 - Section bubble: each label gets its own font size by its length, so one long label no longer shrinks every
   letter.
 - **Breaking:** `right` is replaced by `side` + `edgeOffset`.
