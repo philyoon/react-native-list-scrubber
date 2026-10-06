@@ -11,8 +11,8 @@
 //   announced as the label or a percentage.
 import { useState, type Component, type ReactNode } from 'react';
 import {
+  StyleSheet,
   Text,
-  TextInput,
   View,
   type LayoutChangeEvent,
   type StyleProp,
@@ -22,11 +22,11 @@ import {
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   scrollTo,
-  useAnimatedProps,
   useAnimatedReaction,
   useAnimatedRef,
   useAnimatedScrollHandler,
   useAnimatedStyle,
+  useDerivedValue,
   useSharedValue,
   withDelay,
   withSequence,
@@ -172,42 +172,93 @@ export interface ListScrubberSection {
   label: string;
 }
 
-// The bubble label is a read-only TextInput so its text can be set from the UI thread.
-const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
+/**
+ * All labels stacked in a column, one per `height`, inside a window one label tall. The UI thread
+ * slides the column so `index` shows: a transform, so it never waits for JS or a React render.
+ * The column is as wide as its widest label, so a bubble around it sizes itself.
+ */
+function LabelStrip({
+  index,
+  labels,
+  height,
+  style,
+}: {
+  index: SharedValue<number>;
+  labels: readonly string[];
+  height: number;
+  style?: StyleProp<TextStyle>;
+}) {
+  const slide = useAnimatedStyle(() => ({
+    transform: [{ translateY: -Math.max(0, Math.min(labels.length - 1, index.get())) * height }],
+  }));
+  return (
+    <View style={{ height, overflow: 'hidden' }}>
+      <Animated.View style={slide} testID="list-scrubber-label-strip">
+        {labels.map((label, i) => (
+          <View key={i} style={{ height, justifyContent: 'center' }}>
+            <Text numberOfLines={1} style={style}>
+              {label}
+            </Text>
+          </View>
+        ))}
+      </Animated.View>
+    </View>
+  );
+}
 
 /**
  * The label of the section at the top of the list, drawn on the UI thread: use it for a pinned
  * header over the list. Native sticky headers (SectionList) only pin headers of rows already rendered,
  * so they show the wrong section while the scrubber jumps; this one follows the scroll position
  * directly. Hidden from screen readers (the list's own headers are read instead).
+ * Renders every label once, so it suits up to a few hundred sections.
  */
 export function SectionLabel({
   scrollY,
   sections,
+  height,
   style,
 }: {
   scrollY: SharedValue<number>;
   sections: readonly ListScrubberSection[];
+  /** Height of one label line (default: the style's lineHeight, else 1.3 × fontSize) */
+  height?: number;
   style?: StyleProp<TextStyle>;
 }) {
   const offsets = sections.map((s) => s.offset);
-  const labels = sections.map((s) => s.label);
-  const animatedProps = useAnimatedProps(
-    () => ({ text: labels[sectionIndexAt(offsets, scrollY.get())] ?? '' }) as object,
-  );
+  const flat = StyleSheet.flatten(style) ?? {};
+  const lineHeight = height ?? flat.lineHeight ?? Math.ceil((flat.fontSize ?? 14) * 1.3);
+  const index = useDerivedValue(() => sectionIndexAt(offsets, scrollY.get()));
   return (
-    <AnimatedTextInput
-      editable={false}
+    <View
       pointerEvents="none"
-      underlineColorAndroid="transparent"
-      defaultValue={labels[0] ?? ''}
-      animatedProps={animatedProps}
-      style={[{ padding: 0, margin: 0 }, style]}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       testID="list-scrubber-section-label"
-    />
+    >
+      <LabelStrip index={index} labels={sections.map((s) => s.label)} height={lineHeight} style={style} />
+    </View>
   );
+}
+
+/**
+ * Animated style for a pinned section header: as the next section's own header (in the list) reaches
+ * it, the pinned header is pushed up and out, like iOS Contacts, instead of being swapped underneath.
+ * Put it on the view that holds the pinned header, inside a container with `overflow: 'hidden'`.
+ * `height` is the header's height; section offsets are where each section's header starts.
+ */
+export function usePinnedHeaderStyle(
+  scrollY: SharedValue<number>,
+  sections: readonly ListScrubberSection[],
+  height: number,
+) {
+  const offsets = sections.map((s) => s.offset);
+  return useAnimatedStyle(() => {
+    const y = scrollY.get();
+    const next = offsets[sectionIndexAt(offsets, y) + 1];
+    const push = next === undefined || y < 0 ? 0 : Math.min(0, next - y - height);
+    return { transform: [{ translateY: push }] };
+  });
 }
 
 export interface ListScrubberColors {
@@ -365,11 +416,6 @@ export function ListScrubber({
     return { opacity: opacity.get(), transform: [{ translateY: Math.min(track, Math.max(0, top)) }] };
   });
 
-  const bubbleTextProps = useAnimatedProps(() => {
-    const i = sectionIdx.get();
-    // `text` sets the native value directly, without a React render.
-    return { text: i >= 0 ? (labels[i] ?? '') : '' } as object;
-  });
   // Keep the bubble inside the list at both ends: it is taller than the handle it is centred on.
   const bubbleShift = useAnimatedStyle(() => {
     const top = dragging.get() ? dragTop.get() : 0;
@@ -399,7 +445,7 @@ export function ListScrubber({
   const a11yValue =
     (sections?.length ? labels[sectionIndexAt(offsets, a11yOffset)] : labelAt?.(a11yOffset)) ??
     formatPercent(Math.round((a11yOffset / maxScroll) * 100));
-  // With sections the bubble is as wide as the longest label, sized by an invisible copy of it
+  // With sections, one font size for all: the longest label decides
   const longest = labels.reduce((a, b) => (b.length > a.length ? b : a), '');
   const bubbleBox: ViewStyle = {
     position: 'absolute',
@@ -462,20 +508,11 @@ export function ListScrubber({
               style={[bubbleBox, bubbleStyle, sectionBubbleStyle, bubbleShift]}
               pointerEvents="none"
             >
-              <Text numberOfLines={1} style={[textStyle(longest), bubbleTextStyle, { opacity: 0 }]}>
-                {longest}
-              </Text>
-              <AnimatedTextInput
-                editable={false}
-                pointerEvents="none"
-                underlineColorAndroid="transparent"
-                animatedProps={bubbleTextProps}
-                style={[
-                  textStyle(longest),
-                  bubbleTextStyle,
-                  { position: 'absolute', left: 0, right: 0, padding: 0, margin: 0, textAlign: 'center' },
-                ]}
-                testID="list-scrubber-bubble-text"
+              <LabelStrip
+                index={sectionIdx}
+                labels={labels}
+                height={m.bubbleSize}
+                style={[textStyle(longest), bubbleTextStyle, { textAlign: 'center' }]}
               />
             </Animated.View>
           ) : (

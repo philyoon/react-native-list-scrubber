@@ -8,6 +8,7 @@ import {
   ListScrubber,
   SectionLabel,
   useListScrubber,
+  usePinnedHeaderStyle,
   type ListScrubberSection,
 } from 'react-native-list-scrubber';
 import {
@@ -126,7 +127,9 @@ function FlatListDemo() {
 
 const AnimatedSectionList = Animated.createAnimatedComponent(SectionList<Contact, Section>);
 
-// SectionList with sticky headers. getItemLayout counts a header and a (zero-height) footer per section.
+// SectionList with the recommended pinned header: native sticky headers only pin headers that are already
+// rendered, so they lag behind scrubber jumps. SectionLabel + usePinnedHeaderStyle draw it on the UI thread,
+// and the next header pushes it out like iOS Contacts. getItemLayout counts a header and a footer per section.
 function SectionListDemo() {
   const colors = useColors();
   const scrubber = useListScrubber();
@@ -147,13 +150,14 @@ function SectionListDemo() {
     }
     return { layout, sections };
   }, [data]);
+  const push = usePinnedHeaderStyle(scrubber.scrollY, sections, HEADER);
   return (
     <>
       <AnimatedSectionList
         {...scrubber.listProps}
         sections={data}
         keyExtractor={(c) => c.id}
-        stickySectionHeadersEnabled
+        stickySectionHeadersEnabled={false}
         renderSectionHeader={({ section }) => (
           <View style={[styles.header, { backgroundColor: colors.header }]}>
             <Text style={{ color: colors.secondary, fontWeight: '700' }}>{section.title}</Text>
@@ -162,6 +166,15 @@ function SectionListDemo() {
         renderItem={({ item }) => <ContactRow item={item} colors={colors} />}
         getItemLayout={(_, index) => ({ ...layout[index]!, index })}
       />
+      <View style={[styles.pinned, { height: HEADER, overflow: 'hidden' }]} pointerEvents="none">
+        <Animated.View style={[styles.header, { backgroundColor: colors.header }, push]}>
+          <SectionLabel
+            scrollY={scrubber.scrollY}
+            sections={sections}
+            style={{ color: colors.secondary, fontWeight: '700', fontSize: 14 }}
+          />
+        </Animated.View>
+      </View>
       <Scrubber scrubber={scrubber} sections={sections} />
     </>
   );
@@ -240,7 +253,7 @@ export const DEMOS: { name: string; hint: string; Component: ComponentType }[] =
   { name: 'FlatList', hint: '3,000 contacts A–Z, pinned letter header', Component: FlatListDemo },
   {
     name: 'SectionList',
-    hint: 'Native sticky headers (they lag behind big jumps)',
+    hint: 'Pinned header pushed out by the next one',
     Component: SectionListDemo,
   },
   { name: 'FlashList', hint: 'Positions are estimates until rows are measured', Component: FlashListDemo },

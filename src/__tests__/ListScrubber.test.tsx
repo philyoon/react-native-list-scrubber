@@ -8,6 +8,7 @@ import {
   ListScrubber,
   type ListScrubberProps,
   SectionLabel,
+  usePinnedHeaderStyle,
   labelProbe,
   sectionIndexAt,
   useListScrubber,
@@ -123,15 +124,15 @@ describe('sections', () => {
     { offset: 800, label: 'Zebra' },
   ];
 
-  it('draws the bubble label natively, sized for the longest label, and never asks labelAt', async () => {
+  it('draws every section label once in a strip and never asks labelAt', async () => {
     const labelAt = jest.fn(() => 'js');
     await setup({ sections, labelAt });
     await drag(26);
     await act(async () => {});
     expect(labelAt).not.toHaveBeenCalled();
-    expect(screen.getByTestId('list-scrubber-bubble-text', { includeHiddenElements: true })).toBeTruthy();
-    // the invisible sizing copy
-    expect(screen.getByText('Zebra', { includeHiddenElements: true })).toBeTruthy();
+    for (const s of sections) {
+      expect(screen.getByText(s.label, { includeHiddenElements: true })).toBeTruthy();
+    }
   });
 
   it('screen readers step section by section and hear the section label', async () => {
@@ -175,19 +176,44 @@ describe('label helpers', () => {
   });
 });
 
-it('SectionLabel shows the section at the top of the list', async () => {
+it('SectionLabel slides its label strip to the section at the top of the list', async () => {
   const scrollY = sharedZero();
   scrollY.set(620);
   await render(
     <SectionLabel
       scrollY={scrollY}
+      height={20}
       sections={[
         { offset: 0, label: 'A' },
         { offset: 500, label: 'M' },
       ]}
     />,
   );
-  const label = screen.getByTestId('list-scrubber-section-label', { includeHiddenElements: true });
-  // the Reanimated mock passes animatedProps through as a plain object
-  expect(label.props.animatedProps.text).toBe('M');
+  // the Reanimated mock computes animated styles once, from the current values: 'M' is the second line
+  const strip = screen.getByTestId('list-scrubber-label-strip', { includeHiddenElements: true });
+  expect(StyleSheet.flatten(strip.props.style)).toMatchObject({ transform: [{ translateY: -20 }] });
+});
+
+describe('usePinnedHeaderStyle', () => {
+  const sections = [
+    { offset: 0, label: 'A' },
+    { offset: 500, label: 'B' },
+  ];
+  const push = async (y: number) => {
+    const scrollY = sharedZero();
+    scrollY.set(y);
+    const { result } = await renderHook(() => usePinnedHeaderStyle(scrollY, sections, 36));
+    return (result.current as unknown as { transform: { translateY: number }[] }).transform[0]!.translateY;
+  };
+
+  it('stays put until the next header reaches it', async () => {
+    expect(await push(0)).toBe(0);
+    expect(await push(464)).toBe(0); // B's header top is exactly one header below
+  });
+
+  it('is pushed up by the next header, then the next section takes over', async () => {
+    expect(await push(480)).toBe(-16);
+    expect(await push(499)).toBe(-35);
+    expect(await push(500)).toBe(0); // now pinned B, nothing after it
+  });
 });

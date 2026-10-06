@@ -6,7 +6,7 @@ A drag handle for scrubbing through long React Native lists, with a label bubble
 
 - **Runs on the UI thread.** The drag, the handle, the list scroll *and the bubble label* are all driven by Reanimated and Gesture Handler. They keep up with your finger even while JS is busy rendering rows.
 - **Label bubble.** Pass labelled `sections` (A–Z, months, chapters…). The bubble shows the one under your finger, and it reaches the last section even when that section is shorter than a screen.
-- **Pinned header.** `SectionLabel` draws the current section's name, for a header pinned above the list. Unlike native sticky headers, it doesn't fall behind big jumps.
+- **Pinned header.** `SectionLabel` draws the current section's name, for a header pinned above the list. Unlike native sticky headers, it doesn't fall behind big jumps. `usePinnedHeaderStyle` lets the next section's header push it out, like iOS Contacts.
 - **Screen readers.** An adjustable "Scroll position" control is always present. Swipe up or down to step to the next section, and VoiceOver or TalkBack reads its label.
 - **Unstyled.** You pass the colours, text and haptics. Sizes and timings have defaults you can override.
 - **Works with** FlatList, SectionList, ScrollView, Legend List and FlashList. See [Compatibility](#compatibility).
@@ -77,13 +77,21 @@ The list must be an **Animated** component, so the scroll handler runs on the UI
 
 ### Pinned header
 
+Put section headers in the list (with section `offset`s pointing at them), and pin a copy on top:
+
 ```tsx
-<View style={styles.pinnedHeader} pointerEvents="none">
-  <SectionLabel scrollY={scrubber.scrollY} sections={sections} style={styles.headerText} />
+const push = usePinnedHeaderStyle(scrubber.scrollY, sections, HEADER_HEIGHT);
+
+<View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: HEADER_HEIGHT, overflow: 'hidden' }} pointerEvents="none">
+  <Animated.View style={[styles.header, push]}>
+    <SectionLabel scrollY={scrubber.scrollY} sections={sections} style={styles.headerText} />
+  </Animated.View>
 </View>
 ```
 
-The text is set from the UI thread, so it changes in the same frame as the list.
+- `SectionLabel` renders every label once in a column and slides it from the UI thread. It changes in the same frame as the list and survives React re-renders. That suits up to a few hundred sections. Its line height comes from the style's `lineHeight` (or 1.3 × `fontSize`), or set `height`.
+- `usePinnedHeaderStyle` pushes the pinned header up as the next section's header reaches it, instead of swapping the letter underneath.
+- With SectionList, turn off `stickySectionHeadersEnabled`: its native sticky headers only pin headers that are already rendered, so they lag behind scrubber jumps.
 
 ### Labels that aren't sections
 
@@ -127,14 +135,14 @@ The touch width is fixed at 44 pt, the minimum touch target.
 
 ## Compatibility
 
-Tested in the example app on iOS (Expo SDK 57, React Native 0.86, Reanimated 4.5, Gesture Handler 2.32):
+Tested on iOS in the example app (Expo SDK 57, React Native 0.86, Reanimated 4.5, Gesture Handler 2.32). The pinned header, push and section bubble were also checked on Android, in the app this library came from:
 
 | List | Result |
 |---|---|
 | FlatList + `getItemLayout` | Exact. Bubble, pinned header and rows agree in every frame |
 | ScrollView | Exact |
 | Legend List + `getFixedItemSize` | Exact |
-| SectionList + `getItemLayout` | Exact bubble. Its native sticky headers lag behind big jumps: use `SectionLabel` instead |
+| SectionList + `getItemLayout` | Exact. Use the pinned header above instead of native sticky headers, which lag behind big jumps |
 | FlashList v2 | Works, but positions are estimates. FlashList sizes unmeasured rows at 200 pt and has no prop for real sizes, so on unvisited parts of a long list the handle and labels can be off |
 
 The scrubber needs to know where things are. Lists that measure rows as they render, such as FlatList without `getItemLayout` or variable-height rows, give estimated positions.
