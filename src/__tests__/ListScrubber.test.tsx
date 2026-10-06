@@ -335,6 +335,23 @@ describe('API options', () => {
     expect(StyleSheet.flatten(bubble.props.style)).toMatchObject({ left: 44 + 40 });
   });
 
+  it.each(['left', 'right'] as const)(
+    'side="%s": the bubble is placed with left/right only, so RTL mirroring moves it with the thumb',
+    async (side) => {
+      await setup({ side, labelAt: () => 'Jan' });
+      await act(async () => {
+        pan().onBegin({});
+        pan().onUpdate({ translationY: 10 });
+      });
+      let box = screen.getByText('Jan', { includeHiddenElements: true }).parent!;
+      while (!StyleSheet.flatten(box.props.style)?.backgroundColor) box = box.parent!;
+      // Flex alignment flips with the layout direction even where left/right don't (web), which once put
+      // the bubble off-screen in RTL; so neither the bubble nor its anchor may use it
+      expect(StyleSheet.flatten(box.props.style)).toMatchObject({ position: 'absolute', [side]: 0 });
+      expect(StyleSheet.flatten(box.parent!.props.style).alignItems).toBeUndefined();
+    },
+  );
+
   it('draws with default colours, overridable one by one', async () => {
     const thumbColor = () =>
       StyleSheet.flatten(
@@ -371,13 +388,15 @@ describe('API options', () => {
     expect(screen.getByTestId('list-scrubber-a11y', { includeHiddenElements: true })).toBeTruthy();
   });
 
-  it('defaults to the left edge in RTL layouts', async () => {
+  it("defaults to 'right' in RTL layouts too: React Native mirrors it to the left edge", async () => {
+    // On iOS and Android, React Native swaps left/right in RTL by default, so 'right' already lands on the
+    // left edge; defaulting to 'left' in RTL would be mirrored back to the right
     const rtl = jest.replaceProperty(I18nManager, 'isRTL', true);
     try {
       await setup();
       const rail = screen.getByTestId('list-scrubber-a11y', { includeHiddenElements: true }).parent!;
-      expect(StyleSheet.flatten(rail.props.style)).toMatchObject({ left: 0 });
-      expect(StyleSheet.flatten(rail.props.style).right).toBeUndefined();
+      expect(StyleSheet.flatten(rail.props.style)).toMatchObject({ right: 0 });
+      expect(StyleSheet.flatten(rail.props.style).left).toBeUndefined();
     } finally {
       rtl.restore();
     }

@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import {
-  I18nManager,
   Platform,
   StyleSheet,
   Text,
@@ -52,7 +51,11 @@ interface ListScrubberBaseProps {
   onDragStart?: () => void;
   /** Drag ended (finger lifted or gesture cancelled) */
   onDragEnd?: () => void;
-  /** Which edge of the list the thumb sits on (default: the trailing edge, 'right', or 'left' in RTL layouts) */
+  /**
+   * Which edge of the list the thumb sits on, as laid out left to right (default 'right'). On iOS and Android,
+   * React Native mirrors left/right in RTL layouts by default, so the scrubber moves to the left edge by itself:
+   * don't flip this for RTL there. On web, left/right aren't mirrored: pass 'left' for an RTL page.
+   */
   side?: 'left' | 'right';
   /** Distance from that edge (negative to sit in a margin outside the list) */
   edgeOffset?: number;
@@ -125,7 +128,7 @@ export function ListScrubber({
   onDragStart,
   onDragEnd,
   onSectionChange,
-  side = I18nManager.isRTL ? 'left' : 'right',
+  side = 'right',
   edgeOffset = 0,
   insets,
   enabled = true,

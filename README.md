@@ -187,8 +187,8 @@ Optional:
 - `onDragStart`, `onDragEnd`: the drag started or ended, e.g. for haptics.
 - `onSectionChange(index, section)`: with `sections`, the finger crossed into another section while dragging,
   e.g. for a haptic tick.
-- `side`: `'left'` or `'right'` edge of the list. Default: the trailing edge, `'right'`, or `'left'` when
-  `I18nManager.isRTL`.
+- `side`: `'left'` or `'right'` edge of the list, as laid out left to right. Default: `'right'`. See
+  [Right-to-left layouts](#right-to-left-layouts).
 - `edgeOffset`: distance from that edge, negative to sit in a margin outside the list. Default: `0`.
 - `insets`: `{ top, bottom }` space the thumb stays out of, e.g. under a pinned header or above a toolbar.
 - `enabled`: `false` hides the scrubber and its screen-reader control, keeping its state. Default: `true`.
@@ -231,6 +231,17 @@ component that takes the hook's result with sections:
 
 The touch width is fixed at 44 pt, the minimum touch target.
 
+## Right-to-left layouts
+
+The scrubber places everything with `left` and `right`, never with flex alignment, so it mirrors as one piece:
+
+- **iOS and Android:** React Native swaps `left` and `right` in RTL layouts by default, so in an RTL app the
+  thumb moves to the left edge with the bubble on its right, without any change. Don't flip `side` for RTL:
+  that would mirror it twice, back to the right. (Only if your app turned this off with
+  `I18nManager.swapLeftAndRightInRTL(false)`, pick the side yourself.)
+- **Web:** React Native Web keeps `left` and `right` as written, so on an RTL page pass `side="left"`
+  yourself. Checked on Expo web in an RTL layout, with the bubble beside the thumb on either side.
+
 ## Compatibility
 
 Tested in the example app (Expo SDK 57, React Native 0.86, Reanimated 4.5, Gesture Handler 2.32): by hand on
@@ -256,8 +267,8 @@ fastest after a jump.
 ## Limits
 
 - **Vertical lists only.** Horizontal lists aren't supported.
-- **RTL picks the edge, not the direction.** In RTL layouts the thumb defaults to the left edge; the bubble
-  and the drag direction aren't otherwise mirrored.
+- **Right-to-left:** mirrored automatically on iOS and Android, not on web. See
+  [Right-to-left layouts](#right-to-left-layouts).
 - **Inverted lists** aren't handled: the thumb follows the content offset, not the visual direction.
 - **Web: works, with limits.** Checked in the example app on Expo web (React Native Web 0.21) in desktop
   Chromium: the thumb appears on scroll, dragging scrolls every list type, and the bubble, pinned header and
