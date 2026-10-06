@@ -8,9 +8,9 @@ A drag handle for scrubbing through long React Native lists, with a label bubble
   Reanimated and Gesture Handler. They keep up with your finger even while JS is busy rendering rows.
 - **Label bubble.** Pass labelled `sections` (A–Z, months, chapters…). The bubble shows the one under your
   finger, and it reaches the last section even when that section is shorter than a screen.
-- **Pinned header.** `SectionLabel` draws the current section's name, for a header pinned above the list.
-  Unlike native sticky headers, it doesn't fall behind big jumps. `usePinnedHeaderStyle` lets the next
-  section's header push it out, like iOS Contacts.
+- **Pinned header.** `PinnedSectionHeader` shows the current section's name in a header pinned above the list.
+  Unlike native sticky headers, it doesn't fall behind big jumps, and the next section's header pushes it out,
+  like iOS Contacts.
 - **Screen readers.** An adjustable "Scroll position" control is always present. Swipe up or down to step to
   the next section, and VoiceOver or TalkBack reads its label.
 - **Unstyled.** You pass the colours, text and haptics. Sizes and timings have defaults you can override.
@@ -73,9 +73,16 @@ function Contacts({ contacts }: { contacts: Contact[] }) {
 ```
 
 `listProps` holds `ref`, `onScroll`, `scrollEventThrottle`, `onLayout`, `onContentSizeChange` and hides the
-native indicator. If your list needs its own `onLayout` or `onContentSizeChange`, wire the pieces yourself:
-`useListScrubber()` also returns `listRef`, `scrollY` and `onScroll`, and `ListScrubber` takes `contentHeight`
-and `viewportHeight` directly.
+native indicator. If your list needs its own handlers, pass them to the hook and they're called after the
+scrubber's:
+
+```tsx
+const scrubber = useListScrubber({ onLayout, onContentSizeChange, onScroll: myScrollWorklet });
+```
+
+`onScroll` there is a worklet (it runs on the UI thread); keep its identity stable. The hook also returns the
+pieces `listProps` and `scrubberProps` are made of (`listRef`, `scrollY`, `onScroll`, `contentHeight`,
+`viewportHeight`) for wiring them by hand; all of these are public API.
 
 The list must be an **Animated** component, so the scroll handler runs on the UI thread:
 
@@ -88,35 +95,39 @@ The list must be an **Animated** component, so the scroll handler runs on the UI
 
 ### Pinned header
 
-Put section headers in the list (with section `offset`s pointing at them), and pin a copy on top:
+Put section headers in the list (with section `offset`s pointing at them), and pin a copy on top, next to the
+list:
 
 ```tsx
-const push = usePinnedHeaderStyle(scrubber.scrollY, sections, HEADER_HEIGHT);
-
-<View
-  style={{ position: 'absolute', top: 0, left: 0, right: 0, height: HEADER_HEIGHT, overflow: 'hidden' }}
-  pointerEvents="none"
->
-  <Animated.View style={[styles.header, push]}>
-    <SectionLabel scrollY={scrubber.scrollY} sections={sections} style={styles.headerText} />
-  </Animated.View>
-</View>;
+<PinnedSectionHeader
+  scrollY={scrubber.scrollY}
+  sections={sections}
+  height={HEADER_HEIGHT}
+  style={styles.header}
+  textStyle={styles.headerText}
+/>
 ```
 
-- `SectionLabel` renders every label once in a column and slides it from the UI thread. It changes in the same
-  frame as the list and survives React re-renders. That suits up to a few hundred sections. Its line height
-  comes from the style's `lineHeight` (or 1.3 × `fontSize`), or set `height`.
-- `usePinnedHeaderStyle` pushes the pinned header up as the next section's header reaches it, instead of
-  swapping the letter underneath.
+- It shows the current section's label, drawn on the UI thread: it changes in the same frame as the list, even
+  during scrubber jumps. It renders every label once and slides them, which suits up to a few hundred
+  sections.
+- As the next section's header reaches it, it's pushed up and out, like iOS Contacts. If the list has no
+  section headers of its own, pass `push={false}`.
+- Give the scrubber `insets={{ top: HEADER_HEIGHT }}` to keep the handle out from under it.
+- For a custom pinned header, build it from `CurrentSectionLabel` (the label alone; its line height comes from
+  the style's `lineHeight`, or 1.3 × `fontSize`, or `height`) and
+  `usePinnedSectionHeaderStyle(scrollY, sections, height)` (the push, as an animated style).
 - With SectionList, turn off `stickySectionHeadersEnabled`: its native sticky headers only pin headers that
   are already rendered, so they lag behind scrubber jumps.
 
 ### Labels that aren't sections
 
-`labelAt(offset)` computes any label on the JS thread, for example "42%". It can lag a frame or two behind a
-fast drag, so prefer `sections` when the labels are known ahead of time. Two helpers come from the same logic:
-`labelProbe(offset, contentHeight, viewportHeight)` gives the content position to describe, and
-`sectionIndexAt(starts, y)` does a binary search over section starts.
+`labelAt(position, scrollOffset)` computes any label on the JS thread, for example "42%". It can lag a frame
+or two behind a fast drag, so prefer `sections` when the labels are known ahead of time. `position` is the
+content offset to describe: it slides from the top of the viewport at the start to its bottom at the end, so
+the last rows get a label even when they're shorter than a screen. `scrollOffset` is the raw scroll position.
+`sectionIndexAt(starts, y)` does a binary search over ascending section starts, if your labels come from a
+list of your own.
 
 ## Props
 
@@ -129,18 +140,27 @@ Required:
 Optional:
 
 - `sections`: `{ offset, label }[]`, ascending. Drives the bubble and the screen-reader steps.
-- `labelAt(offset)`: a JS-thread label when there are no `sections`.
-- `steps`: screen-reader step targets. Default: the section offsets, else one screen.
-- `formatPercent`: the screen-reader value when there's no label. Default: `40%`.
-- `onDragStart`: the drag started, e.g. for haptics.
+- `labelAt(position, scrollOffset)`: a JS-thread label when there are no `sections`. The types accept one or
+  the other.
+- `accessibilitySteps`: screen-reader step targets. Default: the section offsets, else one screen. Dragging
+  doesn't snap to them.
+- `formatAccessibilityPercent`: the screen-reader value when there's no label. Default: `40%`.
+- `onDragStart`, `onDragEnd`: the drag started or ended, e.g. for haptics.
 - `onSectionChange(index, section)`: with `sections`, the finger crossed into another section while dragging,
   e.g. for a haptic tick.
-- `right`: offset from the right edge, negative to sit in a margin outside the list. Default: `0`.
-- `railWidth`: width of the handle's strip. Default: `20`.
+- `side`: `'left'` or `'right'` edge of the list. Default: `'right'`. For RTL layouts, pass
+  `I18nManager.isRTL ? 'left' : 'right'`.
+- `edgeOffset`: distance from that edge, negative to sit in a margin outside the list. Default: `0`.
+- `insets`: `{ top, bottom }` space the handle stays out of, e.g. under a pinned header or above a toolbar.
+- `enabled`: `false` hides the scrubber and its screen-reader control, keeping its state. Default: `true`.
+- `testID`: prefix of the test IDs (`<testID>` for the drag gesture, `-handle`, `-a11y`, `-label-strip`).
+  Default: `list-scrubber`.
 - `metrics`, `timing`: partial overrides of the defaults below.
 - `bubbleStyle`, `bubbleTextStyle`: extra styles, e.g. a shadow or a font.
 
 ### Defaults (`LIST_SCRUBBER_DEFAULTS`)
+
+The **thumb** is the visible bar; the **handle** is the draggable touch area around it.
 
 | `metrics`                               | pt      |                                                     |
 | --------------------------------------- | ------- | --------------------------------------------------- |
@@ -184,10 +204,10 @@ fastest after a jump.
 ## Limits
 
 - **Vertical lists only.** Horizontal lists aren't supported.
-- **Right edge, no RTL mirroring.** The handle sits at `right`; it doesn't flip for right-to-left layouts.
+- **No automatic RTL mirroring.** The handle stays on `side`; pick the side from `I18nManager.isRTL`.
 - **Inverted lists** aren't handled: the handle follows the content offset, not the visual direction.
 - **Native only (iOS, Android).** Not tested on web.
-- `SectionLabel` renders every section label once, so it suits up to a few hundred sections.
+- `PinnedSectionHeader` renders every section label once, so it suits up to a few hundred sections.
 
 ## Example app
 

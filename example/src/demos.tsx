@@ -7,9 +7,8 @@ import { SectionList, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import {
   ListScrubber,
-  SectionLabel,
+  PinnedSectionHeader,
   useListScrubber,
-  usePinnedHeaderStyle,
   type ListScrubberSection,
 } from 'react-native-list-scrubber';
 import {
@@ -93,7 +92,7 @@ function monthSections(entries: Entry[]): ListScrubberSection[] {
 }
 
 // FlatList: fixed rows via getItemLayout, sections from the first row of each letter,
-// and a pinned letter header drawn on the UI thread (SectionLabel).
+// and a pinned letter header drawn on the UI thread (PinnedSectionHeader; the list has no headers to push it).
 function FlatListDemo() {
   const colors = useColors();
   const scrubber = useListScrubber();
@@ -119,13 +118,14 @@ function FlatListDemo() {
         maxToRenderPerBatch={24}
         updateCellsBatchingPeriod={16}
       />
-      <View style={[styles.header, styles.pinned, { backgroundColor: colors.header }]} pointerEvents="none">
-        <SectionLabel
-          scrollY={scrubber.scrollY}
-          sections={sections}
-          style={{ color: colors.secondary, fontWeight: '700', fontSize: 14 }}
-        />
-      </View>
+      <PinnedSectionHeader
+        scrollY={scrubber.scrollY}
+        sections={sections}
+        height={HEADER}
+        push={false}
+        style={[styles.header, { backgroundColor: colors.header }]}
+        textStyle={{ color: colors.secondary, fontWeight: '700', fontSize: 14 }}
+      />
       <Scrubber scrubber={scrubber} sections={sections} />
     </>
   );
@@ -134,7 +134,7 @@ function FlatListDemo() {
 const AnimatedSectionList = Animated.createAnimatedComponent(SectionList<Contact, Section>);
 
 // SectionList with the recommended pinned header: native sticky headers only pin headers that are already
-// rendered, so they lag behind scrubber jumps. SectionLabel + usePinnedHeaderStyle draw it on the UI thread,
+// rendered, so they lag behind scrubber jumps. PinnedSectionHeader draws it on the UI thread,
 // and the next header pushes it out like iOS Contacts. getItemLayout counts a header and a footer per section.
 function SectionListDemo() {
   const colors = useColors();
@@ -156,7 +156,6 @@ function SectionListDemo() {
     }
     return { layout, sections };
   }, [data]);
-  const push = usePinnedHeaderStyle(scrubber.scrollY, sections, HEADER);
   return (
     <>
       <AnimatedSectionList
@@ -172,15 +171,13 @@ function SectionListDemo() {
         renderItem={({ item }) => <ContactRow item={item} colors={colors} />}
         getItemLayout={(_, index) => ({ ...layout[index]!, index })}
       />
-      <View style={[styles.pinned, { height: HEADER, overflow: 'hidden' }]} pointerEvents="none">
-        <Animated.View style={[styles.header, { backgroundColor: colors.header }, push]}>
-          <SectionLabel
-            scrollY={scrubber.scrollY}
-            sections={sections}
-            style={{ color: colors.secondary, fontWeight: '700', fontSize: 14 }}
-          />
-        </Animated.View>
-      </View>
+      <PinnedSectionHeader
+        scrollY={scrubber.scrollY}
+        sections={sections}
+        height={HEADER}
+        style={[styles.header, { backgroundColor: colors.header }]}
+        textStyle={{ color: colors.secondary, fontWeight: '700', fontSize: 14 }}
+      />
       <Scrubber scrubber={scrubber} sections={sections} />
     </>
   );
@@ -280,5 +277,4 @@ const styles = StyleSheet.create({
   avatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   rowText: { fontSize: 16, fontWeight: '500' },
   header: { height: HEADER, justifyContent: 'center', paddingHorizontal: 16 },
-  pinned: { position: 'absolute', top: 0, left: 0, right: 0 },
 });

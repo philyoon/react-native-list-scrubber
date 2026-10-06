@@ -7,12 +7,13 @@ import {
   LIST_SCRUBBER_DEFAULTS,
   ListScrubber,
   type ListScrubberProps,
-  SectionLabel,
-  usePinnedHeaderStyle,
-  labelProbe,
+  CurrentSectionLabel,
+  PinnedSectionHeader,
+  usePinnedSectionHeaderStyle,
   sectionIndexAt,
   useListScrubber,
 } from '../index';
+import { labelPosition } from '../math';
 
 // Worklets' mock hops to JS with queueMicrotask; keep it real so scheduleOnRN still runs.
 jest.useFakeTimers({ doNotFake: ['queueMicrotask'] });
@@ -84,7 +85,7 @@ function setup(props: Partial<ListScrubberProps> = {}) {
       viewportHeight={100}
       colors={colors}
       accessibilityLabel="Scroll position"
-      {...props}
+      {...(props as object)} // a Partial of the sections / labelAt union isn't spreadable as is
     />,
   );
 }
@@ -117,7 +118,7 @@ it('dragging scrolls the list in proportion and asks for the label at that spot'
   await drag(26); // half of 52
   expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 450, false); // (1000 - 100) / 2
   await act(async () => {}); // the label is drawn on the JS thread
-  expect(labelAt).toHaveBeenCalledWith(450);
+  expect(labelAt).toHaveBeenCalledWith(500, 450); // the position to describe (see labelPosition), the scroll offset
   expect(onDragStart).toHaveBeenCalledTimes(1);
   await drag(900); // past the end: clamps
   expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 900, false);
@@ -150,7 +151,7 @@ describe('screen readers', () => {
   });
 
   it('steps one screen at a time and announces the percentage', async () => {
-    await setup({ formatPercent: (p) => `${p} percent` });
+    await setup({ formatAccessibilityPercent: (p) => `${p} percent` });
     const el = screen.getByRole('adjustable', { name: 'Scroll position' });
     await fireEvent(el, 'accessibilityAction', { nativeEvent: { actionName: 'increment' } });
     await act(() => jest.advanceTimersByTime(20)); // the scroll runs on the UI thread (next frame)
@@ -159,7 +160,7 @@ describe('screen readers', () => {
   });
 
   it('with steps (e.g. section headers) jumps to the next one and announces its label', async () => {
-    await setup({ steps: [0, 500, 800], labelAt: (offset) => (offset >= 500 ? 'M' : 'A') });
+    await setup({ accessibilitySteps: [0, 500, 800], labelAt: (offset) => (offset >= 500 ? 'M' : 'A') });
     const el = screen.getByRole('adjustable', { name: 'Scroll position' });
     await fireEvent(el, 'accessibilityAction', { nativeEvent: { actionName: 'increment' } });
     await act(() => jest.advanceTimersByTime(20)); // the scroll runs on the UI thread (next frame)
@@ -177,7 +178,7 @@ describe('sections', () => {
 
   it('draws every section label once in a strip and never asks labelAt', async () => {
     const labelAt = jest.fn(() => 'js');
-    await setup({ sections, labelAt });
+    await setup({ sections, labelAt: labelAt as never }); // the types forbid both; check it at runtime too
     await drag(26);
     await act(async () => {});
     expect(labelAt).not.toHaveBeenCalled();
@@ -210,10 +211,10 @@ describe('useListScrubber', () => {
 });
 
 describe('label helpers', () => {
-  it('labelProbe reads the top at the start and the last pixel at the end', () => {
-    expect(labelProbe(0, 1000, 100)).toBe(0);
-    expect(labelProbe(450, 1000, 100)).toBe(500);
-    expect(labelProbe(900, 1000, 100)).toBe(999);
+  it('labelPosition reads the top at the start and the last pixel at the end', () => {
+    expect(labelPosition(0, 1000, 100)).toBe(0);
+    expect(labelPosition(450, 1000, 100)).toBe(500);
+    expect(labelPosition(900, 1000, 100)).toBe(999);
   });
 
   it('sectionIndexAt finds the section containing an offset', () => {
@@ -227,11 +228,11 @@ describe('label helpers', () => {
   });
 });
 
-it('SectionLabel slides its label strip to the section at the top of the list', async () => {
+it('CurrentSectionLabel slides its label strip to the section at the top of the list', async () => {
   const scrollY = sharedZero();
   scrollY.set(620);
   await render(
-    <SectionLabel
+    <CurrentSectionLabel
       scrollY={scrollY}
       height={20}
       sections={[
@@ -245,7 +246,7 @@ it('SectionLabel slides its label strip to the section at the top of the list', 
   expect(StyleSheet.flatten(strip.props.style)).toMatchObject({ transform: [{ translateY: -20 }] });
 });
 
-describe('usePinnedHeaderStyle', () => {
+describe('usePinnedSectionHeaderStyle', () => {
   const sections = [
     { offset: 0, label: 'A' },
     { offset: 500, label: 'B' },
@@ -253,7 +254,7 @@ describe('usePinnedHeaderStyle', () => {
   const push = async (y: number) => {
     const scrollY = sharedZero();
     scrollY.set(y);
-    const { result } = await renderHook(() => usePinnedHeaderStyle(scrollY, sections, 36));
+    const { result } = await renderHook(() => usePinnedSectionHeaderStyle(scrollY, sections, 36));
     return (result.current as unknown as { transform: { translateY: number }[] }).transform[0]!.translateY;
   };
 
@@ -368,9 +369,11 @@ describe('layout', () => {
     ).toBeTruthy();
   });
 
-  it('railWidth sets the strip width', async () => {
-    await setup({ railWidth: 30 });
-    expect(style('list-scrubber-a11y')).toMatchObject({ width: 30, right: 0 });
+  it('the screen-reader control covers the handle strip, as wide as the touch area', async () => {
+    await setup();
+    const rail = screen.getByTestId('list-scrubber-a11y', { includeHiddenElements: true }).parent!;
+    expect(StyleSheet.flatten(rail.props.style)).toMatchObject({ right: 0, width: 44 });
+    expect(style('list-scrubber-a11y')).toMatchObject({ position: 'absolute', top: 0, bottom: 0 });
   });
 
   it('keeps the section bubble inside the list at the top', async () => {
@@ -411,7 +414,7 @@ describe('screen reader edges', () => {
   it('decrement goes back to the previous step and stops at the start', async () => {
     const scrollY = sharedZero();
     scrollY.set(600);
-    await setup({ scrollY, steps: [0, 500, 800] });
+    await setup({ scrollY, accessibilitySteps: [0, 500, 800] });
     const el = screen.getByRole('adjustable', { name: 'Scroll position' });
     const act1 = async () => {
       await fireEvent(el, 'accessibilityAction', { nativeEvent: { actionName: 'decrement' } });
@@ -430,7 +433,7 @@ describe('screen reader edges', () => {
   it('increment past the last step lands on the end of the list', async () => {
     const scrollY = sharedZero();
     scrollY.set(800);
-    await setup({ scrollY, steps: [0, 500, 800] });
+    await setup({ scrollY, accessibilitySteps: [0, 500, 800] });
     await fireEvent(screen.getByRole('adjustable', { name: 'Scroll position' }), 'accessibilityAction', {
       nativeEvent: { actionName: 'increment' },
     });
@@ -498,9 +501,9 @@ describe('while the finger is down', () => {
     await setup();
     await hold(26);
     expect(style('list-scrubber-handle').transform).toEqual([{ translateY: 26 }]);
-    expect(bar()).toMatchObject({ width: 8, marginRight: 6, backgroundColor: 'red' }); // (20 − 8) / 2
+    expect(bar()).toMatchObject({ width: 8, backgroundColor: 'red' });
     await release();
-    expect(bar()).toMatchObject({ width: 6, marginRight: 7, backgroundColor: 'gray' });
+    expect(bar()).toMatchObject({ width: 6, backgroundColor: 'gray' });
   });
 
   it('shows the labelAt bubble, keeps the last label on null, and clears it on release', async () => {
@@ -528,6 +531,19 @@ describe('while the finger is down', () => {
     ).toBe(16);
   });
 
+  it('sizes each section label by its own length', async () => {
+    await setup({
+      sections: [
+        { offset: 0, label: 'A' },
+        { offset: 500, label: 'Zebra' },
+      ],
+    });
+    const fontSize = (text: string) =>
+      StyleSheet.flatten(screen.getByText(text, { includeHiddenElements: true }).props.style).fontSize;
+    expect(fontSize('A')).toBe(24);
+    expect(fontSize('Zebra')).toBe(16);
+  });
+
   it('onSectionChange fires once per section crossed, not for the starting one', async () => {
     const onSectionChange = jest.fn();
     const sections = [
@@ -545,6 +561,23 @@ describe('while the finger is down', () => {
       [1, sections[1]],
       [2, sections[2]],
     ]);
+  });
+
+  it('onSectionChange is skipped if the section is gone by the time JS runs it', async () => {
+    const onSectionChange = jest.fn();
+    const sections = [
+      { offset: 0, label: 'A' },
+      { offset: 500, label: 'M' },
+      { offset: 800, label: 'Zebra' },
+    ];
+    const view = await setup({ sections, onSectionChange });
+    await hold(5);
+    const uiThread = pan(); // still running with the old offsets
+    await view.rerender(
+      <ListScrubber {...baseProps} sections={sections.slice(0, 1)} onSectionChange={onSectionChange} />,
+    );
+    await act(async () => uiThread.onUpdate({ translationY: 52 })); // picks "Zebra", gone on the JS side
+    expect(onSectionChange).not.toHaveBeenCalled();
   });
 
   describe('section bubble', () => {
@@ -582,7 +615,7 @@ describe('while the finger is down', () => {
   });
 });
 
-describe('SectionLabel line height', () => {
+describe('CurrentSectionLabel line height', () => {
   const sections = [
     { offset: 0, label: 'A' },
     { offset: 500, label: 'M' },
@@ -590,7 +623,7 @@ describe('SectionLabel line height', () => {
   const shiftWith = async (style?: object) => {
     const scrollY = sharedZero();
     scrollY.set(600); // second section: the strip moves up one line
-    await render(<SectionLabel scrollY={scrollY} sections={sections} style={style} />);
+    await render(<CurrentSectionLabel scrollY={scrollY} sections={sections} style={style} />);
     const strip = screen.getByTestId('list-scrubber-label-strip', { includeHiddenElements: true });
     return (StyleSheet.flatten(strip.props.style).transform as { translateY: number }[])[0]!.translateY;
   };
@@ -605,4 +638,139 @@ it('the visibility reaction ignores repeats', async () => {
   const handle = screen.getByTestId('list-scrubber-handle', { includeHiddenElements: true });
   await act(async () => reactions()[1].react(false, false));
   expect(handle.props.pointerEvents).toBe('none');
+});
+
+describe('render cost', () => {
+  it('asks labelAt for the screen-reader value only when the position changes', async () => {
+    const labelAt = jest.fn(() => 'A');
+    const view = await setup({ labelAt });
+    const calls = labelAt.mock.calls.length;
+    await view.rerender(<ListScrubber {...baseProps} labelAt={labelAt} />);
+    expect(labelAt).toHaveBeenCalledTimes(calls);
+  });
+
+  it('keeps the same gesture between renders', async () => {
+    const view = await setup();
+    const first = getByGestureTestId('list-scrubber');
+    await view.rerender(<ListScrubber {...baseProps} metrics={{}} />);
+    expect(getByGestureTestId('list-scrubber')).toBe(first);
+  });
+
+  it('freezes the defaults', () => {
+    expect(Object.isFrozen(LIST_SCRUBBER_DEFAULTS.metrics)).toBe(true);
+  });
+});
+
+describe('API options', () => {
+  const style = (id: string) =>
+    StyleSheet.flatten(screen.getByTestId(id, { includeHiddenElements: true }).props.style);
+  type Handlers = Record<'onBegin' | 'onUpdate' | 'onFinalize', (e: object) => void>;
+  const pan = (id = 'list-scrubber') =>
+    (getByGestureTestId(id) as unknown as { handlers: Handlers }).handlers;
+
+  it('onDragEnd fires when the finger lifts', async () => {
+    const onDragEnd = jest.fn();
+    await setup({ onDragEnd });
+    await drag(10);
+    await act(async () => {});
+    expect(onDragEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it('side="left" mirrors the rail, handle and bubble', async () => {
+    await setup({ side: 'left', edgeOffset: 4, labelAt: () => 'Jan' });
+    const rail = screen.getByTestId('list-scrubber-a11y', { includeHiddenElements: true }).parent!;
+    expect(StyleSheet.flatten(rail.props.style)).toMatchObject({ left: 4 });
+    expect(StyleSheet.flatten(rail.props.style).right).toBeUndefined();
+    expect(style('list-scrubber-handle')).toMatchObject({ left: 0 });
+    await act(async () => {
+      pan().onBegin({});
+      pan().onUpdate({ translationY: 10 });
+    });
+    let bubble = screen.getByText('Jan', { includeHiddenElements: true }).parent!;
+    while (!StyleSheet.flatten(bubble.props.style)?.transform) bubble = bubble.parent!;
+    expect(StyleSheet.flatten(bubble.props.style)).toMatchObject({ left: 44 + 40 });
+  });
+
+  it('insets shrink the rail and the handle travel', async () => {
+    await setup({ insets: { top: 10, bottom: 2 } }); // rail 100 − 12 = 88, travel 88 − 48 = 40
+    const rail = screen.getByTestId('list-scrubber-a11y', { includeHiddenElements: true }).parent!;
+    expect(StyleSheet.flatten(rail.props.style)).toMatchObject({ top: 10, bottom: 2 });
+    await drag(20); // half the travel
+    expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 450, false);
+  });
+
+  it('enabled={false} draws nothing', async () => {
+    await setup({ enabled: false });
+    expect(screen.queryByTestId('list-scrubber-a11y', { includeHiddenElements: true })).toBeNull();
+  });
+
+  it('testID prefixes every test ID', async () => {
+    await setup({ testID: 'contacts', sections: [{ offset: 0, label: 'A' }] });
+    expect(getByGestureTestId('contacts')).toBeTruthy();
+    for (const id of ['contacts-handle', 'contacts-a11y', 'contacts-label-strip']) {
+      expect(screen.getByTestId(id, { includeHiddenElements: true })).toBeTruthy();
+    }
+  });
+
+  it("useListScrubber calls the list's own handlers after its own", async () => {
+    const onScroll = jest.fn();
+    const onLayout = jest.fn();
+    const onContentSizeChange = jest.fn();
+    const { result } = await renderHook(() => useListScrubber({ onScroll, onLayout, onContentSizeChange }));
+    const layout = { nativeEvent: { layout: { height: 600 } } } as never;
+    await act(() => {
+      result.current.listProps.onLayout(layout);
+      result.current.listProps.onContentSizeChange(390, 12000);
+      (result.current.onScroll as unknown as (e: unknown) => void)({ contentOffset: { y: 5 } });
+    });
+    expect(onLayout).toHaveBeenCalledWith(layout);
+    expect(onContentSizeChange).toHaveBeenCalledWith(390, 12000);
+    expect(onScroll).toHaveBeenCalledWith({ contentOffset: { y: 5 } });
+    expect(result.current.scrubberProps).toMatchObject({ viewportHeight: 600, contentHeight: 12000 });
+  });
+});
+
+describe('PinnedSectionHeader', () => {
+  const sections = [
+    { offset: 0, label: 'A' },
+    { offset: 500, label: 'B' },
+  ];
+  const header = () =>
+    screen.getByTestId('list-scrubber-pinned-header', { includeHiddenElements: true })
+      .children[0] as unknown as {
+      props: { style: ViewStyle };
+    };
+
+  it('pins over the top of the list, clipped to its height, and is pushed out by the next header', async () => {
+    const scrollY = sharedZero();
+    scrollY.set(480);
+    await render(
+      <PinnedSectionHeader
+        scrollY={scrollY}
+        sections={sections}
+        height={36}
+        style={{ backgroundColor: 'red' }}
+      />,
+    );
+    const pinned = screen.getByTestId('list-scrubber-pinned-header', { includeHiddenElements: true });
+    expect(StyleSheet.flatten(pinned.props.style)).toMatchObject({
+      position: 'absolute',
+      top: 0,
+      height: 36,
+      overflow: 'hidden',
+    });
+    expect(StyleSheet.flatten(header().props.style)).toMatchObject({
+      height: 36,
+      backgroundColor: 'red',
+      transform: [{ translateY: -16 }],
+    });
+    expect(screen.getByText('A', { includeHiddenElements: true })).toBeTruthy();
+  });
+
+  it('push={false} keeps it in place', async () => {
+    const scrollY = sharedZero();
+    scrollY.set(480);
+    await render(<PinnedSectionHeader scrollY={scrollY} sections={sections} height={36} push={false} />);
+    expect(StyleSheet.flatten(header().props.style)?.transform).toBeUndefined();
+  });
 });

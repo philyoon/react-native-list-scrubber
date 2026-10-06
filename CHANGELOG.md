@@ -8,6 +8,31 @@
 - Example app: Maestro end-to-end flows on iOS and Android (`npm run e2e`, `npm run e2e:android`), an e2e mode
   that pins the list for them, `?demo=` links, and haptics via `onDragStart` / `onSectionChange`.
 - Peer dependencies: `react >=19`, `react-native >=0.78`.
+- Performance: section offsets, labels, metrics and the drag gesture keep their identity between renders, so
+  they're no longer re-sent to the UI thread on every render (or every drag frame with `labelAt`).
+- The screen-reader value calls `labelAt` only when the position changes, not on every render.
+- Screen-reader steps use a binary search.
+- `onSectionChange` is skipped if `sections` changed and the section no longer exists when it would fire.
+- `LIST_SCRUBBER_DEFAULTS` is frozen.
+- Removed the unused `children` prop.
+- `useListScrubber({ onScroll, onLayout, onContentSizeChange })`: the list's own handlers, called after the
+  scrubber's.
+- `ListScrubber`: `onDragEnd`, `insets`, `enabled` and `testID` props, and `side` (`'left'` / `'right'`).
+- **Breaking:** `labelAt(position, scrollOffset)` receives the content position to describe, already
+  converted; `labelProbe` is no longer exported.
+- `PinnedSectionHeader`: the pinned header in one component (container, clipping, push).
+- **Breaking:** `SectionLabel` is renamed `CurrentSectionLabel` and `usePinnedHeaderStyle`
+  `usePinnedSectionHeaderStyle`; both stay exported for custom headers.
+- **Breaking:** `steps` and `formatPercent` are renamed `accessibilitySteps` and `formatAccessibilityPercent`:
+  they only affect screen readers.
+- **Breaking:** `railWidth` is removed. The thumb is centred in its 44 pt touch area (it was centred off a 20
+  pt rail it didn't sit in), about 3 pt closer to the edge than before; use `edgeOffset` to move it. The
+  screen-reader control now covers the same 44 pt strip (it was 20 pt).
+- Section bubble: each label gets its own font size by its length, so one long label no longer shrinks every
+  letter.
+- **Breaking:** `right` is replaced by `side` + `edgeOffset`.
+- **Breaking (types):** `sections` and `labelAt` are mutually exclusive, and `onSectionChange` requires
+  `sections`.
 
 ## 0.1.0
 
