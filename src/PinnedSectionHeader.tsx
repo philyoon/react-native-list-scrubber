@@ -12,6 +12,7 @@ import { MAX_FONT_SCALE } from './defaults';
 import { LabelStrip } from './LabelStrip';
 import { sectionIndexAt } from './math';
 import type { ListScrubberSection } from './types';
+import { warnIfUnsorted } from './validate';
 
 /**
  * A section header pinned over the top of the list, showing the current section's label. Drawn on the
@@ -89,7 +90,11 @@ export function CurrentSectionLabel({
   testID?: string;
 }) {
   // Memoized: worklets copy what they capture to the UI thread whenever its identity changes.
-  const offsets = useMemo(() => sections.map((s) => s.offset), [sections]);
+  const offsets = useMemo(() => {
+    const values = sections.map((s) => s.offset);
+    warnIfUnsorted(values, sections, 'sections');
+    return values;
+  }, [sections]);
   const labels = useMemo(() => sections.map((s) => s.label), [sections]);
   const flat = StyleSheet.flatten(style) ?? {};
   // Text scales with the system text size, so its row must too, or the strip's window clips it
@@ -127,7 +132,11 @@ export function usePinnedSectionHeaderStyle(
   sections: readonly ListScrubberSection[],
   height: number,
 ) {
-  const offsets = useMemo(() => sections.map((s) => s.offset), [sections]);
+  const offsets = useMemo(() => {
+    const values = sections.map((s) => s.offset);
+    warnIfUnsorted(values, sections, 'sections');
+    return values;
+  }, [sections]);
   return useAnimatedStyle(() => {
     const y = scrollY.get();
     const next = offsets[sectionIndexAt(offsets, y) + 1];

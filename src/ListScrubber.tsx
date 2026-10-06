@@ -30,6 +30,7 @@ import { useA11yStepper } from './useA11yStepper';
 import { useAutoHide } from './useAutoHide';
 import { useLatest } from './useLatest';
 import { useScrubGesture } from './useScrubGesture';
+import { warnIfUnsorted } from './validate';
 
 interface ListScrubberBaseProps {
   scrollY: SharedValue<number>;
@@ -132,7 +133,13 @@ export function ListScrubber({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const m = useMemo(() => ({ ...LIST_SCRUBBER_DEFAULTS.metrics, ...metrics }), [metricsKey]);
   const { hideAfterMs, fadeMs } = { ...LIST_SCRUBBER_DEFAULTS.timing, ...timing };
-  const offsets = useMemo(() => sections?.map((s) => s.offset) ?? [], [sections]);
+  const offsets = useMemo(() => {
+    const values = sections?.map((s) => s.offset) ?? [];
+    if (sections) warnIfUnsorted(values, sections, 'sections');
+    return values;
+  }, [sections]);
+  // Checked once per array (the result is cached), so calling it on every render is free
+  if (accessibilitySteps) warnIfUnsorted(accessibilitySteps, accessibilitySteps, 'accessibilitySteps');
   const labels = useMemo(() => sections?.map((s) => s.label) ?? [], [sections]);
   const insetTop = insets?.top ?? 0;
   const insetBottom = insets?.bottom ?? 0;

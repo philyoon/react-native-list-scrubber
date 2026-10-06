@@ -146,7 +146,8 @@ Required:
 Optional:
 
 - `sections`: `{ offset, label }[]`. `offset` is where the section starts in the list's content, in points
-  (its header's top, or its first row's), ascending. Drives the bubble and the screen-reader steps.
+  (its header's top, or its first row's), ascending (development builds warn if they aren't). Drives the
+  bubble and the screen-reader steps.
 - `labelAt(position, scrollOffset)`: a JS-thread label when there are no `sections`. The types accept one or
   the other.
 - `accessibilitySteps`: screen-reader step targets. Default: the section offsets, else one screen. Dragging
