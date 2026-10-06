@@ -1,0 +1,79 @@
+name: Bug report
+description: Something doesn't work as documented
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Most scrubber bugs depend on library versions and the list you use, so please fill in all of them.
+        The [Troubleshooting](https://github.com/philyoon/react-native-list-scrubber#troubleshooting) section covers the most common setup mistakes.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal example
+      description: The smallest code that shows the bug (a snippet, a Snack or a repository).
+      render: tsx
+    validations:
+      required: true
+  - type: dropdown
+    id: list
+    attributes:
+      label: List component
+      options:
+        - FlatList
+        - SectionList
+        - ScrollView
+        - FlashList
+        - Legend List
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platforms where it happens
+      multiple: true
+      options:
+        - iOS
+        - Android
+        - Web
+    validations:
+      required: true
+  - type: textarea
+    id: versions
+    attributes:
+      label: Versions
+      description:
+        '`npm ls react-native-list-scrubber react-native react-native-reanimated react-native-worklets
+        react-native-gesture-handler` shows most of them.'
+      value: |
+        react-native-list-scrubber:
+        react-native:
+        react-native-reanimated:
+        react-native-worklets:
+        react-native-gesture-handler:
+        List library (FlashList / Legend List), if any:
+        Expo SDK, if any:
+    validations:
+      required: true
+  - type: dropdown
+    id: arch
+    attributes:
+      label: New Architecture
+      options:
+        - Enabled
+        - Disabled
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Screenshots, screen recordings, logs, device model.

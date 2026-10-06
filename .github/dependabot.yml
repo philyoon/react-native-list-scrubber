@@ -1,0 +1,22 @@
+# Monthly, grouped updates so they don't flood the pull requests.
+# Peer dependency ranges in package.json are a deliberate choice and aren't touched here.
+# The example app follows its Expo SDK (npx expo install --fix), so it isn't updated here either.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ['*']
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    allow:
+      - dependency-type: development
+    groups:
+      dev-dependencies:
+        patterns: ['*']
+        update-types: [minor, patch]

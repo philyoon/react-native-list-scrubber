@@ -384,6 +384,10 @@ the same points land on the thumb on any phone size. It also keeps the thumb up 
 since Maestro's wait after each swipe can outlast the default on a slow device. A link like
 `exp://127.0.0.1:8081/--/?demo=ScrollView` opens a given demo.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, the checks CI runs, the example app and end-to-end tests.
+
 ## License
 
 MIT

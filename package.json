@@ -53,7 +53,7 @@
     "prepare": "bob build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "format:check": "prettier --check src scripts eslint.config.mjs example/src example/e2e README.md CHANGELOG.md",
+    "format:check": "prettier --check src scripts eslint.config.mjs example/src example/e2e README.md CHANGELOG.md CONTRIBUTING.md",
     "test": "jest",
     "example": "npm --prefix example run"
   },
