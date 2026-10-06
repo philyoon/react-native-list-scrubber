@@ -96,7 +96,8 @@ After a release, the next change that users will notice starts a new `## Unrelea
 ### One-time setup
 
 - If the package doesn't exist on npm yet, publish the first version by hand from a clean checkout of the
-  tagged commit: `npm ci && npm publish --access public` (with two-factor authentication).
+  merged commit: `npm ci && npm publish --access public` (with two-factor authentication). Tagging that
+  version afterwards is safe: the workflow skips publishing a version that's already on npm.
 - In the package's settings on npmjs.com, add a trusted publisher: GitHub Actions, owner `philyoon`,
   repository `react-native-list-scrubber`, workflow `release.yml`.
 - Then, if npm offers it, set the package's publishing access to require two-factor authentication and

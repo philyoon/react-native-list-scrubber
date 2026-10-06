@@ -34,4 +34,12 @@ jobs:
       - run: npm test -- --coverage
       # Packs the package (prepare builds it) and checks it as users get it
       - run: npm run smoke:package
-      - run: npm publish --access public
+      # Skipped when the version is already on npm, e.g. a first version published by hand (see CONTRIBUTING)
+      - name: Publish
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if npm view "react-native-list-scrubber@${version}" version >/dev/null 2>&1; then
+            echo "react-native-list-scrubber@${version} is already on npm; nothing to publish"
+          else
+            npm publish --access public
+          fi
