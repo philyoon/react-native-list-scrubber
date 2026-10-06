@@ -24,9 +24,11 @@ npm run smoke:package  # packs the package and checks it as users get it
 ```
 
 CI also checks the oldest versions the peer dependency ranges allow: `node scripts/install-min-peers.mjs`
-installs them (without saving), then the library's types and `smoke:package` must still pass. Raising a
-minimum in `peerDependencies` changes what that job tests. Run `npm ci` afterwards to get back to the usual
-versions.
+installs them (without saving), then `node scripts/check-reanimated-compat.mjs` confirms Reanimated supports
+that React Native and Worklets pair, and the types, the unit tests and `smoke:package` must still pass.
+Raising a minimum in `peerDependencies` changes what that job tests. Run `npm ci` afterwards to get back to
+the usual versions. `jest.config.js` and `jest.setup.js` pick the Jest preset, resolver and Worklets mock by
+what's installed, so the same tests run on both.
 
 Tests run in Jest with the Reanimated, Worklets and Gesture Handler mocks set up in
 `src/__tests__/support.tsx`. They check logic, not UI-thread behaviour, so changes to the drag, the bubble or
