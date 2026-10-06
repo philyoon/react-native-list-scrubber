@@ -50,13 +50,14 @@ npm run web            # or in the browser
 The Maestro flows in `example/e2e` drive the example in Expo Go. Run them for any change to what's on screen:
 
 ```sh
-cd example
-npm run start:e2e      # keep Metro running in e2e mode
-npm run e2e            # iOS simulator
-npm run e2e:android    # Android emulator (after adb reverse tcp:8081 tcp:8081)
+npm run e2e:start      # keep Metro running in e2e mode, then in another terminal:
+npm run e2e:ios        # iOS simulator
+npm run e2e:android    # Android emulator
 ```
 
-The README's [End-to-end tests](README.md#end-to-end-tests) section explains how the flows find the thumb.
+Set `MAESTRO_DEVICE` (a simulator UDID or an emulator serial) when more than one is running, and pass flow
+paths after `--` to run only some. The README's [End-to-end tests](README.md#end-to-end-tests) section has the
+details, and how the flows find the thumb.
 
 ## Dependency updates
 

@@ -34,8 +34,8 @@
 - `onSectionChange`: called when a drag crosses into another section (e.g. a haptic tick per letter).
 - Screen-reader value follows manual scrolling (re-read when the thumb hides).
 - `useListScrubber` returns stable `listProps` / `scrubberProps`.
-- Example app: Maestro end-to-end flows on iOS and Android (`npm run e2e`, `npm run e2e:android`), an e2e mode
-  that pins the list for them, `?demo=` links, and haptics via `onDragStart` / `onSectionChange`.
+- Example app: Maestro end-to-end flows on iOS and Android (`npm run e2e:ios`, `npm run e2e:android`), an e2e
+  mode that pins the list for them, `?demo=` links, and haptics via `onDragStart` / `onSectionChange`.
 - Peer dependencies: `react >=19`, `react-native >=0.78`.
 - Performance: section offsets, labels, metrics and the drag gesture keep their identity between renders, so
   they're no longer re-sent to the UI thread on every render (or every drag frame with `labelAt`).

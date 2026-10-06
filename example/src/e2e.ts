@@ -1,4 +1,4 @@
-// e2e mode (EXPO_PUBLIC_E2E=1, npm run start:e2e) for the Maestro flows in e2e/.
+// e2e mode (EXPO_PUBLIC_E2E=1, npm run e2e:start) for the Maestro flows in e2e/.
 import type { ViewStyle } from 'react-native';
 
 export const E2E = process.env.EXPO_PUBLIC_E2E === '1';

@@ -55,7 +55,10 @@
     "lint": "eslint .",
     "format:check": "prettier --check src scripts eslint.config.mjs example/src example/e2e README.md CHANGELOG.md CONTRIBUTING.md",
     "test": "jest",
-    "example": "npm --prefix example run"
+    "example": "npm --prefix example run",
+    "e2e:start": "npm --prefix example run e2e:start",
+    "e2e:ios": "npm --prefix example run e2e:ios --",
+    "e2e:android": "npm --prefix example run e2e:android --"
   },
   "peerDependencies": {
     "react": ">=19.0.0",
