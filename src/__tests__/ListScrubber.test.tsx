@@ -242,7 +242,7 @@ it('CurrentSectionLabel slides its label strip to the section at the top of the 
     />,
   );
   // the Reanimated mock computes animated styles once, from the current values: 'M' is the second line
-  const strip = screen.getByTestId('list-scrubber-label-strip', { includeHiddenElements: true });
+  const strip = screen.getByTestId('list-scrubber-section-label-strip', { includeHiddenElements: true });
   expect(StyleSheet.flatten(strip.props.style)).toMatchObject({ transform: [{ translateY: -20 }] });
 });
 
@@ -624,7 +624,7 @@ describe('CurrentSectionLabel line height', () => {
     const scrollY = sharedZero();
     scrollY.set(600); // second section: the strip moves up one line
     await render(<CurrentSectionLabel scrollY={scrollY} sections={sections} style={style} />);
-    const strip = screen.getByTestId('list-scrubber-label-strip', { includeHiddenElements: true });
+    const strip = screen.getByTestId('list-scrubber-section-label-strip', { includeHiddenElements: true });
     return (StyleSheet.flatten(strip.props.style).transform as { translateY: number }[])[0]!.translateY;
   };
 
@@ -772,5 +772,17 @@ describe('PinnedSectionHeader', () => {
     scrollY.set(480);
     await render(<PinnedSectionHeader scrollY={scrollY} sections={sections} height={36} push={false} />);
     expect(StyleSheet.flatten(header().props.style)?.transform).toBeUndefined();
+  });
+
+  it('testID names the header and its label, so two on one screen stay apart', async () => {
+    await render(
+      <>
+        <PinnedSectionHeader scrollY={sharedZero()} sections={sections} height={36} testID="contacts" />
+        <PinnedSectionHeader scrollY={sharedZero()} sections={sections} height={36} testID="calls" />
+      </>,
+    );
+    for (const id of ['contacts', 'contacts-label', 'contacts-label-strip', 'calls', 'calls-label-strip']) {
+      expect(screen.getByTestId(id, { includeHiddenElements: true })).toBeTruthy();
+    }
   });
 });

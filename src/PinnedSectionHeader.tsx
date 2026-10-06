@@ -18,6 +18,7 @@ export function PinnedSectionHeader({
   push = true,
   style,
   textStyle,
+  testID = 'list-scrubber-pinned-header',
 }: {
   scrollY: SharedValue<number>;
   /** Section offsets are where each section's header starts in the list */
@@ -29,12 +30,19 @@ export function PinnedSectionHeader({
   /** The header box, e.g. background and padding */
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
+  /** Test ID of the header; its label is `<testID>-label` (default 'list-scrubber-pinned-header') */
+  testID?: string;
 }) {
   const pushStyle = usePinnedSectionHeaderStyle(scrollY, sections, height);
   return (
-    <View pointerEvents="none" style={[styles.pinned, { height }]} testID="list-scrubber-pinned-header">
+    <View pointerEvents="none" style={[styles.pinned, { height }]} testID={testID}>
       <Animated.View style={[styles.header, { height }, style, push && pushStyle]}>
-        <CurrentSectionLabel scrollY={scrollY} sections={sections} style={textStyle} />
+        <CurrentSectionLabel
+          scrollY={scrollY}
+          sections={sections}
+          style={textStyle}
+          testID={`${testID}-label`}
+        />
       </Animated.View>
     </View>
   );
@@ -52,12 +60,15 @@ export function CurrentSectionLabel({
   sections,
   height,
   style,
+  testID = 'list-scrubber-section-label',
 }: {
   scrollY: SharedValue<number>;
   sections: readonly ListScrubberSection[];
   /** Height of one label line (default: the style's lineHeight, else 1.3 × fontSize) */
   height?: number;
   style?: StyleProp<TextStyle>;
+  /** Test ID of the label; its strip is `<testID>-strip` (default 'list-scrubber-section-label') */
+  testID?: string;
 }) {
   // Memoized: worklets copy what they capture to the UI thread whenever its identity changes.
   const offsets = useMemo(() => sections.map((s) => s.offset), [sections]);
@@ -70,10 +81,10 @@ export function CurrentSectionLabel({
       pointerEvents="none"
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      testID="list-scrubber-section-label"
+      testID={testID}
     >
       <LabelStrip
-        testID="list-scrubber-label-strip"
+        testID={`${testID}-strip`}
         index={index}
         labels={labels}
         height={lineHeight}

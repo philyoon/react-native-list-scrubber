@@ -30,6 +30,9 @@
   screen-reader control now covers the same 44 pt strip (it was 20 pt).
 - **Breaking:** the `list-scrubber-handle` test ID is now `list-scrubber-thumb` (`<testID>-thumb`): the docs
   call the draggable control the thumb throughout.
+- `PinnedSectionHeader` and `CurrentSectionLabel` take a `testID`. **Breaking:** `CurrentSectionLabel`'s strip
+  is `<testID>-strip` (`list-scrubber-section-label-strip`), no longer the scrubber bubble's
+  `list-scrubber-label-strip`, so the two don't share an ID.
 - Section bubble: each label gets its own font size by its length, so one long label no longer shrinks every
   letter.
 - **Breaking:** `right` is replaced by `side` + `edgeOffset`.

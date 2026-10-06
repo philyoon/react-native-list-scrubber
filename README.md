@@ -114,6 +114,7 @@ list:
 - As the next section's header reaches it, it's pushed up and out, like iOS Contacts. If the list has no
   section headers of its own, pass `push={false}`.
 - Give the scrubber `insets={{ top: HEADER_HEIGHT }}` to keep the thumb out from under it.
+- `testID` names the header (default `list-scrubber-pinned-header`) and its label (`<testID>-label`).
 - For a custom pinned header, build it from `CurrentSectionLabel` (the label alone; its line height comes from
   the style's `lineHeight`, or 1.3 × `fontSize`, or `height`) and
   `usePinnedSectionHeaderStyle(scrollY, sections, height)` (the push, as an animated style).
