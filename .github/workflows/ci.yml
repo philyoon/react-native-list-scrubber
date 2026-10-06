@@ -16,7 +16,7 @@ jobs:
       - run: npm run format:check
       - run: npm run typecheck
       - run: npm run lint
-      - run: npm test
+      - run: npm test -- --coverage
       - run: npm run build
       - run: npm --prefix example install
       - run: npm --prefix example run typecheck
