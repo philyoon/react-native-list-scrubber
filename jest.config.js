@@ -1,7 +1,9 @@
 module.exports = {
   preset: '@react-native/jest-preset',
   // Reanimated 4 / Worklets: use their JS implementations instead of native code (official testing guide).
-  resolver: 'react-native-worklets/jest/resolver',
+  // Reanimated's resolver wraps Worklets' and also picks its own non-native initializers: since Reanimated 4.6
+  // the native ones call setCSSEventHandler, which throws under Jest.
+  resolver: 'react-native-reanimated/jest/resolver',
   roots: ['<rootDir>/src'],
   // support.tsx in __tests__ holds shared mocks and helpers, not tests
   testMatch: ['**/__tests__/**/*.test.[jt]s?(x)'],

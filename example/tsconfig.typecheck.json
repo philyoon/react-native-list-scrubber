@@ -1,0 +1,20 @@
+{
+  // For `npm run typecheck` only. Like metro.config.js, the library's peers resolve from this app's
+  // node_modules, not the repo root's (which can be on other versions), as in an app installing the package.
+  // Kept out of tsconfig.json: Expo's Metro reads its `paths`, and these type-only mappings (react →
+  // @types/react) would break the bundle.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "react-native-list-scrubber": ["../src/index.ts"],
+      "react": ["./node_modules/@types/react"],
+      "react/*": ["./node_modules/@types/react/*"],
+      "react-native": ["./node_modules/react-native"],
+      "react-native/*": ["./node_modules/react-native/*"],
+      "react-native-reanimated": ["./node_modules/react-native-reanimated"],
+      "react-native-worklets": ["./node_modules/react-native-worklets"],
+      "react-native-gesture-handler": ["./node_modules/react-native-gesture-handler"],
+      "react-native-gesture-handler/*": ["./node_modules/react-native-gesture-handler/*"]
+    }
+  }
+}

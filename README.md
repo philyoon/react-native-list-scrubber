@@ -281,8 +281,10 @@ fastest after a jump.
 
 ## Testing your app
 
-Rendering the real scrubber in Jest needs Reanimated, Worklets and Gesture Handler mocked. To skip that, mock
-the package itself in your Jest setup:
+Rendering the real scrubber in Jest needs Reanimated, Worklets and Gesture Handler mocked. With Reanimated 4.6
+or later, also set Jest's `resolver` to `react-native-reanimated/jest/resolver`; without it, loading
+Reanimated's mock throws an error about `setCSSEventHandler`. To skip all of that, mock the package itself in
+your Jest setup:
 
 ```js
 jest.mock('react-native-list-scrubber', () => require('react-native-list-scrubber/jest'));
