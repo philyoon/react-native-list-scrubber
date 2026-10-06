@@ -79,3 +79,14 @@ that runs every check, including the example app and the Maestro flows:
 - Keep each pull request to one change.
 - Add an entry under `## Unreleased` in `CHANGELOG.md` for anything users will notice.
 - Update the README when the API or behaviour changes.
+
+## Releasing (maintainers)
+
+1. Set `version` in `package.json`, and turn `## Unreleased` in `CHANGELOG.md` into `## <version>`.
+2. Merge that to `main`.
+3. Tag it: `git tag v<version> && git push origin v<version>`. The Release workflow checks that the tag
+   matches `package.json`, runs the checks, and publishes to npm with provenance. It needs the `NPM_TOKEN`
+   repository secret.
+
+After a release, the next change that users will notice starts a new `## Unreleased` section at the top of
+`CHANGELOG.md`.
