@@ -23,6 +23,8 @@
 - `PinnedSectionHeader`: the pinned header in one component (container, clipping, push).
 - **Breaking:** `SectionLabel` is renamed `CurrentSectionLabel` and `usePinnedHeaderStyle`
   `usePinnedSectionHeaderStyle`; both stay exported for custom headers.
+- **Breaking:** `steps` and `formatPercent` are renamed `accessibilitySteps` and `formatAccessibilityPercent`:
+  they only affect screen readers.
 - Section bubble: each label gets its own font size by its length, so one long label no longer shrinks every
   letter.
 - **Breaking:** `right` is replaced by `side` + `edgeOffset`.

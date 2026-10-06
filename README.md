@@ -142,8 +142,9 @@ Optional:
 - `sections`: `{ offset, label }[]`, ascending. Drives the bubble and the screen-reader steps.
 - `labelAt(position, scrollOffset)`: a JS-thread label when there are no `sections`. The types accept one or
   the other.
-- `steps`: screen-reader step targets. Default: the section offsets, else one screen.
-- `formatPercent`: the screen-reader value when there's no label. Default: `40%`.
+- `accessibilitySteps`: screen-reader step targets. Default: the section offsets, else one screen. Dragging
+  doesn't snap to them.
+- `formatAccessibilityPercent`: the screen-reader value when there's no label. Default: `40%`.
 - `onDragStart`, `onDragEnd`: the drag started or ended, e.g. for haptics.
 - `onSectionChange(index, section)`: with `sections`, the finger crossed into another section while dragging,
   e.g. for a haptic tick.
@@ -159,6 +160,8 @@ Optional:
 - `bubbleStyle`, `bubbleTextStyle`: extra styles, e.g. a shadow or a font.
 
 ### Defaults (`LIST_SCRUBBER_DEFAULTS`)
+
+The **thumb** is the visible bar; the **handle** is the draggable touch area around it.
 
 | `metrics`                               | pt      |                                                     |
 | --------------------------------------- | ------- | --------------------------------------------------- |

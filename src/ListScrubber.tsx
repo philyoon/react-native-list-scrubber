@@ -28,12 +28,12 @@ interface ListScrubberBaseProps {
   contentHeight: number;
   viewportHeight: number;
   colors: ListScrubberColors;
-  /** Screen-reader step targets (ascending offsets); defaults to the section offsets, else one screen */
-  steps?: readonly number[];
+  /** Screen-reader step targets (ascending offsets); defaults to the section offsets, else one screen. Dragging doesn't snap to them. */
+  accessibilitySteps?: readonly number[];
   /** Screen-reader name (e.g. "Scroll position") */
   accessibilityLabel: string;
   /** Screen-reader value when there's no label (default "40%") */
-  formatPercent?: (percent: number) => string;
+  formatAccessibilityPercent?: (percent: number) => string;
   /** Drag started (e.g. haptics) */
   onDragStart?: () => void;
   /** Drag ended (finger lifted or gesture cancelled) */
@@ -92,7 +92,7 @@ const defaultFormatPercent = (percent: number) => `${percent}%`;
  * - While dragging, a bubble shows where the finger is. With `sections` the label is picked and drawn
  *   on the UI thread (a native text field updated from the gesture), so it never lags behind the list.
  *   `labelAt` is the JS fallback for arbitrary labels: it can lag a frame or two while JS is busy.
- * - Screen readers get an adjustable control: swipe up/down to move one step (steps, or one screen),
+ * - Screen readers get an adjustable control: swipe up/down to move one step (accessibilitySteps, or one screen),
  *   announced as the label or a percentage.
  */
 export function ListScrubber({
@@ -103,9 +103,9 @@ export function ListScrubber({
   colors,
   sections,
   labelAt,
-  steps,
+  accessibilitySteps,
   accessibilityLabel,
-  formatPercent = defaultFormatPercent,
+  formatAccessibilityPercent = defaultFormatPercent,
   onDragStart,
   onDragEnd,
   onSectionChange,
@@ -145,11 +145,11 @@ export function ListScrubber({
     maxScroll,
     contentHeight,
     viewportHeight,
-    steps: steps ?? (sections ? offsets : undefined),
+    steps: accessibilitySteps ?? (sections ? offsets : undefined),
     offsets,
     labels,
     labelAt,
-    formatPercent,
+    formatPercent: formatAccessibilityPercent,
   });
 
   // Stable JS callbacks for the worklets to schedule: they read the latest props when they run.

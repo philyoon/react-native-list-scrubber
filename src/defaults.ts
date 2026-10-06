@@ -1,8 +1,11 @@
-/** Adjustable sizes (pt). Override any subset with `metrics`. */
+/**
+ * Adjustable sizes (pt). Override any subset with `metrics`.
+ * The thumb is the visible bar; the handle is the draggable touch area around it (44pt wide).
+ */
 export interface ListScrubberMetrics {
-  /** Handle length, longer than a fingertip */
+  /** Thumb length (and the handle's), longer than a fingertip */
   thumbLength: number;
-  /** Idle handle width, thin so it doesn't cover row content */
+  /** Idle thumb width, thin so it doesn't cover row content */
   thumbWidth: number;
   /** Width while dragging, shows it's grabbed */
   thumbActiveWidth: number;
@@ -54,7 +57,7 @@ export const LIST_SCRUBBER_DEFAULTS: Readonly<{
 // Fixed values
 /** Handle touch width: the 44pt minimum touch target */
 export const TOUCH_WIDTH = 44;
-/** Screen-reader step without `steps`, as a share of the viewport; the previous screen's last row stays visible */
+/** Screen-reader step without `accessibilitySteps`, as a share of the viewport; the previous screen's last row stays visible */
 export const A11Y_PAGE = 0.9;
 /** Below this opacity the handle counts as hidden and touches pass through to the list */
 export const VISIBLE_MIN = 0.01;

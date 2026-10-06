@@ -151,7 +151,7 @@ describe('screen readers', () => {
   });
 
   it('steps one screen at a time and announces the percentage', async () => {
-    await setup({ formatPercent: (p) => `${p} percent` });
+    await setup({ formatAccessibilityPercent: (p) => `${p} percent` });
     const el = screen.getByRole('adjustable', { name: 'Scroll position' });
     await fireEvent(el, 'accessibilityAction', { nativeEvent: { actionName: 'increment' } });
     await act(() => jest.advanceTimersByTime(20)); // the scroll runs on the UI thread (next frame)
@@ -160,7 +160,7 @@ describe('screen readers', () => {
   });
 
   it('with steps (e.g. section headers) jumps to the next one and announces its label', async () => {
-    await setup({ steps: [0, 500, 800], labelAt: (offset) => (offset >= 500 ? 'M' : 'A') });
+    await setup({ accessibilitySteps: [0, 500, 800], labelAt: (offset) => (offset >= 500 ? 'M' : 'A') });
     const el = screen.getByRole('adjustable', { name: 'Scroll position' });
     await fireEvent(el, 'accessibilityAction', { nativeEvent: { actionName: 'increment' } });
     await act(() => jest.advanceTimersByTime(20)); // the scroll runs on the UI thread (next frame)
@@ -412,7 +412,7 @@ describe('screen reader edges', () => {
   it('decrement goes back to the previous step and stops at the start', async () => {
     const scrollY = sharedZero();
     scrollY.set(600);
-    await setup({ scrollY, steps: [0, 500, 800] });
+    await setup({ scrollY, accessibilitySteps: [0, 500, 800] });
     const el = screen.getByRole('adjustable', { name: 'Scroll position' });
     const act1 = async () => {
       await fireEvent(el, 'accessibilityAction', { nativeEvent: { actionName: 'decrement' } });
@@ -431,7 +431,7 @@ describe('screen reader edges', () => {
   it('increment past the last step lands on the end of the list', async () => {
     const scrollY = sharedZero();
     scrollY.set(800);
-    await setup({ scrollY, steps: [0, 500, 800] });
+    await setup({ scrollY, accessibilitySteps: [0, 500, 800] });
     await fireEvent(screen.getByRole('adjustable', { name: 'Scroll position' }), 'accessibilityAction', {
       nativeEvent: { actionName: 'increment' },
     });
