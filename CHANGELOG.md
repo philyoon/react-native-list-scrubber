@@ -2,7 +2,7 @@
 
 ## 0.1.0
 
-First release. See the [README](README.md) for usage.
+First release. See the [README](https://github.com/philyoon/react-native-list-scrubber#readme) for usage.
 
 - `ListScrubber`: a draggable thumb with a label bubble. Drag, scroll and labels run on the UI thread.
 - `useListScrubber`: wires the list, the scrubber and a pinned header together; `scrollToSection` /

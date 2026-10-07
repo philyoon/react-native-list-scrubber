@@ -88,7 +88,8 @@ npm trusts that workflow, so there's no npm token to store.
 1. Set `version` in `package.json`, and turn `## Unreleased` in `CHANGELOG.md` into `## <version>`.
 2. Merge that to `main`.
 3. Tag it: `git tag v<version> && git push origin v<version>`. The workflow checks that the tag matches
-   `package.json`, runs the checks, and publishes to npm with provenance.
+   `package.json` and that `CHANGELOG.md` has notes for it, runs the checks, publishes to npm with provenance,
+   and creates the GitHub Release with those notes.
 
 After a release, the next change that users will notice starts a new `## Unreleased` section at the top of
 `CHANGELOG.md`.
