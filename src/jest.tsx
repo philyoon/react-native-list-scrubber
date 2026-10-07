@@ -48,7 +48,7 @@ function sharedValue(initial: number): SharedValue<number> {
 
 const read = (v: number | SharedValue<number>) => (typeof v === 'number' ? v : v.get());
 
-export function ListScrubber({
+export function ListScrubber<S extends ListScrubberSection = ListScrubberSection>({
   sections,
   contentHeight,
   viewportHeight,
@@ -56,7 +56,7 @@ export function ListScrubber({
   formatAccessibilityPercent = (percent) => `${percent}%`,
   enabled = true,
   testID = 'list-scrubber',
-}: ListScrubberProps) {
+}: ListScrubberProps<S>) {
   if (!enabled || read(contentHeight) <= read(viewportHeight)) return null;
   return (
     <View

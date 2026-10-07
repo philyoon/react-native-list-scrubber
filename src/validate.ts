@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, type RefObject } from 'react';
 import type { ListScrubberSection } from './types';
 
 /** Arrays already checked: each is scanned once, however many components read it */
@@ -94,4 +94,41 @@ function useWarnIfUnmemoized(sections: readonly ListScrubberSection[] | undefine
 
 function sameSections(a: readonly ListScrubberSection[], b: readonly ListScrubberSection[]): boolean {
   return a.length === b.length && a.every((s, i) => s.offset === b[i]!.offset && s.label === b[i]!.label);
+}
+
+/** How long the list must be mounted without reporting its size before it counts as miswired */
+export const UNMEASURED_AFTER_MS = 3000;
+const CHECK_EVERY_MS = 1000;
+
+/**
+ * Development only: warns once when the list has been mounted for a while but one of the handlers in
+ * `listProps` never ran, so the scrubber never learns the list's size and stays hidden without an error. It's
+ * the most common wiring mistake: a prop after `{...listProps}` replacing one of its own, or the props not
+ * spread on the list at all. The wait starts when `listRef` is attached, so a list rendered after its data
+ * loads doesn't count; an empty list still reports its size (0), so it doesn't either.
+ */
+export function useWarnIfUnmeasured(
+  listRef: { current: unknown },
+  measured: RefObject<{ onLayout: boolean; onContentSizeChange: boolean }>,
+): void {
+  useEffect(() => {
+    if (!__DEV__) return;
+    let mountedFor = 0;
+    const id = setInterval(() => {
+      mountedFor = listRef.current == null ? 0 : mountedFor + CHECK_EVERY_MS;
+      if (mountedFor < UNMEASURED_AFTER_MS) return;
+      clearInterval(id);
+      const missing = Object.entries(measured.current)
+        .filter(([, ran]) => !ran)
+        .map(([name]) => name);
+      if (!missing.length || warned.has('unmeasured')) return;
+      warned.add('unmeasured');
+      console.warn(
+        `react-native-list-scrubber: the list's ${missing.join(' and ')} from \`listProps\` never ran, so the ` +
+          "scrubber doesn't know the list's size and stays hidden. Spread `listProps` on the list after your own " +
+          'props, and pass your own onLayout / onContentSizeChange to useListScrubber instead.',
+      );
+    }, CHECK_EVERY_MS);
+    return () => clearInterval(id);
+  }, [listRef, measured]);
 }

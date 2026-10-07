@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Development builds warn when the list has been mounted a few seconds but the `onLayout` or
+  `onContentSizeChange` from `listProps` never ran (a prop after `{...listProps}` replaced it, or the props
+  weren't spread on the list): the scrubber stayed hidden without a word.
+- `onSectionChange`'s `section` has your sections' own type, extra fields included (`ListScrubberProps<S>`).
 - Peer dependencies: `react-native-reanimated >=4.1.0` (was `>=4.0.0`). Reanimated 4.0 only runs with Worklets
   0.4, which lacks the functions this library uses, so it never worked; nobody who could use the package
   before is dropped.

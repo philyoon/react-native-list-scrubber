@@ -1,4 +1,4 @@
-import { useMemo, type Component } from 'react';
+import { useMemo, useRef, type Component } from 'react';
 import type { LayoutChangeEvent } from 'react-native';
 import {
   scrollTo,
@@ -14,6 +14,7 @@ import { scheduleOnUI } from 'react-native-worklets';
 import { clamp } from './math';
 import type { ListScrubberSection } from './types';
 import { useLatest } from './useLatest';
+import { useWarnIfUnmeasured } from './validate';
 
 export interface UseListScrubberOptions<S extends readonly ListScrubberSection[] | undefined = undefined> {
   /**
@@ -70,11 +71,16 @@ export function useListScrubber<
     [userOnScroll],
   );
   // Stable identities: the list and the scrubber get the same props on every render.
+  // Which of the list's handlers have run, for the development warning below
+  const measured = useRef({ onLayout: false, onContentSizeChange: false });
+  useWarnIfUnmeasured(listRef, measured);
   const onContentSizeChange = useLatest((width: number, height: number) => {
+    measured.current.onContentSizeChange = true;
     contentHeight.set(height);
     options.onContentSizeChange?.(width, height);
   });
   const onLayout = useLatest((e: LayoutChangeEvent) => {
+    measured.current.onLayout = true;
     viewportHeight.set(e.nativeEvent.layout.height);
     options.onLayout?.(e);
   });
