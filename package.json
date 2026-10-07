@@ -1,11 +1,12 @@
 {
   "name": "react-native-list-scrubber",
   "version": "0.1.1",
-  "description": "Drag-to-scrub thumb for long React Native lists: runs on the UI thread, shows a label bubble (A–Z, dates…), and gives screen readers an adjustable control.",
+  "description": "Fast scrolling for long React Native lists: a draggable thumb with section labels (A–Z, dates…), on the UI thread with Reanimated 4 (New Architecture), and an adjustable screen-reader control.",
   "keywords": [
     "react-native",
     "flatlist",
     "flashlist",
+    "sectionlist",
     "legend-list",
     "scrollbar",
     "fast-scroll",
@@ -13,7 +14,8 @@
     "section-index",
     "reanimated",
     "gesture-handler",
-    "accessibility"
+    "accessibility",
+    "contacts"
   ],
   "license": "MIT",
   "author": "Phil Yoon",
