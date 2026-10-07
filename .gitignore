@@ -6,6 +6,8 @@ coverage/
 .smoke/
 example/.expo/
 example/dist/
+example/test-results/
+example/playwright-report/
 example/ios/
 example/android/
 .idea/
