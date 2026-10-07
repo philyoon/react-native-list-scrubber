@@ -1,0 +1,42 @@
+# Run once before the flows (scripts/e2e.sh does): gets Expo Go past the screens it can show on a fresh
+# simulator or emulator, so each flow's open (subflows/open.yaml) only waits for the app. Checks for something
+# that turns out not to be there cost Maestro about 7 s each, so the flows themselves make none.
+# Expo Go: host.exp.Exponent on iOS; npm run e2e:android sets APP_ID=host.exp.exponent
+appId: ${APP_ID}
+env:
+  APP_ID: host.exp.Exponent
+---
+- stopApp
+- openLink: exp://127.0.0.1:8081/--/?demo=FlatList
+# The app, Expo Go's first-run introduction, or iOS asking to open the link in Expo Go
+- extendedWaitUntil:
+    visible: 'List Scrubber|Continue|Open'
+    timeout: 60000
+# One check for all of them (each check that finds nothing costs about 7 s): usually none is there
+- runFlow:
+    when:
+      visible: 'Open|Continue|Toggle element inspector'
+    commands:
+      - runFlow:
+          when:
+            visible: Open
+          commands:
+            - tapOn: Open
+            - extendedWaitUntil:
+                visible: 'List Scrubber|Continue'
+                timeout: 60000
+      # Expo Go's first-run introduction, then the developer menu itself
+      - runFlow:
+          when:
+            visible: Continue
+          commands:
+            - tapOn: Continue
+      - runFlow:
+          when:
+            visible: Toggle element inspector
+          commands:
+            - tapOn: Close
+- extendedWaitUntil:
+    visible:
+      id: list-scrubber-a11y
+    timeout: 10000
