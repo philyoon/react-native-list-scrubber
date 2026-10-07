@@ -9,8 +9,18 @@ if (platform !== 'ios' && platform !== 'android') {
 }
 const expo = JSON.parse(readFileSync(new URL('../node_modules/expo/package.json', import.meta.url), 'utf8'));
 const sdk = `${expo.version.split('.')[0]}.0.0`;
-const response = await fetch('https://api.expo.dev/v2/versions');
+// The endpoint `expo start` reads; the versions come wrapped in `data`
+const response = await fetch('https://api.expo.dev/v2/versions/latest');
 if (!response.ok) throw new Error(`Expo versions API: ${response.status}`);
-const url = (await response.json()).data.sdkVersions[sdk]?.[`${platform}ClientUrl`];
-if (!url) throw new Error(`No Expo Go ${platform} build listed for SDK ${sdk}`);
+const body = await response.json();
+const versions = body.data ?? body;
+const url = versions.sdkVersions?.[sdk]?.[`${platform}ClientUrl`];
+if (!url) {
+  throw new Error(
+    `No Expo Go ${platform} build listed for SDK ${sdk} (response keys: ${Object.keys(versions).join(', ')}; ` +
+      `SDKs: ${Object.keys(versions.sdkVersions ?? {})
+        .slice(-5)
+        .join(', ')})`,
+  );
+}
 console.log(url);

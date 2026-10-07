@@ -85,7 +85,9 @@ jobs:
           curl -fsSL https://get.maestro.mobile.dev | bash
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
       - name: Download Expo Go
-        run: curl -fsSL "$(node scripts/expo-go-url.mjs android)" -o expo-go.apk
+        run: |
+          url=$(node scripts/expo-go-url.mjs android)
+          curl -fsSL "$url" -o expo-go.apk
         working-directory: example
       - name: Start Metro in e2e mode
         run: sh scripts/ci-metro.sh android
