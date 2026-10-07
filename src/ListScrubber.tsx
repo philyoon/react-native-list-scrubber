@@ -34,7 +34,7 @@ import { useLatest } from './useLatest';
 import { useScrubGesture } from './useScrubGesture';
 import { useSectionOffsets, warnIfInvalid } from './validate';
 
-interface ListScrubberBaseProps {
+interface ListScrubberBaseProps<S extends ListScrubberSection> {
   scrollY: SharedValue<number>;
   listRef: AnimatedRef<any>; // any scrollable component
   /** The list's content and viewport heights: numbers, or shared values (as `useListScrubber` gives) */
@@ -75,16 +75,17 @@ interface ListScrubberBaseProps {
   testID?: string;
   /**
    * With `sections`: the finger moved into another section while dragging (e.g. a haptic tick per letter).
+   * `section` has your sections' own type, extra fields included.
    * Shared by both label modes rather than tied to `sections`, so its parameters are typed even when
    * `sections` comes in a spread (`{...scrubber.scrubberProps}`), which TypeScript can't discriminate on.
    */
-  onSectionChange?: (index: number, section: ListScrubberSection) => void;
+  onSectionChange?: (index: number, section: S) => void;
 }
 
 /** Labels from sections: picked and drawn on the UI thread, so they never lag. Preferred. */
-interface ListScrubberSectionProps {
+interface ListScrubberSectionProps<S extends ListScrubberSection> {
   /** Labelled sections (ascending offsets). The bubble shows the section under the finger, and screen readers step section by section. */
-  sections: readonly ListScrubberSection[];
+  sections: readonly S[];
   labelAt?: never;
 }
 
@@ -99,7 +100,9 @@ interface ListScrubberLabelAtProps {
   labelAt?: (position: number, scrollOffset: number) => string | null;
 }
 
-export type ListScrubberProps = ListScrubberBaseProps & (ListScrubberSectionProps | ListScrubberLabelAtProps);
+/** `S` is the type of your sections: `{ offset, label }` plus any fields of your own */
+export type ListScrubberProps<S extends ListScrubberSection = ListScrubberSection> =
+  ListScrubberBaseProps<S> & (ListScrubberSectionProps<S> | ListScrubberLabelAtProps);
 
 const defaultFormatPercent = (percent: number) => `${percent}%`;
 
@@ -115,7 +118,7 @@ const defaultFormatPercent = (percent: number) => `${percent}%`;
  * - Screen readers get an adjustable control: swipe up/down to move one step (accessibilitySteps, or one screen),
  *   announced as the label or a percentage.
  */
-export function ListScrubber({
+export function ListScrubber<S extends ListScrubberSection = ListScrubberSection>({
   scrollY,
   listRef,
   contentHeight: contentHeightProp,
@@ -138,7 +141,7 @@ export function ListScrubber({
   bubbleStyle,
   bubbleTextStyle: bubbleTextStyleProp,
   testID = 'list-scrubber',
-}: ListScrubberProps) {
+}: ListScrubberProps<S>) {
   // Shared values from useListScrubber are mirrored here, so a new size re-renders only the scrubber
   const contentHeight = useMirroredNumber(contentHeightProp);
   const viewportHeight = useMirroredNumber(viewportHeightProp);

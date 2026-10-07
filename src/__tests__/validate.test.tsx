@@ -1,6 +1,6 @@
 import { colors, setup } from './support';
-import { render } from '@testing-library/react-native';
-import { PinnedSectionHeader } from '../index';
+import { act, render, renderHook } from '@testing-library/react-native';
+import { PinnedSectionHeader, useListScrubber } from '../index';
 import { resetWarnings, warnIfInvalid } from '../validate';
 
 let warn: jest.SpyInstance;
@@ -135,5 +135,53 @@ describe('unmemoized sections', () => {
     } finally {
       (globalThis as unknown as { __DEV__: boolean }).__DEV__ = dev;
     }
+  });
+});
+
+describe('a list that never reports its size', () => {
+  const mount = async () => {
+    const hook = await renderHook(() => useListScrubber());
+    const list = hook.result.current;
+    const attach = () => ((list.listRef as unknown as { current: object | null }).current = {});
+    const wait = (ms: number) => act(() => jest.advanceTimersByTime(ms));
+    return { ...hook, list, attach, wait };
+  };
+
+  it('warns once the list has been mounted for a while without them, naming the handlers', async () => {
+    const { list, attach, wait } = await mount();
+    attach();
+    await act(() => list.listProps.onLayout({ nativeEvent: { layout: { height: 600 } } } as never));
+    await wait(2000);
+    expect(warn).not.toHaveBeenCalled();
+    await wait(1000);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0]![0]).toContain("the list's onContentSizeChange from `listProps` never ran");
+    await wait(10000);
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
+
+  it('waits for the list to mount: one rendered after its data loads is fine', async () => {
+    const { list, attach, wait } = await mount();
+    await wait(10000); // a spinner meanwhile: the list isn't mounted
+    attach();
+    await act(() => {
+      list.listProps.onLayout({ nativeEvent: { layout: { height: 600 } } } as never);
+      list.listProps.onContentSizeChange(390, 0); // an empty list still reports its size
+    });
+    await wait(10000);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('names both when neither ran, and stops checking on unmount', async () => {
+    const first = await mount();
+    first.attach();
+    await first.wait(3000);
+    expect(warn.mock.calls[0]![0]).toContain('onLayout and onContentSizeChange');
+    resetWarnings();
+    const second = await mount();
+    second.attach();
+    await second.unmount();
+    await second.wait(10000);
+    expect(warn).toHaveBeenCalledTimes(1);
   });
 });

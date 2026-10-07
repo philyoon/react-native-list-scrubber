@@ -47,6 +47,8 @@ crashes at startup.
 ## Usage
 
 ```tsx
+import { useMemo } from 'react';
+import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { ListScrubber, listLayout, useListScrubber } from 'react-native-list-scrubber';
 
@@ -204,7 +206,8 @@ Optional:
 - `formatAccessibilityPercent`: the screen-reader value when there's no label. Default: `40%`.
 - `onDragStart`, `onDragEnd`: the drag started or ended, e.g. for haptics.
 - `onSectionChange(index, section)`: with `sections`, the finger crossed into another section while dragging,
-  e.g. for a haptic tick.
+  e.g. for a haptic tick. `section` has your sections' own type, so extra fields (`{ offset, label, id }`) are
+  typed too.
 - `side`: `'left'` or `'right'` edge of the list, as laid out left to right. Default: `'right'`. See
   [Right-to-left layouts](#right-to-left-layouts).
 - `edgeOffset`: distance from that edge, negative to sit in a margin outside the list. Default: `0`.
@@ -317,6 +320,8 @@ still doesn't show:
   [Usage](#usage)), so the scroll handler never runs.
 - A prop after `{...scrubber.listProps}` replaces one of its own. Pass `onScroll`, `onLayout` and
   `onContentSizeChange` to `useListScrubber` instead, and use `scrubber.listRef` rather than your own `ref`.
+  Development builds warn when the list's `onLayout` or `onContentSizeChange` from `listProps` never ran a few
+  seconds after it mounted.
 - The content isn't taller than the list: there's nothing to scrub, so nothing is drawn.
 - `enabled` is `false`, or the list and the scrubber aren't in the same container (the scrubber is positioned
   over its parent).

@@ -105,6 +105,32 @@ describe('useListScrubber({ sections })', () => {
     expect([ok, refused]).toHaveLength(2);
   });
 
+  it("types: onSectionChange's section keeps the sections' own type, extra fields included", async () => {
+    const people = [
+      { offset: 0, label: 'A', id: 'a1' },
+      { offset: 500, label: 'B', id: 'b1' },
+    ];
+    const scrubber = (await renderHook(() => useListScrubber({ sections: people }))).result.current;
+    const props = { ...scrubber.scrubberProps, accessibilityLabel: 's' };
+    const viaHook = <ListScrubber {...props} onSectionChange={(_, section) => section.id.toUpperCase()} />;
+    const byHand = (
+      <ListScrubber
+        scrollY={scrubber.scrollY}
+        listRef={scrubber.listRef}
+        contentHeight={1000}
+        viewportHeight={100}
+        sections={people}
+        accessibilityLabel="s"
+        onSectionChange={(_, section) => section.id.toUpperCase()}
+      />
+    );
+    const unknownField = (
+      // @ts-expect-error the sections have no `title`
+      <ListScrubber {...props} onSectionChange={(_, section) => section.title} />
+    );
+    expect([viaHook, byHand, unknownField]).toHaveLength(3);
+  });
+
   it("types: onSectionChange's parameters are inferred when sections arrive in the spread", async () => {
     const scrubber = (await renderHook(() => useListScrubber({ sections }))).result.current;
     const colors = { thumb: 'gray', thumbActive: 'red', bubble: 'black', bubbleText: 'white' };
