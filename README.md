@@ -301,11 +301,14 @@ jest.mock('react-native-list-scrubber', () => require('react-native-list-scrubbe
 The mock loads none of those libraries and has every export, with the same types:
 
 - `ListScrubber` renders only its screen-reader control: role `adjustable`, your `accessibilityLabel`, the
-  first section's label (or "0%") as its value, and test ID `<testID>-a11y`.
-- `PinnedSectionHeader` and `CurrentSectionLabel` show the first section's label, with the real test IDs.
+  real one's value (the section at the scroll position, `labelAt`'s label, or a percentage), and test ID
+  `<testID>-a11y`. Like the real one, it draws nothing until the content is taller than the list.
+- `PinnedSectionHeader` and `CurrentSectionLabel` show the section at the scroll position, with the real test
+  IDs.
 - `useListScrubber` returns the same shape. Its shared values are plain objects with `get`/`set`. The list
-  handlers record sizes and call your own, and `scrollToSection` / `scrollToOffset` set `scrollY` to where the
-  real hook would scroll.
+  handlers record sizes and the scroll offset and call your own, and `scrollToSection` / `scrollToOffset` set
+  `scrollY` to where the real hook would scroll. The components above re-render when these change, so a test
+  can fire the list's `scroll` event (or call `scrollToSection`) and check the label.
 - `listLayout`, `sectionListLayout`, `sectionIndexAt` and `LIST_SCRUBBER_DEFAULTS` are the real ones.
 
 The package ships ES modules. If Jest reports `Cannot use import statement outside a module`, add
@@ -313,15 +316,16 @@ The package ships ES modules. If Jest reports `Cannot use import statement outsi
 
 ## Troubleshooting
 
-**The thumb never appears.** It shows while the list scrolls and hides a moment after, so scroll first. If it
-still doesn't show:
+**The thumb never appears.** It shows while the list scrolls and hides a moment after, so scroll first. A
+hidden thumb lets touches through to the list, so it can only be grabbed once shown. If it still doesn't show:
 
 - The list isn't an Animated component (`Animated.FlatList`, `Animated.createAnimatedComponent(…)`; see
   [Usage](#usage)), so the scroll handler never runs.
 - A prop after `{...scrubber.listProps}` replaces one of its own. Pass `onScroll`, `onLayout` and
   `onContentSizeChange` to `useListScrubber` instead, and use `scrubber.listRef` rather than your own `ref`.
   Development builds warn when the list's `onLayout` or `onContentSizeChange` from `listProps` never ran a few
-  seconds after it mounted.
+  seconds after it mounted (unless the scrubber is given that size itself, as `contentHeight` or
+  `viewportHeight`).
 - The content isn't taller than the list: there's nothing to scrub, so nothing is drawn.
 - `enabled` is `false`, or the list and the scrubber aren't in the same container (the scrubber is positioned
   over its parent).

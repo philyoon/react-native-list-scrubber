@@ -1,6 +1,6 @@
 import { colors, setup } from './support';
-import { act, render, renderHook } from '@testing-library/react-native';
-import { PinnedSectionHeader, useListScrubber } from '../index';
+import { act, render } from '@testing-library/react-native';
+import { ListScrubber, PinnedSectionHeader, useListScrubber } from '../index';
 import { resetWarnings, warnIfInvalid } from '../validate';
 
 let warn: jest.SpyInstance;
@@ -139,12 +139,20 @@ describe('unmemoized sections', () => {
 });
 
 describe('a list that never reports its size', () => {
-  const mount = async () => {
-    const hook = await renderHook(() => useListScrubber());
-    const list = hook.result.current;
+  type Sizes = { contentHeight?: number; viewportHeight?: number };
+  // A screen with the hook and a scrubber; `own` sizes are passed to the scrubber as numbers instead
+  const mount = async ({ scrubber = true, own = {} as Sizes } = {}) => {
+    let list!: ReturnType<typeof useListScrubber>;
+    function Screen() {
+      list = useListScrubber();
+      return scrubber ? (
+        <ListScrubber {...list.scrubberProps} {...own} accessibilityLabel="Scroll position" />
+      ) : null;
+    }
+    const view = await render(<Screen />);
     const attach = () => ((list.listRef as unknown as { current: object | null }).current = {});
     const wait = (ms: number) => act(() => jest.advanceTimersByTime(ms));
-    return { ...hook, list, attach, wait };
+    return { ...view, list, attach, wait };
   };
 
   it('warns once the list has been mounted for a while without them, naming the handlers', async () => {
@@ -183,5 +191,27 @@ describe('a list that never reports its size', () => {
     await second.unmount();
     await second.wait(10000);
     expect(warn).toHaveBeenCalledTimes(1);
+  });
+
+  it("stays quiet when the scrubber is given its own sizes: the hook's handlers aren't needed", async () => {
+    const { attach, wait } = await mount({ own: { contentHeight: 1000, viewportHeight: 100 } });
+    attach();
+    await wait(10000);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('names only the handlers whose size the scrubber reads from the hook', async () => {
+    const { attach, wait } = await mount({ own: { contentHeight: 1000 } });
+    attach();
+    await wait(3000);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0]![0]).toContain("the list's onLayout from `listProps` never ran");
+  });
+
+  it('stays quiet with no scrubber reading the sizes (e.g. only a pinned header)', async () => {
+    const { attach, wait } = await mount({ scrubber: false });
+    attach();
+    await wait(10000);
+    expect(warn).not.toHaveBeenCalled();
   });
 });

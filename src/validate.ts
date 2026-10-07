@@ -101,15 +101,32 @@ export const UNMEASURED_AFTER_MS = 3000;
 const CHECK_EVERY_MS = 1000;
 
 /**
- * Development only: warns once when the list has been mounted for a while but one of the handlers in
- * `listProps` never ran, so the scrubber never learns the list's size and stays hidden without an error. It's
- * the most common wiring mistake: a prop after `{...listProps}` replacing one of its own, or the props not
- * spread on the list at all. The wait starts when `listRef` is attached, so a list rendered after its data
- * loads doesn't count; an empty list still reports its size (0), so it doesn't either.
+ * The hook's size shared values that a ListScrubber reads. Its measuring handlers matter only for those: an app
+ * can pass the scrubber its own sizes as numbers, and then the hook's handlers needn't run at all.
+ */
+const usedSizes = new WeakSet<object>();
+
+/** Records that a ListScrubber reads these sizes (the shared values, not numbers), for the check below */
+export function useMarkSizesUsed(contentHeight: number | object, viewportHeight: number | object): void {
+  useEffect(() => {
+    for (const size of [contentHeight, viewportHeight]) {
+      if (typeof size === 'object') usedSizes.add(size);
+    }
+  }, [contentHeight, viewportHeight]);
+}
+
+/**
+ * Development only: warns once when the list has been mounted for a while but a handler in `listProps` never
+ * ran while a ListScrubber reads the size it measures, so the scrubber never learns the list's size and stays
+ * hidden without an error. It's the most common wiring mistake: a prop after `{...listProps}` replacing one of
+ * its own, or the props not spread on the list at all. The wait starts when `listRef` is attached, so a list
+ * rendered after its data loads doesn't count; an empty list still reports its size (0), so it doesn't either.
+ * A scrubber given its own sizes as numbers doesn't need the handlers, so it doesn't count.
  */
 export function useWarnIfUnmeasured(
   listRef: { current: unknown },
   measured: RefObject<{ onLayout: boolean; onContentSizeChange: boolean }>,
+  sizes: { onLayout: object; onContentSizeChange: object },
 ): void {
   useEffect(() => {
     if (!__DEV__) return;
@@ -118,9 +135,9 @@ export function useWarnIfUnmeasured(
       mountedFor = listRef.current == null ? 0 : mountedFor + CHECK_EVERY_MS;
       if (mountedFor < UNMEASURED_AFTER_MS) return;
       clearInterval(id);
-      const missing = Object.entries(measured.current)
-        .filter(([, ran]) => !ran)
-        .map(([name]) => name);
+      const missing = (Object.keys(sizes) as (keyof typeof sizes)[]).filter(
+        (handler) => !measured.current[handler] && usedSizes.has(sizes[handler]),
+      );
       if (!missing.length || warned.has('unmeasured')) return;
       warned.add('unmeasured');
       console.warn(
@@ -130,5 +147,5 @@ export function useWarnIfUnmeasured(
       );
     }, CHECK_EVERY_MS);
     return () => clearInterval(id);
-  }, [listRef, measured]);
+  }, [listRef, measured, sizes]);
 }

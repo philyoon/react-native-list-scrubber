@@ -73,7 +73,12 @@ export function useListScrubber<
   // Stable identities: the list and the scrubber get the same props on every render.
   // Which of the list's handlers have run, for the development warning below
   const measured = useRef({ onLayout: false, onContentSizeChange: false });
-  useWarnIfUnmeasured(listRef, measured);
+  // Each handler measures one size; the warning needs to know which, to skip sizes a scrubber doesn't use
+  const measuredSizes = useMemo(
+    () => ({ onLayout: viewportHeight, onContentSizeChange: contentHeight }),
+    [viewportHeight, contentHeight],
+  );
+  useWarnIfUnmeasured(listRef, measured, measuredSizes);
   const onContentSizeChange = useLatest((width: number, height: number) => {
     measured.current.onContentSizeChange = true;
     contentHeight.set(height);
