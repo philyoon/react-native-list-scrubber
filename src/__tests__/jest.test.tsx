@@ -33,13 +33,41 @@ const sections = [
   { offset: 500, label: 'M' },
 ];
 const layout = (height: number) => ({ nativeEvent: { layout: { height } } }) as never;
+/** A scroll position the components only read */
+const at = (y: number) => ({ get: () => y }) as never;
+/** A screen with the hook, its scrubber and a pinned header, measured: 1000 tall in a 100 tall window */
+const mountScreen = async (
+  options: Parameters<typeof useListScrubber>[0] = {},
+  labelAt?: (p: number) => string,
+) => {
+  let list!: ReturnType<typeof useListScrubber>;
+  function Screen() {
+    list = useListScrubber(options);
+    return (
+      <>
+        <PinnedSectionHeader {...list.headerProps} height={32} />
+        <ListScrubber {...list.scrubberProps} labelAt={labelAt} accessibilityLabel="Scroll position" />
+      </>
+    );
+  }
+  await render(<Screen />);
+  expect(screen.queryByRole('adjustable')).toBeNull(); // nothing to scrub until the list reports its size
+  await act(() => {
+    list.listProps.onLayout(layout(100));
+    list.listProps.onContentSizeChange(390, 1000);
+  });
+  const scroll = (y: number) =>
+    act(() => (list.listProps.onScroll as unknown as (e: unknown) => void)({ contentOffset: { y } }));
+  const value = () => screen.getByRole('adjustable').props['aria-valuetext'];
+  return { list: () => list, scroll, value };
+};
 
 it('loads no Reanimated, Worklets or Gesture Handler', () => {
   expect(mockLoaded).toEqual([]);
 });
 
 describe('ListScrubber', () => {
-  const props = { scrollY: {} as never, listRef: {} as never, accessibilityLabel: 'Scroll position' };
+  const props = { scrollY: at(0), listRef: {} as never, accessibilityLabel: 'Scroll position' };
 
   it("is the screen-reader control, valued with the first section's label", async () => {
     await render(<ListScrubber {...props} contentHeight={1000} viewportHeight={100} sections={sections} />);
@@ -83,15 +111,46 @@ describe('ListScrubber', () => {
 
 describe('pinned header', () => {
   it("PinnedSectionHeader shows the first section's label under its test IDs", async () => {
-    await render(<PinnedSectionHeader scrollY={{} as never} sections={sections} height={32} />);
+    await render(<PinnedSectionHeader scrollY={at(0)} sections={sections} height={32} />);
     expect(screen.getByTestId('list-scrubber-pinned-header')).toBeTruthy();
     expect(screen.getByTestId('list-scrubber-pinned-header-label')).toHaveTextContent('A');
   });
 
   it('CurrentSectionLabel is empty without sections; the push style is empty', async () => {
-    await render(<CurrentSectionLabel scrollY={{} as never} sections={[]} />);
+    await render(<CurrentSectionLabel scrollY={at(0)} sections={[]} />);
     expect(screen.getByTestId('list-scrubber-section-label')).toHaveTextContent('');
     expect(usePinnedSectionHeaderStyle({} as never, [], 32)).toEqual({});
+  });
+});
+
+describe('following the scroll position', () => {
+  it('the scrubber, its value and the pinned header follow the list', async () => {
+    const { list, scroll, value } = await mountScreen({ sections });
+    expect(value()).toBe('A');
+    await scroll(300);
+    expect(value()).toBe('A');
+    await scroll(500);
+    expect(value()).toBe('M');
+    expect(screen.getByTestId('list-scrubber-pinned-header-label')).toHaveTextContent('M');
+    await act(() => list().scrollToSection(0));
+    expect(value()).toBe('A');
+    expect(screen.getByTestId('list-scrubber-pinned-header-label')).toHaveTextContent('A');
+  });
+
+  it("without sections, the value is labelAt's label, or a percentage", async () => {
+    const percent = await mountScreen();
+    await percent.scroll(450);
+    expect(percent.value()).toBe('50%');
+    await percent.scroll(900);
+    expect(percent.value()).toBe('100%');
+    const labelled = await mountScreen({}, (position) => `at ${position}`);
+    await labelled.scroll(900);
+    expect(labelled.value()).toBe('at 999'); // the content offset the label describes: the end;
+  });
+
+  it('CurrentSectionLabel picks the section at a position it is given', async () => {
+    await render(<CurrentSectionLabel scrollY={at(700)} sections={sections} />);
+    expect(screen.getByTestId('list-scrubber-section-label')).toHaveTextContent('M');
   });
 });
 

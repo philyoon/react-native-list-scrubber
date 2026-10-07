@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Fixed: development builds no longer warn that `listProps`' `onLayout` or `onContentSizeChange` never ran
+  when the scrubber is given that size itself (`contentHeight` / `viewportHeight` as numbers).
+- `react-native-list-scrubber/jest`: `ListScrubber`, `PinnedSectionHeader` and `CurrentSectionLabel` follow
+  the scroll position and the list's size, so tests can scroll and check the current section.
+
 ## 0.1.0
 
 First release. See the [README](https://github.com/philyoon/react-native-list-scrubber#readme) for usage.

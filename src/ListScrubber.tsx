@@ -32,7 +32,7 @@ import { useAutoHide } from './useAutoHide';
 import { useMirroredNumber } from './useMirroredNumber';
 import { useLatest } from './useLatest';
 import { useScrubGesture } from './useScrubGesture';
-import { useSectionOffsets, warnIfInvalid } from './validate';
+import { useMarkSizesUsed, useSectionOffsets, warnIfInvalid } from './validate';
 
 interface ListScrubberBaseProps<S extends ListScrubberSection> {
   scrollY: SharedValue<number>;
@@ -145,6 +145,8 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
   // Shared values from useListScrubber are mirrored here, so a new size re-renders only the scrubber
   const contentHeight = useMirroredNumber(contentHeightProp);
   const viewportHeight = useMirroredNumber(viewportHeightProp);
+  // Tells useListScrubber's development check which of its measurements this scrubber relies on
+  useMarkSizesUsed(contentHeightProp, viewportHeightProp);
   // Memoized: worklets copy what they capture to the UI thread whenever its identity changes, and an
   // inline `metrics={{…}}` would otherwise do that on every render (hence keyed by value).
   const metricsKey = JSON.stringify(metrics ?? null);
