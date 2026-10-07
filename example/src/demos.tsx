@@ -3,7 +3,7 @@ import { AnimatedLegendList } from '@legendapp/list/reanimated';
 import * as Haptics from 'expo-haptics';
 import { FlashList } from '@shopify/flash-list';
 import { useMemo, type ComponentType } from 'react';
-import { Pressable, ScrollView, SectionList, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, SectionList, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import {
   ListScrubber,
@@ -25,6 +25,12 @@ import {
   type Section,
 } from './data';
 import { E2E, E2E_TIMING } from './e2e';
+
+// The web tests (web-e2e/) open the page with ?side=left for the scrubber on the left edge, as an RTL page would
+const WEB_SIDE =
+  Platform.OS === 'web' && new URLSearchParams(globalThis.location?.search).get('side') === 'left'
+    ? 'left'
+    : 'right';
 import { useColors, type Colors } from './theme';
 
 const ROW = 64;
@@ -47,6 +53,7 @@ function Scrubber(props: { scrubber: SectionScrubber }) {
         bubbleText: colors.bubbleText,
       }}
       accessibilityLabel="Scroll position"
+      side={WEB_SIDE}
       timing={E2E ? E2E_TIMING : undefined}
       onDragStart={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
       // A tick per section crossed, like the iOS Contacts index

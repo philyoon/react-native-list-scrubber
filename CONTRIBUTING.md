@@ -60,6 +60,11 @@ paths after `--` to run only some. The right-to-left flows run against Metro in 
 `npm run e2e:start:rtl`, then `npm run e2e:ios -- e2e/rtl`. The README's
 [End-to-end tests](README.md#end-to-end-tests) section has the details, and how the flows find the thumb.
 
+## Web tests
+
+The Playwright tests in `example/web-e2e` run in CI. Run them for any change to what's on screen on web:
+`npm --prefix example exec -- playwright install chromium` once, then `npm run example web:e2e`.
+
 ## Dependency updates
 
 Dependabot opens monthly, grouped pull requests for tooling only. Upgrade these by hand, as one pull request

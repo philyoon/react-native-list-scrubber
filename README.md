@@ -415,6 +415,18 @@ demo. iOS shows a change of layout direction only after a restart, so after swit
 `e2e:start:rtl` the flows restart Expo Go once. The flows in `example/e2e/large-text` run at the largest text
 size, which the scripts set on the device first and restore afterwards.
 
+### Web tests
+
+[Playwright](https://playwright.dev) tests in `example/web-e2e` drive the example's web build in Chromium, and
+run in CI: dragging the thumb to the end and back, the bubble showing its whole label beside the thumb, the
+bubble staying on screen on a right-to-left page with either `side`, the screen-reader control from the
+keyboard, and no console warnings. From the repo root:
+
+```sh
+npm --prefix example exec -- playwright install chromium   # once
+npm run example web:e2e                                     # builds for web, then runs the tests
+```
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, the checks CI runs, the example app and end-to-end tests.

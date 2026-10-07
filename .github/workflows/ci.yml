@@ -24,8 +24,15 @@ jobs:
       - run: npm run smoke:package
       - run: npm --prefix example install
       - run: npm --prefix example run typecheck
-      # Builds the example for web: catches anything that breaks the web bundle
-      - run: npm --prefix example run export:web
+      # Builds the example for web and drives it in a browser (example/web-e2e): drags, the bubble's layout
+      # in left-to-right and right-to-left pages, the keyboard, and no console warnings
+      - run: npm --prefix example exec -- playwright install --with-deps chromium
+      - run: npm --prefix example run web:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: web-e2e-traces
+          path: example/test-results
   # The oldest versions the peer dependency ranges allow: a pair Reanimated supports, the library's types, the
   # unit tests, and an app using every export must all still work with them.
   min-versions:

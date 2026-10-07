@@ -5,5 +5,5 @@
     "noUncheckedIndexedAccess": true,
     "paths": { "react-native-list-scrubber": ["../src/index.ts"] }
   },
-  "include": ["src", "index.ts"]
+  "include": ["src", "index.ts", "web-e2e", "playwright.config.ts"]
 }
