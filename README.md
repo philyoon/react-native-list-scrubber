@@ -4,23 +4,20 @@
 [![CI](https://github.com/philyoon/react-native-list-scrubber/actions/workflows/ci.yml/badge.svg)](https://github.com/philyoon/react-native-list-scrubber/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/github/license/philyoon/react-native-list-scrubber)](LICENSE)
 
-A draggable thumb for scrubbing through long React Native lists, with a label bubble beside the finger.
+Fast scrolling for React Native lists. Drag a scrollbar thumb to jump through thousands of rows, with section
+labels beside your finger.
 
 <img src="docs/demo.gif" width="320" alt="Dragging the thumb through 3,000 contacts: the bubble and the pinned header follow letter by letter" />
 
-- **Runs on the UI thread.** The drag, the thumb, the list scroll _and the bubble label_ are all driven by
-  Reanimated and Gesture Handler. They keep up with your finger even while JS is busy rendering rows.
-- **Label bubble.** Pass labelled `sections` (A–Z, months, chapters…). The bubble shows the one under your
-  finger, and it reaches the last section even when that section is shorter than a screen.
-- **Pinned header.** `PinnedSectionHeader` shows the current section's name in a header pinned above the list.
-  Unlike native sticky headers, it doesn't fall behind big jumps, and the next section's header pushes it out,
-  like iOS Contacts.
-- **Screen readers.** An adjustable "Scroll position" control is always present. Swipe up or down to step to
-  the next section, and VoiceOver or TalkBack reads its label.
-- **Large text.** Labels follow the system text size up to 1.5×, so they grow without overflowing the bubble
-  or the pinned header.
-- **Bring your own look.** You pass the text and haptics. Colours, sizes and timings have neutral defaults you
-  can override one by one.
+- **Keeps up with your finger.** Built on Reanimated 4 and Gesture Handler: the drag, the list scroll _and the
+  bubble label_ run on the UI thread, even while JS is busy rendering rows.
+- **Section labels and a pinned header.** Pass labelled `sections` (A–Z, months, chapters…) and the bubble
+  shows the one under your finger. `PinnedSectionHeader` keeps the current section pinned above the list, and
+  the next one pushes it out, like iOS Contacts. `listLayout` computes the sections and the list's
+  `getItemLayout` from the same row heights, so the two can't disagree.
+- **Accessible by default.** An adjustable "Scroll position" control is always present: VoiceOver and TalkBack
+  users swipe up or down to step from section to section and hear its label. Labels follow the system text
+  size up to 1.5×.
 - **Works with** FlatList, SectionList, ScrollView, Legend List and FlashList. See
   [Compatibility](#compatibility).
 - **Requires the New Architecture.** It's built on Reanimated 4, which runs only on React Native's New
@@ -70,11 +67,7 @@ function Contacts({ contacts }: { contacts: Contact[] }) {
         renderItem={renderContact}
         getItemLayout={getItemLayout}
       />
-      <ListScrubber
-        {...scrubber.scrubberProps}
-        colors={{ thumb: '#7C7A96', thumbActive: '#4F46E5', bubble: '#1C1B3A', bubbleText: '#FFFFFF' }}
-        accessibilityLabel="Scroll position"
-      />
+      <ListScrubber {...scrubber.scrubberProps} accessibilityLabel="Scroll position" />
     </View>
   );
 }
@@ -91,6 +84,17 @@ const scrubber = useListScrubber({ onLayout, onContentSizeChange, onScroll: mySc
 `onScroll` there is a worklet (it runs on the UI thread); keep its identity stable. The hook also returns the
 pieces `listProps` and `scrubberProps` are made of (`listRef`, `scrollY`, `onScroll`, and the `contentHeight`
 and `viewportHeight` shared values) for wiring them by hand; all of these are public API.
+
+Colours, sizes and timings have neutral defaults; override any of them (see [Props](#props)). You pass the
+text and haptics.
+
+```tsx
+<ListScrubber
+  {...scrubber.scrubberProps}
+  colors={{ thumb: '#7C7A96', thumbActive: '#4F46E5', bubble: '#1C1B3A', bubbleText: '#FFFFFF' }}
+  accessibilityLabel="Scroll position"
+/>
+```
 
 Measuring the list doesn't re-render your component: the heights are shared values, and only `ListScrubber`
 re-renders when they change. This matters for lists whose content size changes often while scrolling
@@ -177,12 +181,22 @@ settles. The screen-reader value follows on its own. To jump by label, find the 
 
 ### Labels that aren't sections
 
-`labelAt(position, scrollOffset)` computes any label on the JS thread, for example "42%". It can lag a frame
-or two behind a fast drag, so prefer `sections` when the labels are known ahead of time. `position` is the
-content offset to describe: it slides from the top of the viewport at the start to its bottom at the end, so
-the last rows get a label even when they're shorter than a screen. `scrollOffset` is the raw scroll position.
-`sectionIndexAt(starts, y)` does a binary search over ascending section starts, if your labels come from a
-list of your own.
+`labelAt` computes any label on the JS thread. It can lag a frame or two behind a fast drag, so prefer
+`sections` when the labels are known ahead of time.
+
+```tsx
+// "Mar 2024" for whichever row the scrubber points at
+<ListScrubber
+  {...scrubber.scrubberProps}
+  labelAt={(position) => formatMonth(photos[Math.floor(position / ROW)]?.date)}
+  accessibilityLabel="Scroll position"
+/>
+```
+
+It's called as `labelAt(position, scrollOffset)`. `position` is the content offset to describe: it slides from
+the top of the viewport at the start to its bottom at the end, so the last rows get a label even when they're
+shorter than a screen. `scrollOffset` is the raw scroll position. `sectionIndexAt(starts, y)` does a binary
+search over ascending section starts, if your labels come from a list of your own.
 
 ## Props
 
