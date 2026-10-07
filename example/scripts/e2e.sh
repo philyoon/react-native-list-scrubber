@@ -1,6 +1,7 @@
 #!/bin/sh
 # Runs the Maestro flows in e2e/ in Expo Go, against Metro in e2e mode (npm run e2e:start, kept running).
 #   e2e.sh ios|android [flow…]     all flows by default, or just the ones given (e.g. e2e/index.yaml)
+# First it runs e2e/setup/expo-go.yaml, which gets Expo Go past the screens it can show on a fresh device.
 # Flows under e2e/large-text run at the largest system text size: this script sets it on the device first
 # and restores the previous size afterwards.
 # MAESTRO_DEVICE picks the device when more than one is running: a simulator UDID or an emulator serial such as
@@ -21,7 +22,11 @@ case "$platform" in
       previous_size=$(xcrun simctl ui "$sim" content_size)
       xcrun simctl ui "$sim" content_size accessibility-extra-extra-extra-large
     }
-    large_text_off() { xcrun simctl ui "$sim" content_size "$previous_size"; }
+    large_text_off() {
+      # Closed first: an app open while the size changes back can keep a broken layout
+      xcrun simctl terminate "$sim" host.exp.Exponent 2>/dev/null || true
+      xcrun simctl ui "$sim" content_size "$previous_size"
+    }
     ;;
   android)
     # Expo Go on the emulator reaches Metro on this machine through adb
@@ -32,6 +37,7 @@ case "$platform" in
       adb_ shell settings put system font_scale 2.0
     }
     large_text_off() {
+      adb_ shell am force-stop host.exp.exponent
       case "$previous_size" in
         null | '') adb_ shell settings delete system font_scale >/dev/null ;;
         *) adb_ shell settings put system font_scale "$previous_size" ;;
@@ -53,6 +59,8 @@ for flow in "$@"; do
     *) normal="$normal $flow" ;;
   esac
 done
+
+maestro_ e2e/setup/expo-go.yaml >/dev/null || { echo "Expo Go setup failed: run e2e/setup/expo-go.yaml with maestro to see why" >&2; exit 1; }
 
 status=0
 if [ -n "$normal" ]; then

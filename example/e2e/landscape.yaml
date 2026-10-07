@@ -26,6 +26,6 @@ onFlowComplete:
 - swipe:
     start: 91%, 88%
     end: 91%, 5%
-    duration: 1500
+    duration: 800 # a thumb drag doesn't fling: no need to go slowly
 - waitForAnimationToEnd
 - assertVisible: Ada Abby

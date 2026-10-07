@@ -411,9 +411,9 @@ accessibility tree, can't target it, and Maestro's swipe points are fixed screen
 the same points land on the thumb on any phone size, in portrait or landscape: x 91%, or 9% in right-to-left
 layouts. It also keeps the thumb up for 5 s instead of 1.5 s, since Maestro's wait after each swipe can
 outlast the default on a slow device. A link like `exp://127.0.0.1:8081/--/?demo=ScrollView` opens a given
-demo. iOS shows a change of layout direction only after a restart, so after switching between `e2e:start` and
-`e2e:start:rtl` the flows restart Expo Go once. The flows in `example/e2e/large-text` run at the largest text
-size, which the scripts set on the device first and restore afterwards.
+demo. The scripts first run `example/e2e/setup/expo-go.yaml`, which gets Expo Go past the screens it can show
+on a fresh device, so each flow only waits for the app. The flows in `example/e2e/large-text` run at the
+largest text size, which the scripts set on the device first and restore afterwards.
 
 ## Contributing
 

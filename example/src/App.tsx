@@ -4,7 +4,7 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-na
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DEMOS } from './demos';
-import { E2E, E2E_RESTART_FOR_DIRECTION, useE2ECard } from './e2e';
+import { E2E, useE2ECard } from './e2e';
 import { useColors } from './theme';
 
 export default function App() {
@@ -43,11 +43,6 @@ function Main() {
     <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top }}>
       <StatusBar style="auto" />
       <Text style={[styles.title, { color: colors.text }]}>List Scrubber</Text>
-      {E2E_RESTART_FOR_DIRECTION && (
-        <Text testID="e2e-restart" style={[styles.hint, { color: colors.text }]}>
-          Restart to apply the layout direction
-        </Text>
-      )}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}

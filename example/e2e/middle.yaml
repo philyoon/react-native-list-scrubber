@@ -16,7 +16,7 @@ env:
 - swipe:
     start: 91%, 28%
     end: 91%, 45%
-    duration: 1500
+    duration: 800 # a thumb drag doesn't fling: no need to go slowly
 - waitForAnimationToEnd
 - assertNotVisible: Ada Abby
 - assertNotVisible: '.* Zel.*'

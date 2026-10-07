@@ -18,7 +18,7 @@ env:
       - swipe:
           start: 91%, 28%
           end: 91%, 99%
-          duration: 1500
+          duration: 800 # a thumb drag doesn't fling: no need to go slowly
 - runFlow:
     when:
       true: ${typeof RTL != 'undefined' && RTL == 1}
@@ -26,5 +26,5 @@ env:
       - swipe:
           start: 9%, 28%
           end: 9%, 99%
-          duration: 1500
+          duration: 800 # a thumb drag doesn't fling: no need to go slowly
 - waitForAnimationToEnd

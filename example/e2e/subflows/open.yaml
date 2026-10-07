@@ -1,5 +1,6 @@
 # Opens the example in Expo Go (Metro must be running: npm run e2e:start, or e2e:start:rtl for e2e/rtl) on the
-# demo named DEMO.
+# demo named DEMO. Expo Go must be past its first-run screens: scripts/e2e.sh runs e2e/setup/expo-go.yaml first.
+# Every step waits for something that is there: Maestro takes about 7 s to decide something isn't.
 # Expo Go: host.exp.Exponent on iOS; npm run e2e:android sets APP_ID=host.exp.exponent
 appId: ${APP_ID}
 env:
@@ -7,49 +8,14 @@ env:
 ---
 # Portrait, whatever an earlier flow left (landscape.yaml turns the phone after opening)
 - setOrientation: PORTRAIT
-# Fresh start (stopApp, not killApp: on Android killApp leaves Expo Go running). Expo Go would keep the last
-# screen and scroll position otherwise.
+# Fresh start (stopApp, not killApp: on Android killApp leaves Expo Go running), so a failed flow can't leave
+# the next one on an error screen, scrolled, or in the wrong layout direction (src/e2e.ts sets it as the app
+# loads)
 - stopApp
 - openLink: exp://127.0.0.1:8081/--/?demo=${DEMO}
-# iOS may ask: Open in "Expo Go"? (Only on iOS: an optional tap waits seconds for a button that isn't there.)
-- runFlow:
-    when:
-      platform: iOS
-    commands:
-      - tapOn:
-          text: Open
-          optional: true
-# On its first run Expo Go shows a developer-menu introduction over the app
-- extendedWaitUntil:
-    visible: 'List Scrubber|Continue'
-    timeout: 60000
-- runFlow:
-    when:
-      visible: Continue
-    commands:
-      - tapOn: Continue
-# ...and then the developer menu itself
-- runFlow:
-    when:
-      visible: Toggle element inspector
-    commands:
-      - tapOn: Close
-# On iOS, Expo Go shows a change of layout direction (e2e:start vs e2e:start:rtl) only after a restart; the
-# app says so (src/e2e.ts)
-- repeat:
-    while:
-      visible:
-        id: e2e-restart
-    times: 2
-    commands:
-      - stopApp
-      - openLink: exp://127.0.0.1:8081/--/?demo=${DEMO}
-      - extendedWaitUntil:
-          visible: List Scrubber
-          timeout: 60000
 - extendedWaitUntil:
     visible:
       id: list-scrubber-a11y
-    timeout: 10000
+    timeout: 60000
 # The link picks the demo; each flow then checks that demo's content (later tabs are off screen)
 - waitForAnimationToEnd

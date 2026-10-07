@@ -1,6 +1,6 @@
 // e2e mode (EXPO_PUBLIC_E2E=1, npm run e2e:start) for the Maestro flows in e2e/, and its right-to-left variant
 // (EXPO_PUBLIC_E2E_RTL=1 too, npm run e2e:start:rtl) for the flows in e2e/rtl.
-import { I18nManager, Platform, useWindowDimensions, type ViewStyle } from 'react-native';
+import { I18nManager, useWindowDimensions, type ViewStyle } from 'react-native';
 
 export const E2E = process.env.EXPO_PUBLIC_E2E === '1';
 export const E2E_RTL = E2E && process.env.EXPO_PUBLIC_E2E_RTL === '1';
@@ -39,17 +39,10 @@ export function useE2ECard(): ViewStyle {
 export const E2E_TIMING = { hideAfterMs: 5000 };
 
 /*
- * The layout direction is set as the app's code loads, before its first view: Android applies it straight away
- * (Expo Go doesn't keep it between launches). iOS keeps it, but shows a change only after a restart. Setting
- * it in every e2e run also undoes an RTL run in Expo Go.
+ * The layout direction is set as the app's code loads, before its first view: iOS and Android apply it straight
+ * away. Setting it in every e2e run also undoes an RTL run, which Expo Go may otherwise keep.
  */
 if (E2E) {
   I18nManager.allowRTL(true);
   I18nManager.forceRTL(E2E_RTL);
 }
-
-/**
- * True on iOS when Expo Go still shows the other layout direction: the app shows a notice that tells the flow
- * to restart Expo Go (e2e/subflows/open.yaml).
- */
-export const E2E_RESTART_FOR_DIRECTION = E2E && Platform.OS === 'ios' && I18nManager.isRTL !== E2E_RTL;
