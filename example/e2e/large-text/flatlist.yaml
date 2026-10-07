@@ -1,0 +1,17 @@
+# Largest system text size (scripts/e2e.sh sets it around the flows in this folder, then restores it): the
+# scrubber still drags to both ends of the list.
+# Expo Go: host.exp.Exponent on iOS; npm run e2e:android sets APP_ID=host.exp.exponent
+appId: ${APP_ID}
+env:
+  APP_ID: host.exp.Exponent
+---
+- runFlow:
+    file: ../subflows/open.yaml
+    env:
+      DEMO: FlatList
+- assertVisible: Ada Abby
+- runFlow: ../subflows/drag-to-end.yaml
+- assertVisible: '.* Zel.*'
+- assertNotVisible: Ada Abby
+- runFlow: ../subflows/drag-to-start.yaml
+- assertVisible: Ada Abby
