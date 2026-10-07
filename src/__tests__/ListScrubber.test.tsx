@@ -9,6 +9,7 @@ import {
   setup,
   sharedZero,
 } from './support';
+import type { SharedValue } from 'react-native-reanimated';
 import { act, fireEvent, screen } from '@testing-library/react-native';
 import { I18nManager, StyleSheet, type ViewStyle } from 'react-native';
 import { getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
@@ -329,6 +330,18 @@ describe('while the finger is down', () => {
       ).props.style,
     );
 
+  it('keeps the track it started on while animated insets move, so the thumb stays under the finger', async () => {
+    const top = sharedZero();
+    top.set(20); // travel 100 − 20 − 48 = 32
+    await setup({ sections: [{ offset: 0, label: 'A' }], insets: { top } });
+    await act(async () => {
+      pan().onBegin({});
+      top.set(0); // e.g. the header hides as the drag starts: the track would be 52 long
+      pan().onUpdate({ translationY: 16 });
+    });
+    expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 450, false); // half of 32
+    await release();
+  });
   it('the thumb follows the finger, thickens and takes the active colour', async () => {
     await setup();
     await hold(26);
@@ -618,6 +631,53 @@ describe('API options', () => {
     expect(StyleSheet.flatten(rail.props.style)).toMatchObject({ top: 10, bottom: 2 });
     await drag(20); // half the travel
     expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 450, false);
+  });
+
+  describe('animated insets (shared values)', () => {
+    const shared = (n: number) => {
+      const v = sharedZero();
+      v.set(n);
+      return v;
+    };
+
+    it('move the thumb within the rail, which keeps its place', async () => {
+      const scrollY = shared(450); // half of 900
+      // track 100 − 20 − 10 = 70, travel 70 − 48 = 22: the thumb is 20 down plus half of 22
+      await setup({ scrollY, insets: { top: shared(20), bottom: shared(10) } });
+      expect(style('list-scrubber-thumb').transform).toEqual([{ translateY: 31 }]);
+      const rail = screen.getByTestId('list-scrubber-a11y', { includeHiddenElements: true }).parent!;
+      expect(StyleSheet.flatten(rail.props.style)).toMatchObject({ top: 0, bottom: 0 });
+    });
+
+    it('combine with number insets, which place the rail', async () => {
+      // rail 100 − 10 = 90, track starts 20 into it: travel 90 − 20 − 48 = 22
+      await setup({ insets: { top: 10, bottom: shared(0) } });
+      const rail = screen.getByTestId('list-scrubber-a11y', { includeHiddenElements: true }).parent!;
+      expect(StyleSheet.flatten(rail.props.style)).toMatchObject({ top: 10, bottom: 0 });
+      await setup({ insets: { top: 10, bottom: shared(20) } });
+      await drag(11); // half of 22
+      expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 450, false);
+    });
+
+    it('a drag maps the track it started on onto the list', async () => {
+      await setup({ insets: { top: shared(20) } }); // travel 100 − 20 − 48 = 32
+      await drag(16);
+      expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 450, false);
+    });
+
+    it('no drag when they cover the whole rail', async () => {
+      await setup({ insets: { top: shared(500) } });
+      expect(style('list-scrubber-thumb').transform).toEqual([{ translateY: 100 }]);
+      await drag(30);
+      expect(mockScrollTo).not.toHaveBeenCalled();
+    });
+  });
+
+  it('isDragging is set while the thumb is dragged', async () => {
+    const isDragging = { get: jest.fn(() => false), set: jest.fn() } as unknown as SharedValue<boolean>;
+    await setup({ isDragging });
+    await drag(20);
+    expect((isDragging.set as jest.Mock).mock.calls).toEqual([[true], [false]]);
   });
 
   it('enabled={false} draws nothing', async () => {

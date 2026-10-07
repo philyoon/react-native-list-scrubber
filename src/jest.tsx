@@ -37,23 +37,23 @@ export { sectionIndexAt } from './math';
 const listeners = new WeakMap<object, Set<() => void>>();
 
 /** A stand-in for a Reanimated shared value: `get`, `set` and `value` */
-function sharedValue(initial: number): SharedValue<number> {
+function sharedValue<T>(initial: T): SharedValue<T> {
   let current = initial;
   const value = {
     get: () => current,
-    set: (next: number | ((value: number) => number)) => {
-      current = typeof next === 'function' ? next(current) : next;
+    set: (next: T | ((value: T) => T)) => {
+      current = typeof next === 'function' ? (next as (value: T) => T)(current) : next;
       listeners.get(value)?.forEach((listener) => listener());
     },
     get value() {
       return current;
     },
-    set value(next: number) {
+    set value(next: T) {
       value.set(next);
     },
   };
   listeners.set(value, new Set());
-  return value as unknown as SharedValue<number>;
+  return value as unknown as SharedValue<T>;
 }
 
 const read = (v: number | SharedValue<number>) => (typeof v === 'number' ? v : v.get());
@@ -159,9 +159,10 @@ export function useListScrubber<S extends readonly ListScrubberSection[] | undef
   // Stable identities, like the real hook's; the handlers read the latest options
   const [values] = useState(() => ({
     listRef: { current: null } as never, // like an animated ref before the list mounts
-    scrollY: sharedValue(0),
-    contentHeight: sharedValue(0),
-    viewportHeight: sharedValue(0),
+    scrollY: sharedValue<number>(0),
+    contentHeight: sharedValue<number>(0),
+    viewportHeight: sharedValue<number>(0),
+    isDragging: sharedValue<boolean>(false), // the mock's thumb is never dragged
   }));
   const { scrollY, contentHeight, viewportHeight } = values;
   const onScroll = useLatest((event: { contentOffset: { y: number } }) => {

@@ -11,6 +11,7 @@ import {
 import { GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
+  useDerivedValue,
   useSharedValue,
   type AnimatedRef,
   type SharedValue,
@@ -60,8 +61,17 @@ interface ListScrubberBaseProps<S extends ListScrubberSection> {
   side?: 'left' | 'right';
   /** Moves the scrubber (the thumb and its touch area) in from that edge; negative to sit outside the list */
   edgeOffset?: number;
-  /** Space at the top and bottom of the list the thumb stays out of (e.g. a pinned header or a toolbar) */
-  insets?: { top?: number; bottom?: number };
+  /**
+   * Space at the top and bottom of the list the thumb stays out of (e.g. a pinned header or a toolbar). A
+   * shared value for space that moves, such as a header that slides away as the list scrolls: the thumb
+   * follows it on the UI thread. A drag keeps the room it started with, so the thumb stays under the finger.
+   */
+  insets?: { top?: number | SharedValue<number>; bottom?: number | SharedValue<number> };
+  /**
+   * Set while the thumb is dragged, on the UI thread (`useListScrubber` passes its own `isDragging`). Read it
+   * from worklets, e.g. to keep a collapsing header hidden during a drag; don't set it.
+   */
+  isDragging?: SharedValue<boolean>;
   /** false hides the scrubber and its screen-reader control, keeping its state (default true) */
   enabled?: boolean;
   /** Size overrides (defaults: LIST_SCRUBBER_DEFAULTS.metrics) */
@@ -135,6 +145,7 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
   side = 'right',
   edgeOffset = 0,
   insets,
+  isDragging,
   enabled = true,
   metrics,
   timing,
@@ -181,15 +192,24 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
   // Checked once per array (the result is cached), so calling it on every render is free
   if (accessibilitySteps) warnIfInvalid(accessibilitySteps, accessibilitySteps, 'accessibilitySteps');
   const labels = useMemo(() => sections?.map((s) => s.label) ?? [], [sections]);
-  const insetTop = insets?.top ?? 0;
-  const insetBottom = insets?.bottom ?? 0;
+  const { top: insetTop = 0, bottom: insetBottom = 0 } = insets ?? {};
+  // Number insets place the rail; shared-value ones (that move) shorten the thumb's track within it
+  const railTop = typeof insetTop === 'number' ? insetTop : 0;
+  const railBottom = typeof insetBottom === 'number' ? insetBottom : 0;
   /** Height of the strip the thumb travels in */
-  const railHeight = Math.max(0, viewportHeight - insetTop - insetBottom);
-  /** How far the thumb can move: the rail minus the thumb */
-  const travel = Math.max(0, railHeight - m.thumbLength);
+  const railHeight = Math.max(0, viewportHeight - railTop - railBottom);
+  /** How far the thumb can move without the moving insets: the rail minus the thumb */
+  const maxTravel = Math.max(0, railHeight - m.thumbLength);
   const maxScroll = Math.max(0, contentHeight - viewportHeight);
+  /** The thumb's track now: the rail less the moving insets (UI thread, so they move it without a render) */
+  const track = useDerivedValue(() => {
+    const top = typeof insetTop === 'number' ? 0 : clamp(insetTop.get(), 0, railHeight);
+    const bottom = typeof insetBottom === 'number' ? 0 : Math.max(0, insetBottom.get());
+    return { top, travel: Math.max(0, railHeight - top - bottom - m.thumbLength) };
+  });
 
-  const dragging = useSharedValue(false);
+  const ownDragging = useSharedValue(false);
+  const dragging = isDragging ?? ownDragging;
   const [active, setActive] = useState(false);
   const [label, setLabel] = useState<string | null>(null);
 
@@ -232,12 +252,13 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
   // Latched, so later shows and hides don't re-render the label
   const [shownFor, setShownFor] = useState<readonly string[]>();
   if (visible && shownFor !== labels) setShownFor(labels);
-  const { pan, dragTop, sectionIdx } = useScrubGesture({
+  const { pan, dragTop, dragTrack, sectionIdx } = useScrubGesture({
     listRef,
     scrollY,
     opacity,
     dragging,
-    travel,
+    track,
+    maxTravel,
     maxScroll,
     contentHeight,
     viewportHeight,
@@ -253,14 +274,16 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
   });
 
   const positionStyle = useAnimatedStyle(() => {
-    const top = dragging.get() ? dragTop.get() : maxScroll > 0 ? (scrollY.get() / maxScroll) * travel : 0;
-    return { opacity: opacity.get(), transform: [{ translateY: clamp(top, 0, travel) }] };
+    const drag = dragging.get();
+    const { top: trackTop, travel } = drag ? dragTrack.get() : track.get();
+    const top = drag ? dragTop.get() : maxScroll > 0 ? (scrollY.get() / maxScroll) * travel : 0;
+    return { opacity: opacity.get(), transform: [{ translateY: trackTop + clamp(top, 0, travel) }] };
   });
 
-  if (!enabled || maxScroll <= 0 || travel <= 0) return null;
+  if (!enabled || maxScroll <= 0 || maxTravel <= 0) return null;
 
   const thumbWidth = active ? m.thumbActiveWidth : m.thumbWidth;
-  const bubbleProps = { metrics: m, colors, railHeight, dragging, dragTop, side, style: bubbleStyle };
+  const bubbleProps = { metrics: m, colors, track, dragTrack, dragging, dragTop, side, style: bubbleStyle };
 
   // Web keyboard. Typed here rather than with React Native's ViewProps: its legacy and strict typings
   // disagree on onKeyDown, and apps use either. React Native Web's nativeEvent is the DOM KeyboardEvent.
@@ -274,9 +297,7 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
   };
 
   return (
-    <View
-      style={[styles.rail, { top: insetTop, bottom: insetBottom, [side]: edgeOffset, width: TOUCH_WIDTH }]}
-    >
+    <View style={[styles.rail, { top: railTop, bottom: railBottom, [side]: edgeOffset, width: TOUCH_WIDTH }]}>
       {/* Screen readers: an adjustable control that is always present; the thumb itself is drag-only, so it's hidden */}
       <View
         accessible

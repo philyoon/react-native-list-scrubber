@@ -8,6 +8,12 @@
 - Changed: `metrics.bubbleGap` is measured from the thumb (as drawn while grabbed), not from its touch area,
   so the bubble moves with `thumbEdgeGap`. The default, 57, keeps the bubble where it was; an app that set it
   to `n` gets the same place with `n + 33`.
+- `insets.top` / `insets.bottom` take shared values too, for space that moves, such as a header that slides
+  away as the list scrolls: the thumb's track follows on the UI thread, and a drag keeps the track it started
+  on.
+- `useListScrubber` returns `isDragging`, a shared value set while the thumb is dragged (passed to
+  `ListScrubber` in `scrubberProps`, or as its `isDragging` prop), for worklets that react to a drag.
+- README: a recipe for a header that slides away; the example app has it as the Collapsible demo.
 
 ## 0.1.1
 

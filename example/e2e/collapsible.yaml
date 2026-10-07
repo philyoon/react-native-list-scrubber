@@ -1,0 +1,60 @@
+# Collapsible: a header over the list slides away as it scrolls down and comes back on a scroll up. The
+# thumb's track starts below whatever is left of it (an animated insets.top), the pinned letter header sits
+# below it and names the rows it covers, and the header is shown again at the top of the list.
+# Expo Go: host.exp.Exponent on iOS; npm run e2e:android sets APP_ID=host.exp.exponent
+appId: ${APP_ID}
+env:
+  APP_ID: host.exp.Exponent
+---
+- runFlow:
+    file: subflows/open.yaml
+    env:
+      DEMO: Collapsible
+- assertVisible: 3,000 people
+- assertVisible: Ada Abby
+# Scroll past the header (120pt, under 30% of any phone's height): it slides away, and the thumb's track
+# starts at the top of the list again, where the drags below grab it (points: see src/e2e.ts)
+- swipe:
+    start: 50%, 70%
+    end: 50%, 40%
+    duration: 1500 # slow: no fling
+- waitForAnimationToEnd
+# Part way down: the pinned header names the section of the rows on screen
+- swipe:
+    start: 50%, 60%
+    end: 50%, 56%
+    duration: 800
+- swipe:
+    start: 91%, 28%
+    end: 91%, 45%
+    duration: 800
+- waitForAnimationToEnd
+- assertNotVisible: Ada Abby
+- copyTextFrom:
+    id: list-scrubber-pinned-header-label
+- assertVisible: '.* ${maestro.copiedText}.*'
+# A scroll up brings the header back; the pinned header, now below it, still names rows on screen
+- swipe:
+    start: 50%, 45%
+    end: 50%, 75%
+    duration: 1500
+- waitForAnimationToEnd
+- assertVisible: 3,000 people
+- copyTextFrom:
+    id: list-scrubber-pinned-header-label
+- assertVisible: '.* ${maestro.copiedText}.*'
+# Hide it again, then drag to the end: the last section is still reachable
+- swipe:
+    start: 50%, 70%
+    end: 50%, 40%
+    duration: 1500
+- waitForAnimationToEnd
+- runFlow: subflows/drag-to-end.yaml
+- assertVisible: '.* Zel.*'
+- assertVisible:
+    id: list-scrubber-pinned-header-label
+    text: Z
+# Back to the top: the header is shown again
+- runFlow: subflows/drag-to-start.yaml
+- assertVisible: 3,000 people
+- assertVisible: Ada Abby
