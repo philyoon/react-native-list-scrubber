@@ -12,20 +12,22 @@ env:
 - extendedWaitUntil:
     visible: 'List Scrubber|Continue|Open'
     timeout: 60000
-# One check for all of them (each check that finds nothing costs about 7 s): usually none is there
 - runFlow:
     when:
-      visible: 'Open|Continue|Toggle element inspector'
+      visible: Open
     commands:
-      - runFlow:
-          when:
-            visible: Open
-          commands:
-            - tapOn: Open
-            - extendedWaitUntil:
-                visible: 'List Scrubber|Continue'
-                timeout: 60000
-      # Expo Go's first-run introduction, then the developer menu itself
+      - tapOn: Open
+      - extendedWaitUntil:
+          visible: 'List Scrubber|Continue'
+          timeout: 60000
+# Expo Go's first-run introduction to its developer menu, then the menu itself: they can come up a moment
+# after the app shows, so keep closing them until the app is in front
+- repeat:
+    while:
+      notVisible:
+        id: list-scrubber-a11y
+    times: 5
+    commands:
       - runFlow:
           when:
             visible: Continue
@@ -36,6 +38,7 @@ env:
             visible: Toggle element inspector
           commands:
             - tapOn: Close
+      - waitForAnimationToEnd
 - extendedWaitUntil:
     visible:
       id: list-scrubber-a11y
