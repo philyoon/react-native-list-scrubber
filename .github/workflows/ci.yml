@@ -5,7 +5,7 @@ on:
   pull_request:
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -36,7 +36,7 @@ jobs:
   # The oldest versions the peer dependency ranges allow: a pair Reanimated supports, the library's types, the
   # unit tests, and an app using every export must all still work with them.
   min-versions:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -49,3 +49,22 @@ jobs:
       - run: npx tsc --noEmit -p tsconfig.build.json
       - run: npm test -- --coverage
       - run: npm run smoke:package
+  # TEMPORARY (ubuntu-26.04 test, not to merge): the Release workflow's steps up to publishing
+  release-steps:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - run: npm install -g npm@^11.5.1
+      - run: node scripts/release-notes.mjs "$(node -p "require('./package.json').version")"
+      - run: npm ci
+      - run: node scripts/check-reanimated-compat.mjs
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test -- --coverage
+      - run: npm run smoke:package
+      - run: npm publish --dry-run --access public
