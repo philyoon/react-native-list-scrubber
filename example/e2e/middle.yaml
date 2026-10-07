@@ -1,0 +1,32 @@
+# FlatList: a drag that stops part way leaves the list in the middle, and the screen-reader value names the
+# section the rows show. From 28% to 45% of the screen lands around D or E, depending on the phone.
+# Expo Go: host.exp.Exponent on iOS; npm run e2e:android sets APP_ID=host.exp.exponent
+appId: ${APP_ID}
+env:
+  APP_ID: host.exp.Exponent
+---
+- runFlow:
+    file: subflows/open.yaml
+    env:
+      DEMO: FlatList
+- swipe:
+    start: 50%, 60%
+    end: 50%, 56%
+    duration: 800 # slow: no fling still moving the list when the thumb is grabbed
+- swipe:
+    start: 91%, 28%
+    end: 91%, 45%
+    duration: 1500
+- waitForAnimationToEnd
+- assertNotVisible: Ada Abby
+- assertNotVisible: '.* Zel.*'
+# The screen-reader value follows once the thumb hides (5 s in e2e mode): a letter from the middle
+- extendedWaitUntil:
+    visible:
+      id: list-scrubber-a11y
+      text: '(.*\W)?[B-Y]'
+    timeout: 10000
+# Its letter (Android reads the label with it, "Scroll position, D"): rows of that section are on screen
+- copyTextFrom:
+    id: list-scrubber-a11y
+- assertVisible: '.* ${maestro.copiedText.slice(-1)}.*'

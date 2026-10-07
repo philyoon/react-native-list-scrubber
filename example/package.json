@@ -11,6 +11,7 @@
     "export:web": "expo export --platform web",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "e2e:start": "EXPO_PUBLIC_E2E=1 expo start --clear",
+    "e2e:start:rtl": "EXPO_PUBLIC_E2E=1 EXPO_PUBLIC_E2E_RTL=1 expo start --clear",
     "e2e:ios": "sh scripts/e2e.sh ios",
     "e2e:android": "sh scripts/e2e.sh android"
   },

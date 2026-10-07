@@ -1,0 +1,23 @@
+# Right-to-left (Metro in RTL mode: npm run e2e:start:rtl): React Native mirrors the scrubber to the left edge by
+# itself, without changing `side`. Dragging the thumb there reaches the end of the list and comes back.
+# Expo Go: host.exp.Exponent on iOS; npm run e2e:android sets APP_ID=host.exp.exponent
+appId: ${APP_ID}
+env:
+  APP_ID: host.exp.Exponent
+---
+- runFlow:
+    file: ../subflows/open.yaml
+    env:
+      DEMO: FlatList
+- assertVisible: Ada Abby
+- runFlow:
+    file: ../subflows/drag-to-end.yaml
+    env:
+      RTL: 1
+- assertVisible: '.* Zel.*'
+- assertNotVisible: Ada Abby
+- runFlow:
+    file: ../subflows/drag-to-start.yaml
+    env:
+      RTL: 1
+- assertVisible: Ada Abby

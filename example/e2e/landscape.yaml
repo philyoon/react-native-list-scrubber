@@ -1,0 +1,31 @@
+# Landscape: the thumb's track is much shorter, and still reaches both ends of the list. The phone is turned
+# back to portrait afterwards, even if a step fails.
+# Expo Go: host.exp.Exponent on iOS; npm run e2e:android sets APP_ID=host.exp.exponent
+appId: ${APP_ID}
+env:
+  APP_ID: host.exp.Exponent
+onFlowComplete:
+  - setOrientation: PORTRAIT
+---
+- runFlow:
+    file: subflows/open.yaml
+    env:
+      DEMO: FlatList
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- assertVisible: Ada Abby
+- runFlow: subflows/drag-to-end.yaml
+- assertVisible: '.* Zel.*'
+- assertNotVisible: Ada Abby
+# Back to the start, grabbing the thumb at 88%, not drag-to-start's 95%: in landscape that is in Android's
+# home-gesture strip at the bottom of the screen. The thumb spans about 86–98% of the height here.
+- swipe:
+    start: 50%, 56%
+    end: 50%, 60%
+    duration: 800 # slow: no fling still moving the list when the thumb is grabbed
+- swipe:
+    start: 91%, 88%
+    end: 91%, 5%
+    duration: 1500
+- waitForAnimationToEnd
+- assertVisible: Ada Abby

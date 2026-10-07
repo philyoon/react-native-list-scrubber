@@ -57,6 +57,7 @@
     "test": "jest",
     "example": "npm --prefix example run",
     "e2e:start": "npm --prefix example run e2e:start",
+    "e2e:start:rtl": "npm --prefix example run e2e:start:rtl",
     "e2e:ios": "npm --prefix example run e2e:ios --",
     "e2e:android": "npm --prefix example run e2e:android --"
   },

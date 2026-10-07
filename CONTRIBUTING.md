@@ -56,8 +56,9 @@ npm run e2e:android    # Android emulator
 ```
 
 Set `MAESTRO_DEVICE` (a simulator UDID or an emulator serial) when more than one is running, and pass flow
-paths after `--` to run only some. The README's [End-to-end tests](README.md#end-to-end-tests) section has the
-details, and how the flows find the thumb.
+paths after `--` to run only some. The right-to-left flows run against Metro in RTL mode:
+`npm run e2e:start:rtl`, then `npm run e2e:ios -- e2e/rtl`. The README's
+[End-to-end tests](README.md#end-to-end-tests) section has the details, and how the flows find the thumb.
 
 ## Dependency updates
 

@@ -4,7 +4,7 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-na
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DEMOS } from './demos';
-import { E2E, E2E_CARD } from './e2e';
+import { E2E, E2E_RESTART_FOR_DIRECTION, useE2ECard } from './e2e';
 import { useColors } from './theme';
 
 export default function App() {
@@ -21,12 +21,18 @@ function Main() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [demo, setDemo] = useState(0);
+  // Each link opens its demo afresh: Expo Go may hand the link to the running app, scrolled where it was left
+  const [opened, setOpened] = useState(0);
+  const e2eCard = useE2ECard();
   // A link like exp://…/--/?demo=ScrollView opens that demo (the e2e flows use it)
   useEffect(() => {
     const open = (url: string | null) => {
       const name = url && decodeURIComponent(url.match(/[?&]demo=([^&]+)/)?.[1] ?? '');
       const i = DEMOS.findIndex((d) => d.name === name);
-      if (i >= 0) setDemo(i);
+      if (i >= 0) {
+        setDemo(i);
+        setOpened((n) => n + 1);
+      }
     };
     Linking.getInitialURL().then(open);
     const sub = Linking.addEventListener('url', (e) => open(e.url));
@@ -37,6 +43,11 @@ function Main() {
     <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top }}>
       <StatusBar style="auto" />
       <Text style={[styles.title, { color: colors.text }]}>List Scrubber</Text>
+      {E2E_RESTART_FOR_DIRECTION && (
+        <Text testID="e2e-restart" style={[styles.hint, { color: colors.text }]}>
+          Restart to apply the layout direction
+        </Text>
+      )}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -66,10 +77,10 @@ function Main() {
       </ScrollView>
       <Text style={[styles.hint, { color: colors.secondary }]}>{DEMOS[demo]!.hint}</Text>
       <View
-        style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }, E2E && E2E_CARD]}
+        style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }, E2E && e2eCard]}
       >
         {/* key: each demo gets a fresh list and scrubber */}
-        <Demo key={demo} />
+        <Demo key={`${demo}-${opened}`} />
       </View>
     </View>
   );

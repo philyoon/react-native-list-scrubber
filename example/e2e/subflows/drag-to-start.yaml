@@ -1,6 +1,8 @@
 # Shows the thumb, then drags it from the bottom of its track (where drag-to-end left it) to above the
 # list: it clamps at the start. Points: see src/e2e.ts.
 # Expo Go: host.exp.Exponent on iOS; npm run e2e:android sets APP_ID=host.exp.exponent
+# RTL: 1 for a right-to-left layout, with the thumb at the left edge (x 9%, not 91%). Not given a default
+# below: a subflow's own env wins over the caller's.
 appId: ${APP_ID}
 env:
   APP_ID: host.exp.Exponent
@@ -9,8 +11,20 @@ env:
     start: 50%, 56%
     end: 50%, 60%
     duration: 800 # slow: no fling still moving the list when the thumb is grabbed
-- swipe:
-    start: 91%, 95%
-    end: 91%, 5%
-    duration: 1500
+- runFlow:
+    when:
+      true: ${!(typeof RTL != 'undefined' && RTL == 1)}
+    commands:
+      - swipe:
+          start: 91%, 95%
+          end: 91%, 5%
+          duration: 1500
+- runFlow:
+    when:
+      true: ${typeof RTL != 'undefined' && RTL == 1}
+    commands:
+      - swipe:
+          start: 9%, 95%
+          end: 9%, 5%
+          duration: 1500
 - waitForAnimationToEnd

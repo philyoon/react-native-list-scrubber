@@ -266,8 +266,8 @@ The scrubber places everything with `left` and `right`, never with flex alignmen
 
 Tested in the example app (Expo SDK 57, React Native 0.86, Reanimated 4.5, Gesture Handler 2.32): by hand on
 iOS, and with the [end-to-end tests](#end-to-end-tests) on iOS and Android, which drag the thumb to both ends
-of FlatList, SectionList, Legend List and ScrollView. The pinned header, push and section bubble were also
-checked by hand on Android, in the app this library came from:
+of FlatList, SectionList, FlashList, Legend List and ScrollView. The pinned header, push and section bubble
+were also checked by hand on Android, in the app this library came from:
 
 - **FlatList + `getItemLayout`**: exact. Bubble, pinned header and rows agree in every frame.
 - **ScrollView**: exact.
@@ -367,9 +367,10 @@ it in the browser instead (Expo web); CI builds that web bundle on every push.
 ### End-to-end tests
 
 [Maestro](https://maestro.dev) flows in `example/e2e` drive the example in Expo Go on an iOS simulator or an
-Android emulator: dragging the thumb to the end and back on each list type, touches passing through the hidden
-thumb, the screen-reader control, and jumping from the A–Z index. They run on iPhone SE, iPhone 17 Pro, iPhone
-17 Pro Max and a Pixel 8 emulator.
+Android emulator: dragging the thumb to the end and back on each list type, stopping part way in the right
+section, touches passing through the hidden thumb, the screen-reader control, and jumping from the A–Z index;
+and the same drags in a right-to-left layout, in landscape, and at the largest system text size. They run on
+iPhone SE, iPhone 17 Pro, iPhone 17 Pro Max and a Pixel 8 emulator.
 
 From the repo root, with Expo Go installed on the simulator or emulator, start Metro in e2e mode and keep it
 running:
@@ -386,6 +387,15 @@ npm run e2e:android                      # Android emulator (sets up adb reverse
 npm run e2e:ios -- e2e/index.yaml        # just some flows (paths relative to example/)
 ```
 
+The right-to-left flows in `example/e2e/rtl` need Metro in RTL mode instead, which forces a right-to-left
+layout from the app's first line of code. Restart Metro with it, run them, then go back to `npm run e2e:start`
+(the next run switches Expo Go back to left-to-right):
+
+```sh
+npm run e2e:start:rtl                    # instead of e2e:start, then in another terminal:
+npm run e2e:ios -- e2e/rtl
+```
+
 With more than one simulator or emulator running, pick one with `MAESTRO_DEVICE`, a simulator UDID or an
 emulator serial: `MAESTRO_DEVICE=emulator-5554 npm run e2e:android`. The scripts (`example/scripts/e2e.sh`)
 need a POSIX shell (macOS, Linux, WSL).
@@ -393,9 +403,12 @@ need a POSIX shell (macOS, Linux, WSL).
 How the flows find the thumb: it is hidden from screen readers, so Maestro, which finds elements through the
 accessibility tree, can't target it, and Maestro's swipe points are fixed screen percentages. In e2e mode
 (`EXPO_PUBLIC_E2E=1`) the example pins its list to fixed percentages of the screen (`example/src/e2e.ts`), so
-the same points land on the thumb on any phone size. It also keeps the thumb up for 5 s instead of 1.5 s,
-since Maestro's wait after each swipe can outlast the default on a slow device. A link like
-`exp://127.0.0.1:8081/--/?demo=ScrollView` opens a given demo.
+the same points land on the thumb on any phone size, in portrait or landscape: x 91%, or 9% in right-to-left
+layouts. It also keeps the thumb up for 5 s instead of 1.5 s, since Maestro's wait after each swipe can
+outlast the default on a slow device. A link like `exp://127.0.0.1:8081/--/?demo=ScrollView` opens a given
+demo. iOS shows a change of layout direction only after a restart, so after switching between `e2e:start` and
+`e2e:start:rtl` the flows restart Expo Go once. The flows in `example/e2e/large-text` run at the largest text
+size, which the scripts set on the device first and restore afterwards.
 
 ## Contributing
 
