@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.1
 
 - Fixed: development builds no longer warn that `listProps`' `onLayout` or `onContentSizeChange` never ran
   when the scrubber is given that size itself (`contentHeight` / `viewportHeight` as numbers).

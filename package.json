@@ -1,6 +1,6 @@
 {
   "name": "react-native-list-scrubber",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Drag-to-scrub thumb for long React Native lists: runs on the UI thread, shows a label bubble (A–Z, dates…), and gives screen readers an adjustable control.",
   "keywords": [
     "react-native",
