@@ -107,6 +107,7 @@ jobs:
           # Each line runs in its own shell
           script: |
             adb install -r expo-go.apk
+            adb shell pm grant host.exp.exponent android.permission.POST_NOTIFICATIONS
             npm run e2e:android
       - uses: actions/upload-artifact@v4
         if: failure()
