@@ -2,12 +2,14 @@
 # simulator or emulator, so each flow's open (subflows/open.yaml) only waits for the app. Checks for something
 # that turns out not to be there cost Maestro about 7 s each, so the flows themselves make none.
 # Expo Go: host.exp.Exponent on iOS; npm run e2e:android sets APP_ID=host.exp.exponent
+# LINK, the link that opens the app (the flow adds ?demo=…), comes from scripts/e2e.sh: Expo Go's on Metro, or the
+# built app's with E2E_APP=build. No default here: a subflow's own env wins over what it's given.
 appId: ${APP_ID}
 env:
   APP_ID: host.exp.Exponent
 ---
 - stopApp
-- openLink: exp://127.0.0.1:8081/--/?demo=FlatList
+- openLink: ${LINK}?demo=FlatList
 # The app, Expo Go's first-run introduction, or iOS asking to open the link in Expo Go. Up to 3 minutes: Expo Go's
 # first launch on a fresh simulator took over a minute on GitHub's macOS runner
 - extendedWaitUntil:
@@ -21,7 +23,7 @@ env:
       # it: tap until the prompt is gone
       - repeat:
           while:
-            visible: 'Open in .*Expo Go.*'
+            visible: 'Open in .*'
           times: 3
           commands:
             - waitForAnimationToEnd

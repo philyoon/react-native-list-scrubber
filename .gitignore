@@ -10,9 +10,6 @@ example/test-results/
 example/playwright-report/
 example/ios/
 example/android/
-# Expo Go, downloaded by the native e2e workflow
-example/expo-go.apk
-example/ExpoGo.app/
 .idea/
 .vscode/
 
