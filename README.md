@@ -447,8 +447,9 @@ section, touches passing through the hidden thumb, the screen-reader control, an
 a header that slides away; and the same drags in a right-to-left layout, in landscape, and at the largest
 system text size. They run on iPhone SE, iPhone 17 Pro, iPhone 17 Pro Max and a Pixel 8 emulator. CI
 (`.github/workflows/e2e-native.yml`) runs them, all but the right-to-left ones, on an iPhone Pro simulator and
-a Pixel 7 emulator for every pull request, in three parallel groups per platform; landscape runs on the
-emulator only, since a rotation upsets the touches on GitHub's iOS simulator.
+a Pixel 7 emulator for every pull request, in three parallel groups per platform; a group that fails runs once
+more, since the slow CI simulators sometimes fail a flow on timing alone. Landscape runs on the emulator only,
+since a rotation upsets the touches on GitHub's iOS simulator.
 
 From the repo root, with Expo Go installed on the simulator or emulator, start Metro in e2e mode and keep it
 running:
