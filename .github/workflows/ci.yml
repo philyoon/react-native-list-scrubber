@@ -12,6 +12,9 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            example/package-lock.json
       - run: npm ci
       # The installed Reanimated must list the installed React Native and Worklets as compatible
       - run: node scripts/check-reanimated-compat.mjs
@@ -22,12 +25,25 @@ jobs:
       - run: npm run build
       # The package as users get it: entry points, built imports, and an app typechecking against it
       - run: npm run smoke:package
-      - run: npm --prefix example install
+      - run: npm --prefix example ci
       - run: npm --prefix example run typecheck
-      # Builds the example for web and drives it in a browser (example/web-e2e): drags, the bubble's layout
-      # in left-to-right and right-to-left pages, the keyboard, and no console warnings
-      - run: npm --prefix example exec -- playwright install --with-deps chromium
+  # Builds the example for web and drives it in a browser (example/web-e2e): drags, the bubble's layout
+  # in left-to-right and right-to-left pages, the keyboard, and no console warnings. Its own job, so it runs
+  # alongside `check`: the example bundles the library from src, with no build or root install.
+  web-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: example/package-lock.json
+      - run: npm --prefix example ci
+      # The runner's own Google Chrome (see playwright.config.ts): no browser to download
       - run: npm --prefix example run web:e2e
+        env:
+          PLAYWRIGHT_CHANNEL: chrome
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
