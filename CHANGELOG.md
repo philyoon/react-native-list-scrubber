@@ -1,54 +1,65 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
+
+A new, shorter way in: give the hook the list's layout and spread the props named after your list. A top bar
+that slides away and a pinned header are now options of the hook, which places them and the list's rows
+itself, so each height is written once. See the README's "Usage", now in steps.
+
+### Upgrading from 0.2
+
+- `listLayout` and `sectionListLayout` take `sectionLabel` instead of `label`.
+- `useListScrubber`'s result: `headerProps` is now `pinnedHeaderProps`, so it isn't confused with a top bar.
+  `listRef`, `onScroll`, `contentHeight` and `viewportHeight` are gone: they're in the spreads already, as
+  `listProps.ref`, `listProps.onScroll`, `scrubberProps.contentHeight` and `scrubberProps.viewportHeight`.
+  `scrollY` and `isDragging` stay.
+- `UseListScrubberResult`'s type parameters are `<S, TList>`, sections first: replace
+  `UseListScrubberResult<any, S>` with `UseListScrubberResult<S>`, and `UseListScrubberResult<L, S>` with
+  `UseListScrubberResult<S, L>`.
+- `ListScrubber`'s `insets` take numbers only again. 0.2.0's shared-value `insets.top` was for a header that
+  slides away: use the hook's `topBar` instead.
+- Nothing else needs to change: `{ sections }`, `listProps`, `getItemLayout` on the list and wiring by hand
+  all work as before. The new path is optional.
+
+### New
 
 - `useListScrubber({ layout })` takes a `listLayout` / `sectionListLayout` result, and the hook returns a
   spread for each list (`flatListProps`, `sectionListProps`, `flashListProps`, `legendListProps`,
-  `scrollViewProps`), each with only props that list documents: FlatList's and SectionList's carry the
+  `scrollViewProps`), each with only props that list documents. FlatList's and SectionList's carry the
   layout's `getItemLayout`, so it's no longer passed separately. `listProps` is unchanged, for any other
-  scrollable component. See the README's "Usage", now in steps.
-- Breaking: `useListScrubber`'s result no longer has `listRef`, `onScroll`, `contentHeight` and
-  `viewportHeight`: they're in the spreads already. Read `listProps.ref`, `listProps.onScroll`,
-  `scrubberProps.contentHeight` and `scrubberProps.viewportHeight` instead. `scrollY` and `isDragging` stay.
-- Breaking: `listLayout` and `sectionListLayout` take `sectionLabel`, not `label`: the label of the row's (or
-  the section's) section. They also return `sectionHeaders`: whether the list draws section headers of its
-  own.
+  scrollable component.
+- `useListScrubber({ topBar: { height } })`: a bar over the top of the list (a title, a search field) that
+  slides away as the list scrolls down and comes back on a scroll up. Draw it inside a view that spreads
+  `topBarProps`. During a thumb drag it stays as it was, the drag reaches the first row rather than the space
+  a hidden bar leaves, and a drag that ends at the top scrolls the list to the very top and slides the bar
+  back in when the finger lifts (`revealMs`, default 250: `LIST_SCRUBBER_DEFAULTS.topBar.revealMs`).
+  `scrubber.topBar` has its `height`, `visibleHeight`, `isFixed` and `show()`.
+  - With a screen reader on (iOS and Android) it stays in place, so its contents are never reachable off
+    screen. On the web, where a page can't tell, it comes back when something in it gets focus.
 - `useListScrubber({ pinnedHeader: { height } })`: `pinnedHeaderProps` carry the pinned header's height and
-  placement. Over a SectionList it sits on the list's own headers; over a flat list it takes its own space at
-  the top, the scrubber stays below it (no `insets.top` needed), and it names the rows just below it.
-  `PinnedSectionHeader`'s `height` is optional when the spread carries it.
-- With a top bar or a pinned header that takes its own space, the list's spread draws the space they need at
-  its top (`scrubber.ListHeader`, `scrubber.spacerHeight`), and the hook places the layout below it. Give your
-  own list header to the hook's `ListHeaderComponent`; development builds warn when the space isn't drawn.
-- `ListScrubber`'s top `insets` count as covered: screen-reader steps land below them, and labels describe the
-  rows there.
-- `sections` rebuilt on every render with the same contents count as unchanged (the development warning to
-  wrap them in `useMemo` stays).
-- `useListScrubber({ topBar: { height } })`: a bar over the top of the list that slides away as the list
-  scrolls down and comes back on a scroll up. Draw it inside a view that spreads `topBarProps`;
-  `scrubberProps` and `pinnedHeaderProps` keep the scrubber and a pinned header below it. During a thumb drag
-  it stays as it was, the drag reaches the first row rather than the space a hidden bar leaves, and a drag to
-  the top brings the bar back when the finger lifts. `scrollToSection` and `scrollToOffset` bring a section to
-  just below it. On the web, it comes back when something in it gets focus. `scrubber.topBar` has its
-  `height`, `visibleHeight`, `isFixed` and `show()`. See the README's "A top bar that slides away".
-- Breaking: `headerProps` is now `pinnedHeaderProps`, so it isn't confused with a top bar. It also carries the
-  pinned header's new `top` prop.
-- Breaking: `ListScrubber`'s `insets` take numbers only again. For a header that slides away, use `topBar`
-  instead of a shared-value `insets.top`.
+  placement, so `PinnedSectionHeader`'s `height` is optional. Over a SectionList it sits on the list's own
+  headers (layouts now say so, in `sectionHeaders`); over a flat list it takes its own space at the top, the
+  scrubber stays below it with no `insets.top`, and it names the rows just below it.
+- With a top bar, or a pinned header that takes its own space, the list's spread draws the space they need at
+  its top (`scrubber.ListHeader`, `scrubber.spacerHeight`), and the hook places the layout's rows below it.
+  Give your own list header to the hook's `ListHeaderComponent`. In a ScrollView, put
+  `<scrubber.ListHeader />` first. Development builds warn when the space isn't drawn. Callbacks then get
+  copies of your sections with the placed `offset`.
+- `scrollToSection` and `scrollToOffset` land just below a top bar (where it will be once it has followed the
+  scroll) and a pinned header.
 - `PinnedSectionHeader` takes `top`: its distance from the top of the list, a number or a shared value.
-- With a screen reader on (iOS and Android), the top bar stays in place, so its contents are never reachable
-  off screen. The scrubber's screen-reader steps (and web keyboard keys) bring a section to just below the
-  bar, and its value and the bubble's label name the rows below the bar, not the ones it covers.
 - `ListScrubber` takes `maxFontSizeMultiplier` (default 1.5), the cap on the system text size for the bubble's
   label, like `PinnedSectionHeader` and `CurrentSectionLabel`.
-- Breaking: `UseListScrubberResult`'s type parameters are `<S, TList>`, sections first:
-  `UseListScrubberResult<readonly ListScrubberSection[]>`. Replace `UseListScrubberResult<any, S>` with
-  `UseListScrubberResult<S>`, and `UseListScrubberResult<L, S>` with `UseListScrubberResult<S, L>`.
-- `useListScrubber({ topBar: { height, revealMs } })`: how long the top bar takes to slide back in. The
-  default, 250, is `LIST_SCRUBBER_DEFAULTS.topBar.revealMs`.
 - Development builds warn when `useListScrubber`'s `onScroll` is a new function on every render: it's a
-  worklet, and each new one rebuilds the list's scroll handler. Define it outside the component, or wrap it in
-  `useCallback`.
+  worklet, and each new one rebuilds the list's scroll handler.
+
+### Changed
+
+- `ListScrubber`'s top `insets` count as covered: screen-reader steps (and web keyboard keys) land below them
+  and below a top bar, and the screen-reader value and the bubble's label name the rows there, not the ones
+  they cover.
+- `sections` rebuilt on every render with the same contents count as unchanged: nothing is copied to the UI
+  thread again. Development builds still warn, since whatever builds them runs again on each render.
 
 ## 0.2.0
 
