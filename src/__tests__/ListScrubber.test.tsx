@@ -308,7 +308,7 @@ it('is disabled (no drag) when the list fits on screen', async () => {
 
 describe('while the finger is down', () => {
   // fireGestureHandler always ends the gesture; call the pan callbacks directly to stay mid-drag.
-  type Handlers = Record<'onBegin' | 'onUpdate' | 'onFinalize', (e: object) => void>;
+  type Handlers = Record<'onBegin' | 'onUpdate' | 'onEnd' | 'onFinalize', (e: object) => void>;
   const pan = () => (getByGestureTestId('list-scrubber') as unknown as { handlers: Handlers }).handlers;
   const hold = async (translationY: number) => {
     await act(async () => {
@@ -340,6 +340,14 @@ describe('while the finger is down', () => {
       pan().onUpdate({ translationY: 16 });
     });
     expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 450, false); // half of 32
+    await release();
+  });
+  it("goes to the finger's final position when it lifts, even with no move event for the last stretch", async () => {
+    await setup({ sections: [{ offset: 0, label: 'A' }] });
+    await hold(10);
+    // The track is 100 − 48 = 52 long: the finger lifts at its end, with no move event to get there
+    await act(async () => pan().onEnd({ translationY: 60 }));
+    expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 900, false);
     await release();
   });
   it('the thumb follows the finger, thickens and takes the active colour', async () => {

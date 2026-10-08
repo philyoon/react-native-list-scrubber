@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Fixed: a drag ends where the finger lifts. The last stretch of a drag can come only with the finger lifting,
+  with no move event for it, and the list stopped a little short: a fast drag to the end of the list could
+  miss the last section.
 - Changed: the thumb is drawn 3pt from the list's edge, like a native scroll indicator, instead of centred in
   its 44pt touch area (22pt in). It sits in the margin beside the rows without an `edgeOffset`; its touch area
   stays where it was. New `metrics.thumbEdgeGap` sets the distance; `19` restores the old look.
