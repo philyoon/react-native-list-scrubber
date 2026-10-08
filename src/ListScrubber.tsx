@@ -27,7 +27,7 @@ import {
 } from './defaults';
 import { clamp, labelPosition } from './math';
 import { SectionText } from './SectionText';
-import type { ListScrubberColors, ListScrubberSection } from './types';
+import type { ListScrubberColors, ListScrubberSection, ListScrubberTopBar } from './types';
 import { useA11yStepper } from './useA11yStepper';
 import { useAutoHide } from './useAutoHide';
 import { useMirroredNumber } from './useMirroredNumber';
@@ -61,12 +61,14 @@ interface ListScrubberBaseProps<S extends ListScrubberSection> {
   side?: 'left' | 'right';
   /** Moves the scrubber (the thumb and its touch area) in from that edge; negative to sit outside the list */
   edgeOffset?: number;
+  /** Space at the top and bottom of the list the thumb stays out of (e.g. a pinned header or a toolbar) */
+  insets?: { top?: number; bottom?: number };
   /**
-   * Space at the top and bottom of the list the thumb stays out of (e.g. a pinned header or a toolbar). A
-   * shared value for space that moves, such as a header that slides away as the list scrolls: the thumb
-   * follows it on the UI thread. A drag keeps the room it started with, so the thumb stays under the finger.
+   * A bar over the top of the list that slides away as it scrolls (`useListScrubber`'s `topBar`, which
+   * `scrubberProps` passes): the thumb's track starts below what shows of it, and reaches the top of the list's
+   * rows rather than the space a hidden bar leaves above them. A drag keeps the track it started with.
    */
-  insets?: { top?: number | SharedValue<number>; bottom?: number | SharedValue<number> };
+  topBar?: ListScrubberTopBar;
   /**
    * Set while the thumb is dragged, on the UI thread (`useListScrubber` passes its own `isDragging`). Read it
    * from worklets, e.g. to keep a collapsing header hidden during a drag; don't set it.
@@ -145,6 +147,7 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
   side = 'right',
   edgeOffset = 0,
   insets,
+  topBar,
   isDragging,
   enabled = true,
   metrics,
@@ -192,20 +195,20 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
   // Checked once per array (the result is cached), so calling it on every render is free
   if (accessibilitySteps) warnIfInvalid(accessibilitySteps, accessibilitySteps, 'accessibilitySteps');
   const labels = useMemo(() => sections?.map((s) => s.label) ?? [], [sections]);
-  const { top: insetTop = 0, bottom: insetBottom = 0 } = insets ?? {};
-  // Number insets place the rail; shared-value ones (that move) shorten the thumb's track within it
-  const railTop = typeof insetTop === 'number' ? insetTop : 0;
-  const railBottom = typeof insetBottom === 'number' ? insetBottom : 0;
+  const { top: railTop = 0, bottom: railBottom = 0 } = insets ?? {};
   /** Height of the strip the thumb travels in */
   const railHeight = Math.max(0, viewportHeight - railTop - railBottom);
-  /** How far the thumb can move without the moving insets: the rail minus the thumb */
+  /** How far the thumb can move without a top bar: the rail minus the thumb */
   const maxTravel = Math.max(0, railHeight - m.thumbLength);
   const maxScroll = Math.max(0, contentHeight - viewportHeight);
-  /** The thumb's track now: the rail less the moving insets (UI thread, so they move it without a render) */
+  /**
+   * The thumb's track now (UI thread, so a top bar moves it without a render): below what shows of the top bar,
+   * and from the offset where the rows come out from under it: the space a hidden bar leaves above them is skipped
+   */
   const track = useDerivedValue(() => {
-    const top = typeof insetTop === 'number' ? 0 : clamp(insetTop.get(), 0, railHeight);
-    const bottom = typeof insetBottom === 'number' ? 0 : Math.max(0, insetBottom.get());
-    return { top, travel: Math.max(0, railHeight - top - bottom - m.thumbLength) };
+    const shown = topBar ? clamp(topBar.visibleHeight.get(), 0, railHeight) : 0;
+    const start = topBar ? clamp(topBar.height - topBar.visibleHeight.get(), 0, maxScroll) : 0;
+    return { top: shown, travel: Math.max(0, railHeight - shown - m.thumbLength), start };
   });
 
   const ownDragging = useSharedValue(false);
@@ -275,8 +278,9 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
 
   const positionStyle = useAnimatedStyle(() => {
     const drag = dragging.get();
-    const { top: trackTop, travel } = drag ? dragTrack.get() : track.get();
-    const top = drag ? dragTop.get() : maxScroll > 0 ? (scrollY.get() / maxScroll) * travel : 0;
+    const { top: trackTop, travel, start } = drag ? dragTrack.get() : track.get();
+    const range = maxScroll - start;
+    const top = drag ? dragTop.get() : range > 0 ? ((scrollY.get() - start) / range) * travel : 0;
     return { opacity: opacity.get(), transform: [{ translateY: trackTop + clamp(top, 0, travel) }] };
   });
 

@@ -149,3 +149,21 @@ describe('PinnedSectionHeader', () => {
     }
   });
 });
+
+it('PinnedSectionHeader sits `top` below the top of the list: a number, or a shared value (below a top bar)', async () => {
+  const sections = [{ offset: 0, label: 'A' }];
+  const translate = () =>
+    StyleSheet.flatten(screen.getByTestId('list-scrubber-pinned-header').props.style as ViewStyle)!.transform;
+  const view = await render(<PinnedSectionHeader scrollY={sharedZero()} sections={sections} height={32} />);
+  expect(translate()).toEqual([{ translateY: 0 }]);
+  await view.rerender(
+    <PinnedSectionHeader scrollY={sharedZero()} sections={sections} height={32} top={12} />,
+  );
+  expect(translate()).toEqual([{ translateY: 12 }]);
+  const visibleHeight = sharedZero();
+  visibleHeight.set(80);
+  await view.rerender(
+    <PinnedSectionHeader scrollY={sharedZero()} sections={sections} height={32} top={visibleHeight} />,
+  );
+  expect(translate()).toEqual([{ translateY: 80 }]);
+});

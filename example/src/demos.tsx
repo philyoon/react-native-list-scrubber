@@ -4,12 +4,7 @@ import * as Haptics from 'expo-haptics';
 import { FlashList } from '@shopify/flash-list';
 import { useMemo, type ComponentType } from 'react';
 import { Platform, Pressable, ScrollView, SectionList, StyleSheet, Text, View } from 'react-native';
-import Animated, {
-  useAnimatedReaction,
-  useAnimatedStyle,
-  useDerivedValue,
-  useSharedValue,
-} from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import {
   ListScrubber,
   PinnedSectionHeader,
@@ -43,7 +38,7 @@ const HEADER = 32;
 const CONTACTS = makeContacts(3000);
 const ENTRIES = makeEntries(4000);
 
-/** useListScrubber given sections: its scrubberProps and headerProps carry them */
+/** useListScrubber given sections: its scrubberProps and pinnedHeaderProps carry them */
 type SectionScrubber = UseListScrubberResult<any, readonly ListScrubberSection[]>;
 
 function Scrubber(props: { scrubber: SectionScrubber }) {
@@ -100,7 +95,7 @@ function MonthHeader(props: { scrubber: SectionScrubber }) {
   const colors = useColors();
   return (
     <PinnedSectionHeader
-      {...props.scrubber.headerProps}
+      {...props.scrubber.pinnedHeaderProps}
       height={HEADER}
       push={false}
       style={[styles.header, { backgroundColor: colors.header }]}
@@ -148,7 +143,7 @@ function FlatListDemo() {
         {...FAST_FILL}
       />
       <PinnedSectionHeader
-        {...scrubber.headerProps}
+        {...scrubber.pinnedHeaderProps}
         height={HEADER}
         push={false}
         style={[styles.header, { backgroundColor: colors.header }]}
@@ -189,7 +184,7 @@ function SectionListDemo() {
         {...FAST_FILL}
       />
       <PinnedSectionHeader
-        {...scrubber.headerProps}
+        {...scrubber.pinnedHeaderProps}
         height={HEADER}
         style={[styles.header, { backgroundColor: colors.header }]}
         textStyle={{ color: colors.secondary, fontWeight: '700', fontSize: 14 }}
@@ -247,7 +242,7 @@ function IndexDemo() {
           {...FAST_FILL}
         />
         <PinnedSectionHeader
-          {...scrubber.headerProps}
+          {...scrubber.pinnedHeaderProps}
           height={HEADER}
           style={[styles.header, { backgroundColor: colors.header }]}
           textStyle={{ color: colors.secondary, fontWeight: '700', fontSize: 14 }}
@@ -302,14 +297,12 @@ function LegendListDemo() {
   );
 }
 
-/** The collapsible header's height */
+/** The top bar's height */
 const BAR = 120;
 
-// A screen header drawn over the list that slides away as you scroll down and comes back on a scroll up
-// ("diff-clamp"), stays hidden while the thumb is dragged, and is shown at the top of the list. Only a
-// transform moves: the list starts with a spacer as tall as the header and the pinned letter header, so row
-// offsets never change. The scrubber's track starts below the header (an animated `insets.top`), and the
-// pinned letter header sits below it and names the section of the rows it covers.
+// A top bar (title, count, search field) over the list that slides away as it scrolls down and comes back on a
+// scroll up: useListScrubber's `topBar`. The list starts with a spacer as tall as the bar and the pinned letter
+// header, so row offsets never change; scrubberProps and pinnedHeaderProps keep both below what shows of the bar.
 function CollapsibleDemo() {
   const colors = useColors();
   const { sections, getItemLayout } = useMemo(
@@ -321,24 +314,7 @@ function CollapsibleDemo() {
       }),
     [],
   );
-  const scrubber = useListScrubber({ sections });
-  const { scrollY, isDragging } = scrubber;
-  /** How much of the header is hidden: 0 to BAR */
-  const hidden = useSharedValue(0);
-  useAnimatedReaction(
-    () => Math.max(0, scrollY.get()), // pull-to-refresh and iOS bounce don't move it
-    (y, prev) => {
-      // Hidden while the thumb is dragged (big jumps would show and hide it); always shown at the very top
-      if (isDragging.get()) hidden.set(Math.min(BAR, y));
-      else if (prev !== null) hidden.set(Math.min(Math.max(hidden.get() + y - prev, 0), BAR, y));
-    },
-  );
-  /** The header's visible height: the space it covers at the top of the list */
-  const shown = useDerivedValue(() => BAR - hidden.get());
-  // What the pinned letter header covers: the list's content just below the collapsible header
-  const headerScrollY = useDerivedValue(() => scrollY.get() + shown.get());
-  const barStyle = useAnimatedStyle(() => ({ transform: [{ translateY: -hidden.get() }] }));
-  const pinnedStyle = useAnimatedStyle(() => ({ transform: [{ translateY: shown.get() }] }));
+  const scrubber = useListScrubber({ sections, topBar: { height: BAR } });
   return (
     <>
       <Animated.FlatList
@@ -348,22 +324,17 @@ function CollapsibleDemo() {
         ListHeaderComponent={<View style={{ height: BAR + HEADER }} />}
         renderItem={({ item }) => <ContactRow item={item} colors={colors} />}
         getItemLayout={getItemLayout}
-        windowSize={5}
-        maxToRenderPerBatch={24}
-        updateCellsBatchingPeriod={16}
+        {...FAST_FILL}
       />
-      <Animated.View style={[styles.overlay, { height: HEADER }, pinnedStyle]}>
-        <PinnedSectionHeader
-          scrollY={headerScrollY}
-          sections={sections}
-          height={HEADER}
-          push={false}
-          style={[styles.header, { backgroundColor: colors.header }]}
-          textStyle={{ color: colors.secondary, fontWeight: '700', fontSize: 14 }}
-        />
-      </Animated.View>
+      <PinnedSectionHeader
+        {...scrubber.pinnedHeaderProps}
+        height={HEADER}
+        push={false}
+        style={[styles.header, { backgroundColor: colors.header }]}
+        textStyle={{ color: colors.secondary, fontWeight: '700', fontSize: 14 }}
+      />
       <Animated.View
-        style={[styles.overlay, styles.bar, { height: BAR, backgroundColor: colors.card }, barStyle]}
+        style={[scrubber.topBarStyle, styles.bar, { backgroundColor: colors.card }]}
         testID="collapsible-header"
       >
         <Text style={{ color: colors.text, fontSize: 22, fontWeight: '800' }}>Contacts</Text>
@@ -372,21 +343,7 @@ function CollapsibleDemo() {
           <Text style={{ color: colors.secondary }}>Search</Text>
         </View>
       </Animated.View>
-      <ListScrubber
-        {...scrubber.scrubberProps}
-        insets={{ top: shown }}
-        colors={{
-          thumb: colors.thumb,
-          thumbActive: colors.accent,
-          bubble: colors.bubble,
-          bubbleText: colors.bubbleText,
-        }}
-        accessibilityLabel="Scroll position"
-        side={WEB_SIDE}
-        timing={E2E ? E2E_TIMING : undefined}
-        onDragStart={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-        onSectionChange={() => Haptics.selectionAsync()}
-      />
+      <Scrubber scrubber={scrubber} />
     </>
   );
 }
@@ -434,7 +391,7 @@ export const DEMOS: { name: string; hint: string; Component: ComponentType }[] =
   { name: 'Legend List', hint: '4,000 entries by month, exact sizes', Component: LegendListDemo },
   { name: 'ScrollView', hint: '60 chapters', Component: ScrollViewDemo },
   { name: 'Index', hint: 'Tap a letter to jump: scrollToSection', Component: IndexDemo },
-  { name: 'Collapsible', hint: 'A header that slides away as you scroll', Component: CollapsibleDemo },
+  { name: 'Collapsible', hint: 'A top bar that slides away as you scroll', Component: CollapsibleDemo },
 ];
 
 const styles = StyleSheet.create({
@@ -450,7 +407,6 @@ const styles = StyleSheet.create({
   avatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   rowText: { fontSize: 16, fontWeight: '500' },
   header: { height: HEADER, justifyContent: 'center', paddingHorizontal: 16 },
-  overlay: { position: 'absolute', top: 0, left: 0, right: 0 },
   bar: { paddingHorizontal: 16, paddingTop: 12, gap: 4 },
   search: { height: 36, borderRadius: 10, justifyContent: 'center', paddingHorizontal: 12, marginTop: 8 },
   index: { flexGrow: 0, borderBottomWidth: StyleSheet.hairlineWidth },

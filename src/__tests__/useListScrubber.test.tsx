@@ -1,4 +1,4 @@
-import { mockScrollTo } from './support';
+import { mockReactions, mockScrollTo, mockTimings } from './support';
 import { act, renderHook } from '@testing-library/react-native';
 import { ListScrubber, useListScrubber } from '../index';
 
@@ -79,13 +79,13 @@ describe('useListScrubber({ sections })', () => {
   it('hands the same sections to the scrubber and the pinned header', async () => {
     const { result } = await renderHook(() => useListScrubber({ sections }));
     expect(result.current.scrubberProps.sections).toBe(sections);
-    expect(result.current.headerProps).toEqual({ scrollY: result.current.scrollY, sections });
+    expect(result.current.pinnedHeaderProps).toEqual({ scrollY: result.current.scrollY, sections });
   });
 
   it('without sections, scrubberProps has none', async () => {
     const { result } = await renderHook(() => useListScrubber());
     expect('sections' in result.current.scrubberProps).toBe(false);
-    expect(result.current.headerProps.sections).toEqual([]);
+    expect(result.current.pinnedHeaderProps.sections).toEqual([]);
   });
 
   it('types: labelAt still fits without hook sections, and is refused with them', async () => {
@@ -211,5 +211,117 @@ describe('scrolling from code', () => {
     await rerender({});
     expect(result.current.scrollToSection).toBe(scrollToSection);
     expect(result.current.scrollToOffset).toBe(scrollToOffset);
+  });
+});
+
+describe('useListScrubber({ topBar })', () => {
+  type Hook = { current: ReturnType<typeof useListScrubber> };
+  async function withBar(height = 100) {
+    const hook = await renderHook(() => useListScrubber({ topBar: { height } }));
+    const scroll = (y: number) =>
+      (hook.result.current.onScroll as unknown as (e: unknown) => void)({ contentOffset: { y } });
+    /** What shows of the bar (a derived value: the mock computes it on render) */
+    const visible = async () => {
+      await hook.rerender({});
+      return hook.result.current.topBar!.visibleHeight.get();
+    };
+    return { ...hook, scroll, visible };
+  }
+  /** The finger lifts from the thumb: the hook's reaction to isDragging */
+  const lift = (result: Hook) =>
+    act(() => {
+      result.current.isDragging.set(false);
+      mockReactions.at(-1)!.react(false, true);
+    });
+
+  it('slides away as the list scrolls down, comes back on a scroll up, and shows at the top', async () => {
+    const { scroll, visible } = await withBar();
+    expect(await visible()).toBe(100);
+    scroll(60);
+    expect(await visible()).toBe(40);
+    scroll(300);
+    expect(await visible()).toBe(0); // all hidden, however far down
+    scroll(250);
+    expect(await visible()).toBe(50); // back by as much as the list scrolled up
+    scroll(260);
+    expect(await visible()).toBe(40);
+    scroll(30);
+    expect(await visible()).toBe(100); // near the top: never over the space above the rows
+    scroll(-20);
+    expect(await visible()).toBe(100); // pull-to-refresh, iOS bounce
+  });
+
+  it('stays as it is during a drag, and slides back in when the finger lifts', async () => {
+    const { result, scroll, visible } = await withBar();
+    scroll(300);
+    result.current.isDragging.set(true);
+    scroll(2000);
+    scroll(700);
+    expect(await visible()).toBe(0);
+    await lift(result);
+    expect(mockTimings.at(-1)).toMatchObject({ to: 0, duration: 250 }); // the mock's animation ends at once
+    expect(await visible()).toBe(100);
+    expect(mockScrollTo).not.toHaveBeenCalled(); // mid-list: the list stays where the drag left it
+    // While it slides in, the drag's last scroll doesn't move it; after, scrolls do again
+    scroll(720);
+    expect(await visible()).toBe(100);
+    await act(async () => mockTimings.at(-1)!.done!());
+    scroll(800);
+    expect(await visible()).toBe(20);
+  });
+
+  it('a drag that ends at the first row scrolls back to the top as the bar comes in', async () => {
+    const { result, scroll } = await withBar();
+    scroll(300); // hidden: the thumb's track starts at offset 100, the first row
+    result.current.isDragging.set(true);
+    scroll(100);
+    mockScrollTo.mockClear();
+    await lift(result);
+    expect(mockScrollTo).toHaveBeenCalledWith(result.current.listRef, 0, 0, true);
+  });
+
+  it('show() slides it back in; shown, it stays', async () => {
+    const { result, scroll, visible } = await withBar();
+    scroll(300);
+    const uiFrame = () => act(() => jest.advanceTimersByTime(20)); // show() runs on the UI thread
+    result.current.topBar!.show();
+    await uiFrame();
+    expect(await visible()).toBe(100);
+    const timings = mockTimings.length;
+    result.current.topBar!.show();
+    await uiFrame();
+    expect(mockTimings).toHaveLength(timings);
+  });
+
+  it('the scrubber and the pinned header get it from the spreads', async () => {
+    const { result, scroll, visible } = await withBar();
+    scroll(60);
+    expect(await visible()).toBe(40);
+    const { topBar, scrubberProps, pinnedHeaderProps } = result.current;
+    expect(scrubberProps.topBar).toBe(topBar);
+    expect(pinnedHeaderProps.top).toBe(topBar!.visibleHeight);
+    expect(pinnedHeaderProps.scrollY.get()).toBe(60 + 40); // the rows just below what shows of the bar
+  });
+
+  it('topBarStyle puts it over the top of the list, as tall as the bar', async () => {
+    const { result } = await withBar(120);
+    expect(result.current.topBarStyle[0]).toEqual({
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: 120,
+    });
+  });
+
+  it('without the option: no bar, and nothing reacts to the scroll or a drag for one', async () => {
+    const { result } = await renderHook(() => useListScrubber());
+    expect(result.current.topBar).toBeUndefined();
+    expect('topBar' in result.current.scrubberProps).toBe(false);
+    expect('top' in result.current.pinnedHeaderProps).toBe(false);
+    expect(result.current.pinnedHeaderProps.scrollY).toBe(result.current.scrollY);
+    const timings = mockTimings.length;
+    await lift(result as Hook);
+    expect(mockTimings).toHaveLength(timings);
   });
 });
