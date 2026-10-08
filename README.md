@@ -11,10 +11,10 @@ labels beside your finger.
 
 - **Keeps up with your finger.** Built on Reanimated 4 and Gesture Handler: the drag, the list scroll _and the
   bubble label_ run on the UI thread, even while JS is busy rendering rows.
-- **Section labels and a pinned header.** Pass labelled `sections` (A–Z, months, chapters…) and the bubble
-  shows the one under your finger. `PinnedSectionHeader` keeps the current section pinned above the list, and
-  the next one pushes it out, like iOS Contacts. `listLayout` computes the sections and the list's
-  `getItemLayout` from the same row heights, so the two can't disagree.
+- **Section labels and a pinned header.** Give the hook your list's layout, from `listLayout` and your rows'
+  heights, and the bubble shows the section under your finger (A–Z, months, chapters…). The layout gives the
+  list its `getItemLayout` from the same heights, so the two can't disagree. `PinnedSectionHeader` keeps the
+  current section pinned above the list, and the next one pushes it out, like iOS Contacts.
 - **A top bar that slides away.** One option, `topBar`, gives the list a title or search bar that hides as you
   scroll down and comes back on a scroll up. The scrubber, the pinned header and the bar move as one: the bar
   stays put while you drag the thumb, the drag never uncovers the space it leaves, and a drag to the top
@@ -293,10 +293,10 @@ Required:
 Optional:
 
 - `colors`: any of `thumb`, `thumbActive`, `bubble`, `bubbleText`. Defaults below.
-- `sections`: `{ offset, label }[]` (see [Section labels](#section-labels)). `offset` is where the section
-  starts in the list's content, in points (its header's top, or its first row's), ascending (development
-  builds warn if they aren't, or if an offset isn't a finite number or a label is empty). Drives the bubble
-  and the screen-reader steps.
+- `sections`: `{ offset, label }[]` (see [Wiring it yourself](#wiring-it-yourself)). `offset` is where the
+  section starts in the list's content, in points (its header's top, or its first row's), ascending
+  (development builds warn if they aren't, or if an offset isn't a finite number or a label is empty). Drives
+  the bubble and the screen-reader steps.
 - `labelAt(position, scrollOffset)`: a JS-thread label when there are no `sections`. The types accept one or
   the other.
 - `accessibilitySteps`: screen-reader step targets. Default: the section offsets, else one screen. Dragging
@@ -451,9 +451,11 @@ hidden thumb lets touches through to the list, so it can only be grabbed once sh
 the thumb does, the list's `ref` was replaced (see above).
 
 **The bubble or the pinned header shows the wrong section.** The `offset`s don't match where the sections
-really are. Item separators must be counted in the row heights, and offsets include the list header. Build
-them with [`listLayout` / `sectionListLayout`](#section-labels) when the heights are known; development builds
-warn when offsets aren't ascending or finite. With SectionList, turn off `stickySectionHeadersEnabled`.
+really are. Item separators must be counted in the row heights, and `listHeaderHeight` is your own list
+header's (the hook adds the space for a top bar or pinned header itself). Sections built by hand are in the
+list's own coordinates, so their offsets include everything the list draws above the rows. Build them with
+[`listLayout` / `sectionListLayout`](#section-labels) when the heights are known; development builds warn when
+offsets aren't ascending or finite. With SectionList, turn off `stickySectionHeadersEnabled`.
 
 **"The sections (`layout` or `sections`) are a new array with the same contents on every render…"** The layout
 or the sections are rebuilt on every render, e.g. `useListScrubber({ layout: listLayout(…) })`. Wrap them in
@@ -499,9 +501,10 @@ npm install
 npx expo start
 ```
 
-It opens in Expo Go and has one screen per list type, plus an Index screen: a tappable A–Z bar above a
-SectionList that jumps with `scrollToSection`. It uses the library source from `../src`. `npm run web` opens
-it in the browser instead (Expo web); CI builds that web bundle on every push.
+It opens in Expo Go and has one screen per list type, plus an Index screen (a tappable A–Z bar above a
+SectionList that jumps with `scrollToSection`) and a Collapsible screen (a top bar that slides away, with a
+pinned header). It uses the library source from `../src`. `npm run web` opens it in the browser instead (Expo
+web); CI builds that web bundle on every push.
 
 ### End-to-end tests
 
@@ -568,7 +571,8 @@ largest text size, which the scripts set on the device first and restore afterwa
 [Playwright](https://playwright.dev) tests in `example/web-e2e` drive the example's web build in Chromium, and
 run in CI: dragging the thumb to the end and back, the bubble showing its whole label beside the thumb, the
 bubble staying on screen on a right-to-left page with either `side`, the screen-reader control from the
-keyboard, and no console warnings. From the repo root:
+keyboard, a top bar that slides away with the thumb and the pinned header below it, the pinned header's space
+on each list type, and no console warnings. From the repo root:
 
 ```sh
 npm --prefix example exec -- playwright install chromium   # once
