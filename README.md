@@ -7,7 +7,7 @@
 Fast scrolling for React Native lists. Drag a scrollbar thumb to jump through thousands of rows, with section
 labels beside your finger.
 
-<img src="docs/demo.gif" width="320" alt="Dragging the thumb through 3,000 contacts: the bubble and the pinned header follow letter by letter" />
+<img src="docs/demo.webp" width="320" alt="Dragging the thumb through 3,000 contacts on Android: the bubble and the pinned header follow letter by letter, and the top bar slides back in when the finger lifts" />
 
 - **Keeps up with your finger.** Built on Reanimated 4 and Gesture Handler: the drag, the list scroll _and the
   bubble label_ run on the UI thread, even while JS is busy rendering rows.
