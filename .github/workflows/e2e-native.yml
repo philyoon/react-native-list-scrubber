@@ -26,29 +26,47 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - run: npm --prefix example ci
-      - name: Install Maestro
-        run: |
-          curl -fsSL https://get.maestro.mobile.dev | bash
-          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
-      - name: Boot an iPhone Pro simulator
+      # Setup runs side by side where it can: the simulator boots (about 1.5 min) while dependencies install,
+      # and Metro builds the app while Expo Go is installed
+      - name: Start booting an iPhone Pro simulator
         run: |
           udid=$(xcrun simctl list devices available -j | jq -r '
             [.devices | to_entries[] | select(.key | test("iOS")) | .value[]
              | select(.name | test("^iPhone [0-9]+ Pro$"))] | last | .udid')
           echo "Simulator: $udid"
           xcrun simctl boot "$udid"
-          xcrun simctl bootstatus "$udid" -b
           echo "MAESTRO_DEVICE=$udid" >> "$GITHUB_ENV"
-      - name: Install Expo Go
+      - run: npm --prefix example ci
+      - name: Install Maestro
+        run: |
+          curl -fsSL https://get.maestro.mobile.dev | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      # Expo Go (about 200 MB) is kept between runs, under its download URL: a new Expo Go is fetched once
+      - name: Expo Go's download URL
+        id: expo-go
         run: |
           url=$(node scripts/expo-go-url.mjs ios)
-          mkdir ExpoGo.app
-          curl -fsSL "$url" | tar -xz -C ExpoGo.app
-          xcrun simctl install "$MAESTRO_DEVICE" ExpoGo.app
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "key=$(printf %s "$url" | shasum -a 256 | cut -c1-16)" >> "$GITHUB_OUTPUT"
         working-directory: example
-      - name: Start Metro in e2e mode
-        run: sh scripts/ci-metro.sh ios
+      - uses: actions/cache@v4
+        id: expo-go-cache
+        with:
+          path: example/ExpoGo.app
+          key: expo-go-ios-${{ steps.expo-go.outputs.key }}
+      - name: Download Expo Go
+        if: steps.expo-go-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir ExpoGo.app
+          curl -fsSL "${{ steps.expo-go.outputs.url }}" | tar -xz -C ExpoGo.app
+        working-directory: example
+      - name: Start Metro in e2e mode, and install Expo Go meanwhile
+        run: |
+          sh scripts/ci-metro.sh ios &
+          metro=$!
+          xcrun simctl bootstatus "$MAESTRO_DEVICE" -b
+          xcrun simctl install "$MAESTRO_DEVICE" ExpoGo.app
+          wait "$metro"
         working-directory: example
       - run: npm run e2e:ios
         working-directory: example
