@@ -208,4 +208,12 @@ test('a collapsible header: the thumb, the bubble and the pinned header follow i
   );
   await page.mouse.up();
   await expect(header(page)).toHaveValue('Z');
+
+  // Hidden, it comes back when something in it gets focus (on the web a page can't tell a screen reader's on)
+  await page.mouse.move(rows.x, rows.y);
+  await page.mouse.wheel(0, -2000); // away from the end, where the list can't scroll further down
+  await page.mouse.wheel(0, 400);
+  await expect.poll(async () => (await box(pinned)).y).toBeLessThanOrEqual(top + 1);
+  await page.getByTestId('collapsible-search').focus();
+  await expect.poll(async () => (await box(bar)).y).toBeCloseTo(top, 0);
 });

@@ -178,7 +178,7 @@ The hook also moves the list, for a tappable A–Z index or a "jump to today" bu
 
 ```tsx
 scrubber.scrollToSection(index); // the start of sections[index] (the hook's sections)
-scrubber.scrollToOffset(y, { animated: true }); // a content offset, clamped to the list
+scrubber.scrollToOffset(y, { animated: true }); // a content offset, clamped to the list's range
 ```
 
 Both scroll on the UI thread without animating by default: a long animated scroll shows blank rows until it
@@ -188,9 +188,9 @@ settles. The screen-reader value follows on its own. To jump by label, find the 
 ### A top bar that slides away
 
 A bar over the top of the list (a title, a search field…) can slide away as the list scrolls down and come
-back on a scroll up, like Android's collapsing app bars. Give its height to the hook, draw it with
-`topBarStyle`, and start the list with a spacer as tall as the bar (and a pinned header, if any) so row
-offsets never change:
+back on a scroll up, like Android's collapsing app bars. Give its height to the hook, draw it inside a view
+that spreads `topBarProps`, and start the list with a spacer as tall as the bar (and a pinned header, if any)
+so row offsets never change:
 
 ```tsx
 const { sections, getItemLayout } = useMemo(
@@ -201,7 +201,9 @@ const scrubber = useListScrubber({ sections, topBar: { height: BAR } });
 
 <Animated.FlatList {...scrubber.listProps} ListHeaderComponent={<View style={{ height: BAR + HEADER }} />} … />
 <PinnedSectionHeader {...scrubber.pinnedHeaderProps} height={HEADER} />
-<Animated.View style={[scrubber.topBarStyle, { backgroundColor }]}>{/* title, search… */}</Animated.View>
+<Animated.View {...scrubber.topBarProps}>
+  <View style={{ flex: 1, backgroundColor }}>{/* title, search… */}</View>
+</Animated.View>
 <ListScrubber {...scrubber.scrubberProps} accessibilityLabel="Scroll position" />
 ```
 
@@ -213,15 +215,15 @@ const scrubber = useListScrubber({ sections, topBar: { height: BAR } });
   row, not the empty spacer a hidden bar leaves above it. When the finger lifts the bar slides back in, in
   `revealMs` (default 250; `topBar: { height: BAR, revealMs: 400 }` to change it); at the top of the list, the
   list scrolls back up with it.
-- `scrubber.topBar` gives the bar's `height`, `visibleHeight` (how much of it is on screen, as a shared
-  value), and `show()`, which slides it back in, e.g. when its search field gets focus. To bring a section to
-  the top of the list, just below the bar:
-  `scrubber.scrollToOffset(section.offset - scrubber.topBar.visibleHeight.get())`.
+- `scrollToSection` and `scrollToOffset` bring a section to just below the bar, where it will be once it has
+  followed the scroll: scrolling up shows it, scrolling down hides it.
+- `scrubber.topBar` gives the bar's `height`, `visibleHeight` (how much of it is on screen) and `isFixed` (it
+  stays in place), as shared values, and `show()`, which slides it back in.
 - With a screen reader on (VoiceOver, TalkBack) the bar stays in place: hidden, its contents would still be
   within the screen reader's reach, off screen. The scrubber's screen-reader steps bring a section to just
   below the bar, and its value names the rows there; so does the bubble while dragging. A web page can't tell
-  whether a screen reader is on, so there the bar keeps sliding: call `scrubber.topBar.show()` when something
-  in it gets focus.
+  whether a screen reader is on, so there the bar keeps sliding, and `topBarProps` brings it back when
+  something in it gets focus, e.g. tabbing to its search field.
 
 The example app's Collapsible demo is this, complete.
 

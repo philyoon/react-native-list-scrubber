@@ -2,14 +2,14 @@ import { useMemo, useState } from 'react';
 import { scrollTo, type AnimatedRef, type SharedValue } from 'react-native-reanimated';
 import { scheduleOnUI } from 'react-native-worklets';
 import { A11Y_PAGE, STEP_SLACK } from './defaults';
-import { clamp, firstIndexWhere, labelPosition, sectionIndexAt } from './math';
+import { firstIndexWhere, labelPosition, scrollBelowBar, sectionIndexAt, type BarState } from './math';
 
 /**
  * The screen-reader (and web keyboard) side: `step(±1)` scrolls to the next or previous of `steps`
  * (or one screen), `page(±1)` one screen, `jumpTo` brings a content offset to the top of the list's visible
  * part, and `value` describes the position as a section label, a `labelAt` label or a percentage. `sync`
- * re-reads the position after manual scrolling. `cover` is how much of the list's top is covered (a top bar's
- * visible part): steps land below it, and the value describes the rows there.
+ * re-reads the position after manual scrolling. `bar` is a top bar over the list, if any: steps land below
+ * its visible part, where it will be once it has followed the scroll, and the value describes the rows there.
  */
 export function useA11yStepper({
   listRef,
@@ -22,7 +22,7 @@ export function useA11yStepper({
   labels,
   labelAt,
   formatPercent,
-  cover,
+  bar,
 }: {
   listRef: AnimatedRef<any>;
   scrollY: SharedValue<number>;
@@ -35,8 +35,8 @@ export function useA11yStepper({
   labels: readonly string[];
   labelAt: ((position: number, scrollOffset: number) => string | null) | undefined;
   formatPercent: (percent: number) => string;
-  /** How much of the list's top is covered now (pt) */
-  cover: () => number;
+  /** A top bar over the list now (0 tall without one) */
+  bar: () => BarState;
 }) {
   /** The position the value describes: set by its own steps, and re-read when scrolling stops */
   const [{ offset, covered }, setPosition] = useState({ offset: 0, covered: 0 });
@@ -51,12 +51,17 @@ export function useA11yStepper({
     [labels, offsets, labelAt, offset, covered, formatPercent, maxScroll, contentHeight, viewportHeight],
   );
 
+  /** How much of the list's top the bar covers now */
+  const cover = () => {
+    const { height, hidden } = bar();
+    return height - hidden;
+  };
+
   /** Scroll so content offset `to` is at the top of the list's visible part (clamped), and describe it */
   const jumpTo = (to: number) => {
-    const c = cover();
-    const scroll = clamp(to - c, 0, maxScroll);
+    const { scroll, cover: covered } = scrollBelowBar(to, scrollY.get(), bar(), maxScroll);
     scheduleOnUI(scrollTo, listRef, 0, scroll, false);
-    setPosition({ offset: scroll, covered: c });
+    setPosition({ offset: scroll, covered });
   };
 
   /** One screen back or forward; the previous screen's last row stays visible */

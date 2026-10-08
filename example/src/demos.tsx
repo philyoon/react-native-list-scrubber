@@ -3,7 +3,16 @@ import { AnimatedLegendList } from '@legendapp/list/reanimated';
 import * as Haptics from 'expo-haptics';
 import { FlashList } from '@shopify/flash-list';
 import { useMemo, type ComponentType } from 'react';
-import { Platform, Pressable, ScrollView, SectionList, StyleSheet, Text, View } from 'react-native';
+import {
+  Platform,
+  Pressable,
+  ScrollView,
+  SectionList,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import Animated from 'react-native-reanimated';
 import {
   ListScrubber,
@@ -340,14 +349,16 @@ function CollapsibleDemo() {
         style={[styles.header, { backgroundColor: colors.header }]}
         textStyle={{ color: colors.secondary, fontWeight: '700', fontSize: 14 }}
       />
-      <Animated.View
-        style={[scrubber.topBarStyle, styles.bar, { backgroundColor: colors.card }]}
-        testID="collapsible-header"
-      >
-        <Text style={{ color: colors.text, fontSize: 22, fontWeight: '800' }}>Contacts</Text>
-        <Text style={{ color: colors.secondary }}>3,000 people</Text>
-        <View style={[styles.search, { backgroundColor: colors.header }]}>
-          <Text style={{ color: colors.secondary }}>Search</Text>
+      <Animated.View {...scrubber.topBarProps} testID="collapsible-header">
+        <View style={[styles.bar, { backgroundColor: colors.card }]}>
+          <Text style={{ color: colors.text, fontSize: 22, fontWeight: '800' }}>Contacts</Text>
+          <Text style={{ color: colors.secondary }}>3,000 people</Text>
+          <TextInput
+            placeholder="Search"
+            placeholderTextColor={colors.secondary}
+            style={[styles.search, { backgroundColor: colors.header, color: colors.text }]}
+            testID="collapsible-search"
+          />
         </View>
       </Animated.View>
       <Scrubber scrubber={scrubber} />
@@ -414,8 +425,8 @@ const styles = StyleSheet.create({
   avatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   rowText: { fontSize: 16, fontWeight: '500' },
   header: { height: HEADER, justifyContent: 'center', paddingHorizontal: 16 },
-  bar: { paddingHorizontal: 16, paddingTop: 12, gap: 4 },
-  search: { height: 36, borderRadius: 10, justifyContent: 'center', paddingHorizontal: 12, marginTop: 8 },
+  bar: { flex: 1, paddingHorizontal: 16, paddingTop: 12, gap: 4 },
+  search: { height: 36, borderRadius: 10, paddingHorizontal: 12, marginTop: 8 },
   index: { flexGrow: 0, borderBottomWidth: StyleSheet.hairlineWidth },
   indexContent: { paddingHorizontal: 8, paddingVertical: 4 },
   // 44pt tall: the minimum touch target

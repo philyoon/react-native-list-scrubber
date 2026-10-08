@@ -16,7 +16,7 @@
  * - listLayout, sectionListLayout, sectionIndexAt and LIST_SCRUBBER_DEFAULTS are the real ones.
  */
 import { useMemo, useState, useSyncExternalStore } from 'react';
-import { Text, View, type LayoutChangeEvent } from 'react-native';
+import { Platform, Text, View, type LayoutChangeEvent } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import type { ListScrubberProps } from './ListScrubber';
 import type {
@@ -192,7 +192,7 @@ export function useListScrubber<S extends readonly ListScrubberSection[] | undef
   });
   const scrollToOffset = useLatest((offset: number) => {
     const maxScroll = Math.max(0, contentHeight.get() - viewportHeight.get());
-    scrollY.set(Math.min(maxScroll, Math.max(0, offset)));
+    scrollY.set(Math.min(maxScroll, Math.max(0, offset - barHeight)));
   });
   const scrollToSection = useLatest((index: number) => {
     const section = sections?.[index];
@@ -209,19 +209,23 @@ export function useListScrubber<S extends readonly ListScrubberSection[] | undef
     }),
     [values, onScroll, onContentSizeChange, onLayout],
   );
-  // The mock's top bar always shows in full: the pinned header sits below it and names the rows there
+  // The mock's top bar always shows in full and stays in place: the pinned header sits below it and names
+  // the rows there, and scrollToOffset brings an offset to just below it
   const topBar = useMemo(() => {
     if (barHeight <= 0) return undefined;
     const visibleHeight = sharedValue(barHeight);
-    return { height: barHeight, visibleHeight, show: () => visibleHeight.set(barHeight) };
+    const show = () => visibleHeight.set(barHeight);
+    return { height: barHeight, visibleHeight, isFixed: sharedValue(true), show };
   }, [barHeight]);
-  const topBarStyle = useMemo(
-    () =>
-      [
+  const topBarProps = useMemo(
+    () => ({
+      style: [
         { position: 'absolute', top: 0, left: 0, right: 0, height: barHeight },
         {},
-      ] as UseListScrubberResult['topBarStyle'],
-    [barHeight],
+      ] as UseListScrubberResult['topBarProps']['style'],
+      ...(Platform.OS === 'web' && topBar && { onFocus: topBar.show }),
+    }),
+    [barHeight, topBar],
   );
   const scrubberProps = useMemo(
     () => ({ ...values, ...(topBar && { topBar }), ...(sections && { sections }) }) as never,
@@ -239,7 +243,7 @@ export function useListScrubber<S extends readonly ListScrubberSection[] | undef
     ...values,
     onScroll: onScroll as never,
     topBar,
-    topBarStyle,
+    topBarProps,
     listProps,
     scrubberProps,
     pinnedHeaderProps,
