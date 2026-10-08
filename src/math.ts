@@ -1,3 +1,9 @@
+// Defined first: a worklet captures the worklets it calls when it's defined
+export function clamp(value: number, min: number, max: number): number {
+  'worklet';
+  return Math.min(max, Math.max(min, value));
+}
+
 /**
  * The content offset a label should describe at scroll position `offset`.
  * It slides from the top of the list's visible part (at the start) to its bottom (at the end), so the last
@@ -14,6 +20,38 @@ export function labelPosition(
   const maxScroll = Math.max(1, contentHeight - viewportHeight);
   const t = Math.min(1, Math.max(0, offset / maxScroll));
   return Math.min(contentHeight - 1, offset + cover + t * (viewportHeight - cover));
+}
+
+/** A top bar as a scroll sees it: its full `height`, how much of it is `hidden` now, and if it's `fixed` */
+export interface BarState {
+  height: number;
+  hidden: number;
+  /** It stays as it is while the list scrolls (with a screen reader on) */
+  fixed: boolean;
+}
+
+/**
+ * Where to scroll from `from` so content offset `to` comes to just below a top bar's visible part, once the
+ * bar has followed the scroll there: it hides by as much as the list scrolls down and shows by as much as it
+ * scrolls up, and shows in full at the top (useListScrubber). `scroll` is within 0…maxScroll; `cover` is how
+ * much of the bar shows there. Without a bar, that's `to` itself, clamped.
+ */
+export function scrollBelowBar(
+  to: number,
+  from: number,
+  bar: BarState,
+  maxScroll: number,
+): { scroll: number; cover: number } {
+  'worklet';
+  const { height, hidden, fixed } = bar;
+  const y = Math.max(0, from);
+  const coverAt = (s: number) => height - (fixed ? hidden : clamp(hidden + s - y, 0, Math.min(height, s)));
+  // `to` above the offset just below the bar now is reached scrolling up, which shows the bar in full by the
+  // time it's there; below it, scrolling down, which hides the bar. Already there, it stays
+  const below = y + coverAt(y);
+  const target = fixed ? to - coverAt(y) : to < below ? to - height : to > below ? to : y;
+  const scroll = clamp(target, 0, Math.max(0, maxScroll));
+  return { scroll, cover: coverAt(scroll) };
 }
 
 /** Index of the section that contains `y`, given ascending section start offsets. */
@@ -42,9 +80,4 @@ export function firstIndexWhere(values: readonly number[], test: (value: number)
     else lo = mid + 1;
   }
   return lo;
-}
-
-export function clamp(value: number, min: number, max: number): number {
-  'worklet';
-  return Math.min(max, Math.max(min, value));
 }

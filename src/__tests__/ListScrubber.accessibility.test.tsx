@@ -1,4 +1,4 @@
-import { mockScrollTo, sharedZero, setup } from './support';
+import { mockScrollTo, sharedFlag, sharedZero, setup } from './support';
 import { act, fireEvent, screen } from '@testing-library/react-native';
 import { Platform } from 'react-native';
 
@@ -34,6 +34,9 @@ describe('with a top bar', () => {
     v.set(n);
     return v;
   };
+  afterEach(() => jest.restoreAllMocks());
+  // With a screen reader on, the bar stays in place
+  const fixed = sharedFlag(true);
 
   it('steps land below the bar, and the value names the rows there', async () => {
     // A 20pt bar fully shown: section M starts at 500, so its first row should be 20 below
@@ -43,7 +46,7 @@ describe('with a top bar', () => {
         { offset: 0, label: 'A' },
         { offset: 500, label: 'M' },
       ],
-      topBar: { height: 20, visibleHeight: shared(20) },
+      topBar: { height: 20, visibleHeight: shared(20), isFixed: fixed },
     });
     const el = screen.getByRole('adjustable', { name: 'Scroll position' });
     await fireEvent(el, 'accessibilityAction', { nativeEvent: { actionName: 'increment' } });
@@ -52,8 +55,38 @@ describe('with a top bar', () => {
     expect(el.props['aria-valuetext']).toBe('M');
   });
 
+  it('where the bar slides (web keys), lands below where the bar will be: hidden going down, shown going up', async () => {
+    jest.replaceProperty(Platform, 'OS', 'web');
+    const scrollY = shared(0);
+    const visibleHeight = shared(20);
+    await setup({
+      scrollY,
+      sections: [
+        { offset: 0, label: 'A' },
+        { offset: 300, label: 'F' },
+        { offset: 500, label: 'M' },
+      ],
+      topBar: { height: 20, visibleHeight, isFixed: sharedFlag(false) },
+    });
+    const el = () => screen.getByRole('adjustable', { name: 'Scroll position' });
+    const press = async (key: string) => {
+      await act(() => el().props.onKeyDown({ nativeEvent: { key }, preventDefault: () => {} }));
+      await act(() => jest.advanceTimersByTime(20));
+    };
+    // Down to F: scrolling 300 hides the bar, so F's first row is at the very top
+    await press('ArrowDown');
+    expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 300, false);
+    expect(el().props['aria-valuetext']).toBe('F');
+    // From M with the bar hidden, back up to F: scrolling up brings the bar back, so F lands 20 lower
+    scrollY.set(500);
+    visibleHeight.set(0);
+    await press('ArrowUp');
+    expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 280, false);
+    expect(el().props['aria-valuetext']).toBe('F');
+  });
+
   it('paging moves by the uncovered part of the list', async () => {
-    await setup({ topBar: { height: 20, visibleHeight: shared(20) } });
+    await setup({ topBar: { height: 20, visibleHeight: shared(20), isFixed: fixed } });
     const el = screen.getByRole('adjustable', { name: 'Scroll position' });
     await fireEvent(el, 'accessibilityAction', { nativeEvent: { actionName: 'increment' } });
     await act(() => jest.advanceTimersByTime(20));

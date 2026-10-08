@@ -305,14 +305,71 @@ describe('useListScrubber({ topBar })', () => {
     expect(pinnedHeaderProps.scrollY.get()).toBe(60 + 40); // the rows just below what shows of the bar
   });
 
-  it('topBarStyle puts it over the top of the list, as tall as the bar', async () => {
+  it('topBarProps put it over the top of the list, as tall as the bar; no focus handler off the web', async () => {
     const { result } = await withBar(120);
-    expect(result.current.topBarStyle[0]).toEqual({
+    expect(result.current.topBarProps.style[0]).toEqual({
       position: 'absolute',
       top: 0,
       left: 0,
       right: 0,
       height: 120,
+    });
+    expect('onFocus' in result.current.topBarProps).toBe(false);
+  });
+
+  it('on the web, focus inside it brings it back (a page can’t tell a screen reader is on)', async () => {
+    const os = jest.replaceProperty(Platform, 'OS', 'web');
+    try {
+      const { result, scroll, visible } = await withBar();
+      scroll(300);
+      expect(await visible()).toBe(0);
+      expect(result.current.topBarProps.onFocus).toBe(result.current.topBar!.show);
+      result.current.topBarProps.onFocus!();
+      await act(() => jest.advanceTimersByTime(20));
+      expect(await visible()).toBe(100);
+    } finally {
+      os.restore();
+    }
+  });
+
+  describe('scrolling from code', () => {
+    async function measured() {
+      const bar = await withBar();
+      await act(() => {
+        bar.result.current.listProps.onLayout({ nativeEvent: { layout: { height: 600 } } } as never);
+        bar.result.current.listProps.onContentSizeChange(390, 2000); // scrolls up to 1,400
+      });
+      return bar;
+    }
+    const uiFrame = () => act(() => jest.advanceTimersByTime(20));
+
+    it('brings an offset to just below the bar, where it will be once it has followed the scroll', async () => {
+      const { result, scroll } = await measured();
+      expect(result.current.topBar!.isFixed.get()).toBe(false);
+      // Down from the top: scrolling 500 hides the bar, so the offset lands at the very top
+      result.current.scrollToOffset(500);
+      await uiFrame();
+      expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 500, false);
+      // Up from 800 with the bar hidden: scrolling up brings it back, so the offset lands 100 lower
+      scroll(800);
+      result.current.scrollToOffset(500);
+      await uiFrame();
+      expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 400, false);
+      // Already just below the bar: stays
+      scroll(400); // shown in full
+      scroll(450); // half hidden: 500 is just below it
+      result.current.scrollToOffset(500);
+      await uiFrame();
+      expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 450, false);
+    });
+
+    it('while the bar slides back in, it ends up in full whichever way the list goes', async () => {
+      const { result, scroll } = await measured();
+      scroll(800); // hidden
+      await lift(result as Hook);
+      result.current.scrollToOffset(1000);
+      await uiFrame();
+      expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 900, false);
     });
   });
 
@@ -385,6 +442,20 @@ describe('useListScrubber({ topBar }) with a screen reader', () => {
     await unmount();
     expect(remove).toHaveBeenCalled();
     await act(async () => answer(true)); // no update on an unmounted component
+  });
+
+  it('scrolling from code lands below the bar, which stays in place', async () => {
+    enabled.mockResolvedValue(true);
+    const { result } = await withBar();
+    await uiFrame();
+    expect(result.current.topBar!.isFixed.get()).toBe(true);
+    await act(() => {
+      result.current.listProps.onLayout({ nativeEvent: { layout: { height: 600 } } } as never);
+      result.current.listProps.onContentSizeChange(390, 2000);
+    });
+    result.current.scrollToOffset(500);
+    await uiFrame();
+    expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 400, false);
   });
 
   it("doesn't ask on the web, where a page can't tell", async () => {

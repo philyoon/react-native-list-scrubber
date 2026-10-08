@@ -1,5 +1,6 @@
 import { act, render, renderHook, screen } from '@testing-library/react-native';
 import * as mock from '../jest';
+import { Platform } from 'react-native';
 
 // The mock must work without these: record any load of them
 const mockLoaded: string[] = [];
@@ -222,7 +223,8 @@ describe('useListScrubber({ topBar })', () => {
     expect(list.topBar!.visibleHeight.get()).toBe(100);
     expect(list.scrubberProps.topBar).toBe(list.topBar);
     expect(list.pinnedHeaderProps.top).toBe(list.topBar!.visibleHeight);
-    expect(list.topBarStyle[0]).toMatchObject({ position: 'absolute', height: 100 });
+    expect(list.topBarProps.style[0]).toMatchObject({ position: 'absolute', height: 100 });
+    expect(list.topBar!.isFixed.get()).toBe(true);
     // 450 + 100: the rows just below the bar are in M (from 500)
     await act(() =>
       (list.listProps.onScroll as unknown as (e: unknown) => void)({ contentOffset: { y: 450 } }),
@@ -233,6 +235,23 @@ describe('useListScrubber({ topBar })', () => {
     expect(list.topBar!.visibleHeight.get()).toBe(100);
     list.pinnedHeaderProps.scrollY.set(0); // read-only, like a derived value
     expect(list.pinnedHeaderProps.scrollY.get()).toBe(550);
+  });
+
+  it('scrolls a section to just below the bar; on the web, focus inside it brings it back', async () => {
+    const os = jest.replaceProperty(Platform, 'OS', 'web');
+    try {
+      const { result } = await renderHook(() => useListScrubber({ sections, topBar: { height: 100 } }));
+      const list = result.current;
+      await act(() => {
+        list.listProps.onLayout({ nativeEvent: { layout: { height: 600 } } } as never);
+        list.listProps.onContentSizeChange(390, 2000);
+      });
+      list.scrollToSection(1);
+      expect(list.scrollY.get()).toBe(400);
+      expect(list.topBarProps.onFocus).toBe(list.topBar!.show);
+    } finally {
+      os.restore();
+    }
   });
 });
 

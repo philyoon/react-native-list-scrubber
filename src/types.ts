@@ -9,6 +9,8 @@ export interface ListScrubberTopBar {
   height: number;
   /** How much of it shows now (pt), on the UI thread */
   visibleHeight: SharedValue<number>;
+  /** True while it stays in place as the list scrolls (with a screen reader on), on the UI thread */
+  isFixed: SharedValue<boolean>;
 }
 
 /** A labelled section start, e.g. `{ offset: 0, label: 'A' }`. */
