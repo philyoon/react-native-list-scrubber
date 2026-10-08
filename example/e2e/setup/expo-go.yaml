@@ -10,10 +10,11 @@ env:
 ---
 - stopApp
 - openLink: ${LINK}?demo=FlatList
-# The app, Expo Go's first-run introduction, or iOS asking to open the link in Expo Go. Up to 3 minutes: Expo Go's
-# first launch on a fresh simulator took over a minute on GitHub's macOS runner
+# The app (its first row: not its name, which the built app's icon on the home screen also shows), Expo Go's
+# first-run introduction, or iOS asking to open the link in the app. Up to 3 minutes: an app's first launch on a
+# fresh simulator took over a minute on GitHub's macOS runner
 - extendedWaitUntil:
-    visible: 'List Scrubber|Continue|Open'
+    visible: 'Ada Abby|Continue|Open'
     timeout: 180000
 - runFlow:
     when:
@@ -29,7 +30,7 @@ env:
             - waitForAnimationToEnd
             - tapOn: Open
       - extendedWaitUntil:
-          visible: 'List Scrubber|Continue'
+          visible: 'Ada Abby|Continue'
           timeout: 180000
 # Expo Go's first-run introduction to its developer menu, then the menu itself: they can come up a moment
 # after the app shows, so keep closing them until the app is in front
