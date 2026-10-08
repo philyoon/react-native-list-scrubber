@@ -49,8 +49,9 @@ function Main() {
   const Demo = DEMOS[demo]!.Component;
   return (
     <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top }}>
-      {/* Drawn behind the status bar on every Android version (it is from Android 15): the e2e flows' screen
-          percentages (src/e2e.ts) then measure the whole screen, not a window that starts below the status bar */}
+      {/* Drawn behind the status bar on every Android version (it is from Android 15): the e2e flows'
+          screen percentages (src/e2e.ts) then measure the whole screen, not a window that starts below
+          the status bar */}
       <StatusBar style="auto" />
       <NativeStatusBar translucent backgroundColor="transparent" />
       <Text style={[styles.title, { color: colors.text }]}>List Scrubber</Text>
