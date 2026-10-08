@@ -20,7 +20,7 @@ env:
       true: ${!(typeof RTL != 'undefined' && RTL == 1)}
     commands:
       - swipe:
-          start: 91%, ${typeof TOP == 'undefined' ? 28 : TOP}%
+          start: "91%, ${typeof TOP == 'undefined' ? 28 : TOP}%"
           end: 91%, 99%
           duration: 1500 # it ends at the end of the list: on a slow emulator (CI) a faster drag's last stretch can be lost
 - runFlow:
@@ -28,7 +28,7 @@ env:
       true: ${typeof RTL != 'undefined' && RTL == 1}
     commands:
       - swipe:
-          start: 9%, ${typeof TOP == 'undefined' ? 28 : TOP}%
+          start: "9%, ${typeof TOP == 'undefined' ? 28 : TOP}%"
           end: 9%, 99%
           duration: 1500 # it ends at the end of the list: on a slow emulator (CI) a faster drag's last stretch can be lost
 - waitForAnimationToEnd
