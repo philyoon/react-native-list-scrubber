@@ -30,7 +30,7 @@ env:
 jobs:
   # iOS in one job: it builds the app, then runs every flow on it. macOS runners are scarce (GitHub runs at most 5
   # at a time per account), and separate test jobs waited minutes for one, then spent about 6 min each on setup.
-  # The simulator boots once the app is built.
+  # The simulator boots while the app builds.
   ios:
     runs-on: macos-latest
     timeout-minutes: 60
@@ -42,6 +42,17 @@ jobs:
           cache: npm
           cache-dependency-path: example/package-lock.json
       - run: npm --prefix example ci
+      # After npm ci, not before: a booting simulator slowed the steps beside it (setup-node took 1-3 min instead of
+      # seconds), but barely the Xcode build. Not after the build either: a just-booted simulator is still busy for
+      # minutes, and the app's first launch took over 3 min.
+      - name: Start booting an iPhone Pro simulator
+        run: |
+          udid=$(xcrun simctl list devices available -j | jq -r '
+            [.devices | to_entries[] | select(.key | test("iOS")) | .value[]
+             | select(.name | test("^iPhone [0-9]+ Pro$"))] | last | .udid')
+          echo "Simulator: $udid"
+          xcrun simctl boot "$udid"
+          echo "MAESTRO_DEVICE=$udid" >> "$GITHUB_ENV"
       # CocoaPods' downloads, under the inputs expo prebuild generates the Podfile from (Podfile.lock doesn't exist
       # until then)
       - uses: actions/cache@v4
@@ -81,16 +92,6 @@ jobs:
         with:
           path: *jsi-cache
           key: expo-jsi-${{ env.XCODE }}-${{ hashFiles('example/package-lock.json') }}
-      # Only now: a booting simulator slowed everything running beside it (setup-node took 1-3 min instead of
-      # seconds). Java and Maestro install while it boots.
-      - name: Start booting an iPhone Pro simulator
-        run: |
-          udid=$(xcrun simctl list devices available -j | jq -r '
-            [.devices | to_entries[] | select(.key | test("iOS")) | .value[]
-             | select(.name | test("^iPhone [0-9]+ Pro$"))] | last | .udid')
-          echo "Simulator: $udid"
-          xcrun simctl boot "$udid"
-          echo "MAESTRO_DEVICE=$udid" >> "$GITHUB_ENV"
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
