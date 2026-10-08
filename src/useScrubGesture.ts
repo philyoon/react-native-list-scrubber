@@ -13,9 +13,9 @@ import { useLatest } from './useLatest';
 import { clamp, labelPosition, sectionIndexAt } from './math';
 
 /**
- * Where the thumb's track starts in the rail (pt: below the visible part of a top bar), how far the thumb can travel
- * along it, and the first scroll offset it covers (`start`: past the space a hidden top bar leaves at the top of
- * the list)
+ * Where the thumb's track starts in the rail (pt: below the visible part of a top bar), how far the thumb can
+ * travel along it, and the first scroll offset it covers (`start`: past the space a hidden top bar leaves at
+ * the top of the list)
  */
 export interface Track {
   top: number;
@@ -24,10 +24,10 @@ export interface Track {
 }
 
 /**
- * The drag: maps the distance the thumb can move (the track's `travel`) onto the list's scroll range and scrolls
- * it, all on the UI thread. With section `offsets` it also picks the section under the finger (`sectionIdx`).
- * A drag keeps the track it started with (`dragTrack`), so the thumb stays under the finger even if a top bar
- * moves meanwhile.
+ * The drag: maps the distance the thumb can move (the track's `travel`) onto the list's scroll range and
+ * scrolls it, all on the UI thread. With section `offsets` it also picks the section under the finger
+ * (`sectionIdx`). A drag keeps the track it started with (`dragTrack`), so the thumb stays under the finger
+ * even if a top bar moves meanwhile.
  * The JS callbacks must be stable (useLatest): the gesture is rebuilt only when its numbers change.
  */
 export function useScrubGesture({
@@ -97,7 +97,9 @@ export function useScrubGesture({
 
   const pan = useMemo(
     () => {
-      /** Moves the thumb and scrolls the list to where the finger is: translationY from where the drag started */
+      /**
+       * Moves the thumb and scrolls the list to where the finger is: translationY from where the drag started
+       */
       const move = (translationY: number) => {
         'worklet';
         // `top`: the top bar's visible part when the drag began, which the labels describe the rows below
@@ -150,8 +152,8 @@ export function useScrubGesture({
             move(e.translationY);
           })
           // Again with the finger's final position: the last stretch of a drag can come only with the finger
-          // lifting, with no move event for it (seen with injected touches on a slow emulator, where a drag to
-          // the end of the list stopped a few percent short)
+          // lifting, with no move event for it (seen with injected touches on a slow emulator, where a drag
+          // to the end of the list stopped a few percent short)
           .onEnd((e) => {
             move(e.translationY);
           })

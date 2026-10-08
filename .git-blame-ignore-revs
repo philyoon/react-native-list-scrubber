@@ -1,0 +1,11 @@
+# Formatting-only commits, skipped by git blame. GitHub reads this file on its own; locally:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# Wrap comments at 110 columns
+2998420ce5d74e0af22f883073082f217ac86876
+
+# Wrap the example's comments at 110 columns
+41be499eafa3c82e5c91935050b4d7c9130d3662
+
+# Wrap the comments main brought in at 110 columns
+20f6a12b90e4e856908334350151810cbd45546c

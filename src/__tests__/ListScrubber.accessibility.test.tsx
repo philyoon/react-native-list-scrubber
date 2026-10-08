@@ -36,7 +36,8 @@ describe('with a top bar', () => {
   };
 
   it('steps land below the bar, and the value names the rows there', async () => {
-    // A 20pt bar fully shown: section M starts at 500, so its first row should be 20 below the top of the list
+    // A 20pt bar fully shown: section M starts at 500, so its first row should be 20 below
+    // the top of the list
     await setup({
       sections: [
         { offset: 0, label: 'A' },

@@ -23,7 +23,8 @@ it('dragging scrolls the list in proportion and asks for the label at that spot'
   await drag(26); // half of 52
   expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 450, false); // (1000 - 100) / 2
   await act(async () => {}); // the label is drawn on the JS thread
-  expect(labelAt).toHaveBeenCalledWith(500, 450); // the position to describe (see labelPosition), the scroll offset
+  // The position to describe (see labelPosition), the scroll offset
+  expect(labelAt).toHaveBeenCalledWith(500, 450);
   expect(onDragStart).toHaveBeenCalledTimes(1);
   await drag(900); // past the end: clamps
   expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 900, false);
@@ -647,8 +648,8 @@ describe('API options', () => {
       v.set(n);
       return v;
     };
-    // 30 tall, 20 showing: the track starts 20 down (travel 100 − 20 − 48 = 32), and its top stands for offset 10,
-    // where the rows come out from under the 10 hidden: offsets 10 to 900
+    // 30 tall, 20 showing: the track starts 20 down (travel 100 − 20 − 48 = 32), and its top stands for
+    // offset 10, where the rows come out from under the 10 hidden: offsets 10 to 900
     const topBar = () => ({ height: 30, visibleHeight: shared(20) });
 
     it('draws the track below what shows of it, the rail keeping its place', async () => {
@@ -667,8 +668,9 @@ describe('API options', () => {
     });
 
     it("labels describe the rows below the bar's visible part", async () => {
-      // B starts at 25. The drag begins at offset 0, its label reading 20 below it (A); at the top of the track,
-      // offset 10, the label reads the rows below the 20 visible points: B, where without the bar it'd still be A
+      // B starts at 25. The drag begins at offset 0, its label reading 20 below it (A); at the top of the
+      // track, offset 10, the label reads the rows below the 20 visible points: B, where without the bar
+      // it'd still be A
       const onSectionChange = jest.fn();
       await setup({
         sections: [

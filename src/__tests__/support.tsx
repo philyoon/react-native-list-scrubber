@@ -35,15 +35,16 @@ jest.mock('react-native-reanimated', () => {
       ref.current ??= mock.useSharedValue(init);
       return ref.current;
     },
-    // Same for derived values: the real one keeps its identity across renders (and memoized children rely on it)
+    // Same for derived values: the real one keeps its identity across renders
+    // (and memoized children rely on it)
     useDerivedValue: (processor: () => unknown) => {
       const ref = React.useRef(null);
       ref.current ??= mock.useSharedValue(undefined);
       ref.current.set(processor());
       return ref.current;
     },
-    // Record what the worklet captured: the real hook restarts it (and copies it all to the UI thread) when any
-    // of it changes identity
+    // Record what the worklet captured: the real hook restarts it (and copies it all to the UI thread) when
+    // any of it changes identity
     useAnimatedStyle: (updater: { __closure?: object }, ...rest: unknown[]) => {
       mockClosures.push({ hook: 'style', values: Object.values(updater.__closure ?? {}) });
       return mock.useAnimatedStyle(updater, ...rest);
