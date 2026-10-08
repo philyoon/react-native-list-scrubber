@@ -4,9 +4,11 @@ name: Native e2e
 # Go. iOS builds the app and runs every flow in one job; Android builds it once, then three groups of flows run
 # side by side on it.
 # Caches: npm, CocoaPods' downloads, Xcode's build folder (irgaly/xcode-cache), Gradle, Maestro, and the
-# emulator's boot snapshot. The build caches (over 1 GB each) are saved by main's runs and manual ones only, so
-# pull requests don't fill the repository's 10 GB of cache and evict the others; a cache key can't be
-# overwritten, so each save's key ends in its run ID or commit, and a run restores the newest match.
+# emulator's boot snapshot. The build caches (about 1-1.5 GB each) are keyed by the native build's inputs only
+# (package-lock.json, app.json, scripts/e2e-build.sh, and Xcode's version): the JS bundle is rebuilt every run,
+# so a cache stays valid until one of those changes, and is saved once for them. A cache key can't be
+# overwritten, and one per run would soon fill the repository's 10 GB and evict the others. Saved by main's
+# runs and manual ones only, not pull requests'.
 on:
   pull_request:
   # On main too: a pull request can only use caches saved by its own runs or by main's, so main's runs keep them
@@ -64,6 +66,7 @@ jobs:
       # ExpoModulesJSI's framework, built into node_modules by a build phase (about 1 min), which npm ci removes.
       # The build script skips slices whose source hash matches.
       - uses: actions/cache/restore@v4
+        id: jsi-cache
         with:
           path: &jsi-cache example/node_modules/expo-modules-jsi/apple/Products
           key: expo-jsi-${{ env.XCODE }}-${{ hashFiles('example/package-lock.json') }}
@@ -73,10 +76,13 @@ jobs:
       # Xcode's build folder, kept outside ios/ for that reason, with the timestamps of the files it was built from:
       # npm ci and prebuild give every file a new one, which alone would make Xcode rebuild everything. The action
       # puts a file's old timestamp back when its content is unchanged, so it runs once the generated files exist.
-      # Saved (when the job succeeds) by main's and manual runs, not by pull requests', like the Gradle cache.
+      # Saved (when the job succeeds) by main's and manual runs, not by pull requests', like the Gradle cache; on
+      # a hit of the same key it isn't saved again (the action logs a warning saying so).
       - uses: irgaly/xcode-cache@4141f139f00e335c6e1031fb93e667181f86146f # v1.9.2
         with:
-          key: xcode-deriveddata-${{ env.XCODE }}-${{ github.sha }}
+          key:
+            xcode-deriveddata-${{ env.XCODE }}-${{ hashFiles('example/package-lock.json', 'example/app.json',
+            'example/scripts/e2e-build.sh') }}
           restore-keys: xcode-deriveddata-${{ env.XCODE }}-
           deriveddata-directory: ${{ runner.temp }}/DerivedData
           restore-mtime-targets: |
@@ -88,7 +94,7 @@ jobs:
           NO_INSTALL: 1
           E2E_DERIVED_DATA: ${{ runner.temp }}/DerivedData
       - uses: actions/cache/save@v4
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && steps.jsi-cache.outputs.cache-hit != 'true'
         with:
           path: *jsi-cache
           key: expo-jsi-${{ env.XCODE }}-${{ hashFiles('example/package-lock.json') }}
@@ -141,26 +147,27 @@ jobs:
       - run: npm --prefix example ci
       # Gradle's downloads and its build cache (e2e-build.sh builds with --build-cache), under the native inputs
       - uses: actions/cache/restore@v4
+        id: gradle-cache
         with:
           path: &gradle-cache |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: android-gradle-${{ hashFiles('example/package-lock.json', 'example/app.json') }}-
-          restore-keys: |
-            android-gradle-${{ hashFiles('example/package-lock.json', 'example/app.json') }}-
-            android-gradle-
+          key:
+            android-gradle-${{ hashFiles('example/package-lock.json', 'example/app.json',
+            'example/scripts/e2e-build.sh') }}
+          restore-keys: android-gradle-
       - run: NO_INSTALL=1 sh scripts/e2e-build.sh android
         working-directory: example
         env:
           # The CI emulator's architecture only
           ANDROID_ARCH: x86_64
       - uses: actions/cache/save@v4
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && steps.gradle-cache.outputs.cache-hit != 'true'
         with:
           path: *gradle-cache
           key:
-            android-gradle-${{ hashFiles('example/package-lock.json', 'example/app.json') }}-${{ github.run_id
-            }}
+            android-gradle-${{ hashFiles('example/package-lock.json', 'example/app.json',
+            'example/scripts/e2e-build.sh') }}
       - uses: actions/upload-artifact@v4
         with:
           name: android-app
