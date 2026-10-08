@@ -15,7 +15,7 @@ import {
   type ScrollHandlerProcessed,
   type SharedValue,
 } from 'react-native-reanimated';
-import { scheduleOnUI } from 'react-native-worklets';
+import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
 import { LIST_SCRUBBER_DEFAULTS } from './defaults';
 import { clamp, scrollBelowBar, snapTarget } from './math';
 import { useListHeader, type ListHeaderContent } from './ListHeader';
@@ -33,8 +33,16 @@ interface BaseOptions {
    * the list scrolls to the very top with it. It slides in over `revealMs` (default:
    * LIST_SCRUBBER_DEFAULTS.topBar.revealMs). With `snap` (the default), a touch scroll that leaves it partly
    * shown settles it when the scroll ends, shown or hidden, whichever is closer; not on the web.
+   * `onVisibilityChange` is called on the JS thread when it ends up shown or hidden in full, not while it's
+   * part way.
    */
-  topBar?: { height: number; revealMs?: number; revealOnDragToTop?: boolean; snap?: boolean };
+  topBar?: {
+    height: number;
+    revealMs?: number;
+    revealOnDragToTop?: boolean;
+    snap?: boolean;
+    onVisibilityChange?: (visibility: 'shown' | 'hidden') => void;
+  };
   /**
    * A PinnedSectionHeader `height` tall: `pinnedHeaderProps` carry its height and placement. Over a list with
    * section headers of its own (a SectionList's, as `sectionListLayout` gives) it sits over them, and the
@@ -144,8 +152,8 @@ export function useListScrubber<
   const isDragging = useSharedValue(false);
   /** How much of the top bar is hidden (pt) */
   const barHidden = useSharedValue(0);
-  /** The top bar is sliding back in after a drag */
-  const barRevealing = useSharedValue(false);
+  /** The top bar slides in or out on its own (show(), hide(), a drag to the top): scrolls don't move it */
+  const barSliding = useSharedValue(false);
   // With a screen reader on, the bar stays in place: hidden, its title and search field would still be in the
   // screen reader's reach, off screen. Not on the web, where a page can't tell (React Native Web always says
   // yes): there the app shows the bar when something in it gets focus
@@ -153,8 +161,8 @@ export function useListScrubber<
   const barPinned = useSharedValue(false);
   useEffect(() => {
     barPinned.set(screenReader);
-    if (screenReader) scheduleOnUI(revealTopBar, barHidden, barRevealing, revealMs);
-  }, [screenReader, barPinned, barHidden, barRevealing, revealMs]);
+    if (screenReader) scheduleOnUI(revealTopBar, barHidden, barSliding, revealMs);
+  }, [screenReader, barPinned, barHidden, barSliding, revealMs]);
   /** A touch scroll is under way (snap): set when the finger starts it, cleared once the bar is settled */
   const touchScrolling = useSharedValue(false);
   // Snap: when a touch scroll ends with the bar partly shown, the list scrolls the rest of the way, so the
@@ -165,7 +173,7 @@ export function useListScrubber<
     'worklet';
     if (!touchScrolling.get()) return;
     touchScrolling.set(false);
-    if (barPinned.get() || barRevealing.get() || isDragging.get()) return;
+    if (barPinned.get() || barSliding.get() || isDragging.get()) return;
     const maxScroll = Math.max(0, contentHeight.get() - viewportHeight.get());
     const to = snapTarget(barHeight, barHidden.get(), scrollY.get(), maxScroll);
     if (to !== undefined) scrollTo(listRef, 0, to, true);
@@ -178,7 +186,7 @@ export function useListScrubber<
         // the very top. Pull-to-refresh and iOS's bounce (negative offsets) don't move it. During a drag it
         // stays as it was (big jumps would show and hide it); while it slides back in,
         // the drag's last scroll mustn't stop it
-        if (barHeight > 0 && !barPinned.get() && !isDragging.get() && !barRevealing.get()) {
+        if (barHeight > 0 && !barPinned.get() && !isDragging.get() && !barSliding.get()) {
           const now = Math.max(0, y);
           const delta = now - Math.max(0, scrollY.get());
           barHidden.set(clamp(barHidden.get() + delta, 0, Math.min(barHeight, now)));
@@ -196,6 +204,21 @@ export function useListScrubber<
     },
     [userOnScroll, barHeight, snap],
   );
+  // onVisibilityChange: called when the bar ends up shown or hidden in full; it starts shown
+  const onVisibilityChange = useLatest(options.topBar?.onVisibilityChange ?? ignore);
+  const lastVisibility = useSharedValue<'shown' | 'hidden'>('shown');
+  useAnimatedReaction(
+    () => {
+      const hidden = barHidden.get();
+      return hidden < 0.5 ? 'shown' : hidden > barHeight - 0.5 ? 'hidden' : undefined;
+    },
+    (visibility) => {
+      if (visibility === undefined || visibility === lastVisibility.get()) return;
+      lastVisibility.set(visibility);
+      scheduleOnRN(onVisibilityChange, visibility);
+    },
+    [barHeight],
+  );
   // With revealOnDragToTop: a drag that ended at the top of the thumb's track is at the first row, below
   // the space the hidden bar left; when the finger lifts, the list scrolls back to the very top and the bar
   // slides in with it. Otherwise, and anywhere else, the bar stays as the drag left it, as after any scroll
@@ -206,7 +229,7 @@ export function useListScrubber<
       if (!revealOnDragToTop || !was || dragging || barHeight <= 0) return;
       if (barHidden.get() <= 0 || scrollY.get() > barHidden.get() + 0.5) return;
       scrollTo(listRef, 0, 0, true);
-      revealTopBar(barHidden, barRevealing, revealMs);
+      revealTopBar(barHidden, barSliding, revealMs);
     },
     [barHeight, revealMs, revealOnDragToTop],
   );
@@ -219,10 +242,25 @@ export function useListScrubber<
             height: barHeight,
             visibleHeight: barVisible,
             isFixed: barPinned,
-            show: () => scheduleOnUI(revealTopBar, barHidden, barRevealing, revealMs),
+            show: () => scheduleOnUI(revealTopBar, barHidden, barSliding, revealMs),
+            hide: () => {
+              const bar = { height: barHeight, hidden: barHidden, fixed: barPinned, revealing: barSliding };
+              scheduleOnUI(hideTopBar, listRef, scrollY, contentHeight, viewportHeight, bar, revealMs);
+            },
           }
         : undefined,
-    [barHeight, barVisible, barPinned, barHidden, barRevealing, revealMs],
+    [
+      barHeight,
+      barVisible,
+      barPinned,
+      barHidden,
+      barSliding,
+      revealMs,
+      listRef,
+      scrollY,
+      contentHeight,
+      viewportHeight,
+    ],
   );
   /**
    * What a pinned header below the top bar names: the rows just below the bar's visible part or, over a list
@@ -317,7 +355,7 @@ export function useListScrubber<
     [topBarLayout, topBarStyle, showTopBar],
   );
   const scrollToOffset = useLatest((offset: number, { animated = false }: ScrollOptions = {}) => {
-    const bar = { height: barHeight, hidden: barHidden, fixed: barPinned, revealing: barRevealing };
+    const bar = { height: barHeight, hidden: barHidden, fixed: barPinned, revealing: barSliding };
     const to = offset - pinnedSpace; // the pinned header covers the top below the bar for good
     scheduleOnUI(scrollToVisible, listRef, scrollY, contentHeight, viewportHeight, bar, to, animated);
   });
@@ -412,6 +450,43 @@ function revealTopBar(hidden: SharedValue<number>, revealing: SharedValue<boolea
   );
 }
 
+/**
+ * Hides the top bar (hide()): it slides out over `durationMs` where there are rows under it. Near the top of
+ * the list, where it covers the space above the rows, the list scrolls down by what shows instead, as far as
+ * it can, and the bar follows. With a screen reader on it stays in place.
+ */
+function hideTopBar(
+  listRef: AnimatedRef<any>,
+  scrollY: SharedValue<number>,
+  contentHeight: SharedValue<number>,
+  viewportHeight: SharedValue<number>,
+  bar: {
+    height: number;
+    hidden: SharedValue<number>;
+    fixed: SharedValue<boolean>;
+    revealing: SharedValue<boolean>;
+  },
+  durationMs: number,
+) {
+  'worklet';
+  const { height, hidden, fixed, revealing } = bar;
+  const shows = height - hidden.get();
+  if (fixed.get() || shows < 0.5) return;
+  const y = Math.max(0, scrollY.get());
+  if (y < height) {
+    scrollTo(listRef, 0, Math.min(y + shows, Math.max(0, contentHeight.get() - viewportHeight.get())), true);
+    return;
+  }
+  revealing.set(true);
+  hidden.set(
+    withTiming(height, { duration: durationMs, easing: Easing.out(Easing.cubic) }, () => {
+      revealing.set(false);
+    }),
+  );
+}
+
+function ignore() {}
+
 /** Where the top bar sits: over the top of the list, as wide as it */
 const TOP_BAR: ViewStyle = { position: 'absolute', top: 0, left: 0, right: 0 };
 
@@ -474,9 +549,10 @@ export interface UseListScrubberResult<
   isDragging: SharedValue<boolean>;
   /**
    * With the `topBar` option: the bar's height, `visibleHeight` (how much of it is on screen), `isFixed`
-   * (it stays in place, with a screen reader on), and `show()`, which slides it back in
+   * (it stays in place, with a screen reader on), `show()`, which slides it back in, and `hide()`, which
+   * slides it out (near the top of the list, the list scrolls down instead, and the bar follows)
    */
-  topBar: (ListScrubberTopBar & { show: () => void }) | undefined;
+  topBar: (ListScrubberTopBar & { show: () => void; hide: () => void }) | undefined;
   /**
    * Spread on an Animated.View that holds the top bar: its `style` puts it over the top of the list, as tall
    * as the bar, sliding with the scroll, and on the web its `onFocus` brings the bar back when something in

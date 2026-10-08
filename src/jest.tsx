@@ -263,13 +263,15 @@ export function useListScrubber<S extends readonly ListScrubberSection[] | undef
     () => ({ ...listProps, ...(hasHeader && { ListHeaderComponent: ListHeader }) }),
     [listProps, hasHeader, ListHeader],
   );
-  // The mock's top bar always shows in full and stays in place: the pinned header sits below it and names
-  // the rows there, and scrollToOffset brings an offset to just below it
+  // The mock's top bar always shows in full and stays in place, as the real one does with a screen reader on
+  // (isFixed): the pinned header sits below it and names the rows there, scrollToOffset brings an offset to
+  // just below it, hide() leaves it, and onVisibilityChange is never called
   const topBar = useMemo(() => {
     if (barHeight <= 0) return undefined;
     const visibleHeight = sharedValue(barHeight);
     const show = () => visibleHeight.set(barHeight);
-    return { height: barHeight, visibleHeight, isFixed: sharedValue(true), show };
+    const hide = () => {};
+    return { height: barHeight, visibleHeight, isFixed: sharedValue(true), show, hide };
   }, [barHeight]);
   const topBarProps = useMemo(
     () => ({

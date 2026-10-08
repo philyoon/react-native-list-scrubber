@@ -206,8 +206,21 @@ const scrubber = useListScrubber({ layout, topBar: { height: BAR }, pinnedHeader
 - To bring it back when a drag ends at the top, pass `topBar: { height: BAR, revealOnDragToTop: true }`: when
   the finger lifts, the list scrolls back to the very top and the bar slides in with it, in `revealMs`
   (default 250).
-- `scrubber.topBar` gives the bar's `height`, `visibleHeight` (how much of it is on screen) and `isFixed` (it
-  stays in place), as shared values, and `show()`, which slides it back in.
+- `scrubber.topBar` gives the bar's `height`, `visibleHeight` (how much of it is on screen, on the UI thread)
+  and `isFixed` (it stays in place), as shared values, and `show()` and `hide()`, which slide it in and out.
+  Near the top of the list, where the bar covers the space above the rows, `hide()` scrolls the list down by
+  what shows instead, and the bar follows. For a JS-thread signal, e.g. to change the status bar, pass
+  `onVisibilityChange`: it's called with `'shown'` or `'hidden'` when the bar ends up shown or hidden in full,
+  not while it's part way.
+
+  ```tsx
+  const scrubber = useListScrubber({ layout, topBar: { height: BAR, onVisibilityChange: setBarVisibility } });
+  // How far it's shown, from 0 to 1, e.g. for a shadow under it
+  const shadow = useAnimatedStyle(() => ({
+    shadowOpacity: 0.2 * (scrubber.topBar!.visibleHeight.get() / BAR),
+  }));
+  ```
+
 - With a screen reader on (VoiceOver, TalkBack) the bar stays in place: hidden, its contents would still be
   within the screen reader's reach, off screen. The scrubber's screen-reader steps bring a section to just
   below the bar, and its value names the rows there; so does the bubble while dragging. A web page can't tell
@@ -433,8 +446,9 @@ The mock loads none of those libraries and has every export, with the same types
 - `useListScrubber` returns the same shape, and places a layout the same way. Its shared values are plain
   objects with `get`/`set`. The list handlers record sizes and the scroll offset and call your own, and
   `scrollToSection` / `scrollToOffset` set `scrollY` to where the real hook would scroll. Its top bar always
-  shows in full and stays in place. The components above re-render when these change, so a test can fire the
-  list's `scroll` event (or call `scrollToSection`) and check the label.
+  shows in full and stays in place, as with a screen reader on: `hide()` leaves it, and `onVisibilityChange`
+  isn't called. The components above re-render when these change, so a test can fire the list's `scroll` event
+  (or call `scrollToSection`) and check the label.
 - `listLayout`, `sectionListLayout`, `sectionIndexAt` and `LIST_SCRUBBER_DEFAULTS` are the real ones.
 
 The package ships ES modules. If Jest reports `Cannot use import statement outside a module`, add
