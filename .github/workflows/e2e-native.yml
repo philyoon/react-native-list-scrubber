@@ -166,7 +166,8 @@ jobs:
         with:
           path: *gradle-cache
           key:
-            android-gradle-${{ hashFiles('example/package-lock.json', 'example/app.json') }}-${{ github.run_id }}
+            android-gradle-${{ hashFiles('example/package-lock.json', 'example/app.json') }}-${{ github.run_id
+            }}
       - uses: actions/upload-artifact@v4
         with:
           name: android-app
