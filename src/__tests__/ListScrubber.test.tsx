@@ -528,7 +528,7 @@ describe('API options', () => {
     });
     let bubble = screen.getByText('Jan', { includeHiddenElements: true }).parent!;
     while (!StyleSheet.flatten(bubble.props.style)?.transform) bubble = bubble.parent!;
-    expect(StyleSheet.flatten(bubble.props.style)).toMatchObject({ left: 44 + 40 });
+    expect(StyleSheet.flatten(bubble.props.style)).toMatchObject({ left: 44 + 24 });
   });
 
   it.each(['left', 'right'] as const)(

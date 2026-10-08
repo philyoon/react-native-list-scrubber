@@ -55,7 +55,7 @@ export const LIST_SCRUBBER_DEFAULTS: Readonly<{
     thumbActiveWidth: 8,
     thumbRadius: 4,
     bubbleSize: 64,
-    bubbleGap: 40,
+    bubbleGap: 24,
     bubbleRadius: 16,
     bubblePadding: 16,
     bubbleFontSize: 24,
