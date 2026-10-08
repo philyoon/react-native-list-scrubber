@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- New: `scrubber.topBar.hide()`, to hide the top bar from code, beside `show()`. Near the top of the list the
+  list scrolls down by what shows instead, and the bar follows.
+- New: `topBar: { onVisibilityChange }`, called on the JS thread with `'shown'` or `'hidden'` when the bar
+  ends up shown or hidden in full, e.g. to change the status bar. `topBar.visibleHeight` still gives the exact
+  position, on the UI thread.
 - New: when a touch scroll ends with the top bar partly shown, it settles, shown or hidden, whichever is
   closer: the list scrolls the rest of the way, as Android's collapsing app bars and iOS's large titles do.
   It's on by default; `topBar: { height, snap: false }` turns it off. Not after a thumb drag or scrolling from

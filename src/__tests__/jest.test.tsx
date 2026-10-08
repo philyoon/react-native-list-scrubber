@@ -294,6 +294,8 @@ describe('useListScrubber({ topBar })', () => {
     list.topBar!.visibleHeight.set(0);
     list.topBar!.show();
     expect(list.topBar!.visibleHeight.get()).toBe(100);
+    list.topBar!.hide(); // it stays in place, as it's fixed
+    expect(list.topBar!.visibleHeight.get()).toBe(100);
     list.pinnedHeaderProps.scrollY.set(0); // read-only, like a derived value
     expect(list.pinnedHeaderProps.scrollY.get()).toBe(550);
   });

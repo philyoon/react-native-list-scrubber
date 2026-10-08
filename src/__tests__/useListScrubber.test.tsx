@@ -217,7 +217,11 @@ describe('scrolling from code', () => {
 
 describe('useListScrubber({ topBar })', () => {
   type Hook = { current: ReturnType<typeof useListScrubber> };
-  type BarOptions = { revealMs?: number; revealOnDragToTop?: boolean };
+  type BarOptions = {
+    revealMs?: number;
+    revealOnDragToTop?: boolean;
+    onVisibilityChange?: (visibility: 'shown' | 'hidden') => void;
+  };
   async function withBar(height = 100, bar: BarOptions = {}) {
     const hook = await renderHook(() => useListScrubber({ topBar: { height, ...bar } }));
     const scroll = (y: number) =>
@@ -413,6 +417,89 @@ describe('useListScrubber({ topBar })', () => {
       result.current.scrollToOffset(1000);
       await uiFrame();
       expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 900, false);
+    });
+  });
+
+  describe('hide()', () => {
+    const uiFrame = () => act(() => jest.advanceTimersByTime(20)); // hide() runs on the UI thread
+
+    it("slides it out over `revealMs` where rows are under it; meanwhile scrolls don't move it", async () => {
+      const { result, scroll, visible } = await withBar(100, { revealMs: 300 });
+      scroll(500);
+      scroll(450);
+      expect(await visible()).toBe(50);
+      result.current.topBar!.hide();
+      await uiFrame();
+      expect(mockTimings.at(-1)).toMatchObject({ to: 100, duration: 300 });
+      expect(await visible()).toBe(0);
+      expect(mockScrollTo).not.toHaveBeenCalled();
+      scroll(440);
+      expect(await visible()).toBe(0);
+      await act(async () => mockTimings.at(-1)!.done!());
+      scroll(430);
+      expect(await visible()).toBe(10);
+    });
+
+    it('near the top, scrolls the list down by what shows, as far as it can; the bar follows', async () => {
+      const { result, scroll } = await withBar();
+      const measure = (content: number) =>
+        act(() => {
+          result.current.listProps.onLayout({ nativeEvent: { layout: { height: 600 } } } as never);
+          result.current.listProps.onContentSizeChange(390, content);
+        });
+      await measure(2000);
+      scroll(30);
+      result.current.topBar!.hide();
+      await uiFrame();
+      expect(mockScrollTo).toHaveBeenLastCalledWith(result.current.listProps.ref, 0, 100, true);
+      await measure(650); // scrolls up to 50
+      result.current.topBar!.hide();
+      await uiFrame();
+      expect(mockScrollTo).toHaveBeenLastCalledWith(result.current.listProps.ref, 0, 50, true);
+    });
+
+    it('leaves it when it stays in place or is hidden already', async () => {
+      const { result, scroll } = await withBar();
+      scroll(500);
+      result.current.topBar!.isFixed.set(true);
+      scroll(450);
+      const timings = mockTimings.length;
+      result.current.topBar!.hide();
+      await uiFrame();
+      result.current.topBar!.isFixed.set(false);
+      scroll(1000);
+      result.current.topBar!.hide();
+      await uiFrame();
+      expect(mockTimings).toHaveLength(timings);
+      expect(mockScrollTo).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('onVisibilityChange', () => {
+    /** Runs the hook's reaction to how much of the bar is hidden (registered just before the drag's) */
+    const settle = (hook: { scroll: (y: number) => void }, y: number) =>
+      act(async () => {
+        hook.scroll(y);
+        const reaction = mockReactions.at(-2)!;
+        reaction.react(reaction.prepare(), undefined);
+      });
+
+    it('is called on the JS thread when it ends up hidden or shown in full, once each, not part way', async () => {
+      const onVisibilityChange = jest.fn();
+      const bar = await withBar(100, { onVisibilityChange });
+      await settle(bar, 60); // part way
+      expect(onVisibilityChange).not.toHaveBeenCalled();
+      await settle(bar, 300);
+      await settle(bar, 400);
+      expect(onVisibilityChange.mock.calls).toEqual([['hidden']]);
+      await settle(bar, 350);
+      await settle(bar, 200);
+      expect(onVisibilityChange.mock.calls).toEqual([['hidden'], ['shown']]);
+    });
+
+    it('is optional', async () => {
+      const bar = await withBar();
+      await expect(settle(bar, 300)).resolves.toBeUndefined();
     });
   });
 
