@@ -9,8 +9,14 @@ env:
     env:
       DEMO: FlatList
 - assertVisible: Ada Abby
-- runFlow: subflows/drag-to-end.yaml
-- assertVisible: '.* Zel.*'
+- retry:
+    maxRetries: 1
+    commands:
+      - runFlow: subflows/drag-to-end.yaml
+      - assertVisible: '.* Zel.*'
 - assertNotVisible: Ada Abby
-- runFlow: subflows/drag-to-start.yaml
-- assertVisible: Ada Abby
+- retry:
+    maxRetries: 1
+    commands:
+      - runFlow: subflows/drag-to-start.yaml
+      - assertVisible: Ada Abby

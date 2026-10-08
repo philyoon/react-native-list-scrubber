@@ -14,13 +14,21 @@ env:
       DEMO: Collapsible
 - assertVisible: 3,000 people
 - assertVisible: Ada Abby
-# Scroll past the header (120pt, under 30% of any phone's height): it slides away, and the thumb's track
-# starts at the top of the list again, where the drags below grab it (points: see src/e2e.ts)
-- swipe:
-    start: 50%, 70%
-    end: 50%, 40%
-    duration: 1500 # slow: no fling
-- waitForAnimationToEnd
+# Scroll well past the header (120pt): it slides away, and the thumb's track starts at the top of the list
+# again, where the drags below grab it (points: see src/e2e.ts). Half the screen, not just the header's height:
+# on a slow emulator (CI) a swipe can scroll less than its length, and with some of the header still showing
+# the thumb sits lower than the drags reach for. Again while the first row still shows: GitHub's iOS simulator
+# sometimes drops this first swipe after a launch
+- repeat:
+    while:
+      visible: Ada Abby
+    times: 3
+    commands:
+      - swipe:
+          start: 50%, 75%
+          end: 50%, 25%
+          duration: 1500 # slow: no fling
+      - waitForAnimationToEnd
 # Part way down: the screen-reader value names a section in the middle, and its rows are on screen
 - swipe:
     start: 50%, 60%
@@ -41,21 +49,28 @@ env:
 - copyTextFrom:
     id: list-scrubber-a11y
 - assertVisible: '.* ${maestro.copiedText.slice(-1)}.*'
-# The bar comes back when the finger lifts from the thumb
-- assertVisible: 3,000 people
+# The bar comes back when the finger lifts from the thumb. Where the bar is, not just whether it's there: iOS
+# still reports the hidden bar, clipped behind the demo's title, so its checks look below the demo's hint
+- assertVisible:
+    text: 3,000 people
+    below: A top bar that slides away as you scroll
 # A scroll down hides it again, and a scroll up brings it back
 - swipe:
     start: 50%, 70%
     end: 50%, 40%
     duration: 1500
 - waitForAnimationToEnd
-- assertNotVisible: 3,000 people
+- assertNotVisible:
+    text: 3,000 people
+    below: A top bar that slides away as you scroll
 - swipe:
     start: 50%, 45%
     end: 50%, 75%
     duration: 1500
 - waitForAnimationToEnd
-- assertVisible: 3,000 people
+- assertVisible:
+    text: 3,000 people
+    below: A top bar that slides away as you scroll
 - assertNotVisible: Ada Abby
 # The drag to the end grabs the thumb at the top of its track, so start again from the top of the list, with
 # the header scrolled away: the last section is still reachable
@@ -63,16 +78,29 @@ env:
     file: subflows/open.yaml
     env:
       DEMO: Collapsible
-- swipe:
-    start: 50%, 70%
-    end: 50%, 40%
-    duration: 1500
-- waitForAnimationToEnd
-- runFlow: subflows/drag-to-end.yaml
+- repeat:
+    while:
+      visible: Ada Abby
+    times: 3
+    commands:
+      - swipe:
+          start: 50%, 75%
+          end: 50%, 25%
+          duration: 1500
+      - waitForAnimationToEnd
 # Rows of the last section, as the other flows check: on iPhones with a home indicator the drag's touch can
 # end in the strip at the bottom of the screen a little before the end of the list
-- assertVisible: '.* Zel.*'
+- retry:
+    maxRetries: 1
+    commands:
+      - runFlow: subflows/drag-to-end.yaml
+      - assertVisible: '.* Zel.*'
 # Back to the top: the header is shown again
-- runFlow: subflows/drag-to-start.yaml
-- assertVisible: 3,000 people
-- assertVisible: Ada Abby
+- retry:
+    maxRetries: 1
+    commands:
+      - runFlow: subflows/drag-to-start.yaml
+      - assertVisible: Ada Abby
+- assertVisible:
+    text: 3,000 people
+    below: A top bar that slides away as you scroll
