@@ -60,23 +60,12 @@ for flow in "$@"; do
   esac
 done
 
-# What's on screen (texts and IDs), for a failure in CI where there's no screen to look at
-on_screen() {
-  maestro ${MAESTRO_DEVICE:+--device "$MAESTRO_DEVICE"} hierarchy 2>/dev/null |
-    grep -oE '"(text|accessibilityText|resource-id|hintText)" ?: ?"[^"]+"' | sort -u | head -80
-}
-
-if ! setup_output=$(maestro_ e2e/setup/expo-go.yaml 2>&1); then
-  echo "$setup_output"
-  echo "Expo Go setup failed (e2e/setup/expo-go.yaml). On screen:" >&2
-  on_screen
-  exit 1
-fi
+maestro_ e2e/setup/expo-go.yaml >/dev/null || { echo "Expo Go setup failed: run e2e/setup/expo-go.yaml with maestro to see why" >&2; exit 1; }
 
 status=0
 if [ -n "$normal" ]; then
   # shellcheck disable=SC2086 # flow paths have no spaces
-  maestro_ $normal || { status=1; on_screen; }
+  maestro_ $normal || status=1
 fi
 if [ -n "$large" ]; then
   large_text_on
