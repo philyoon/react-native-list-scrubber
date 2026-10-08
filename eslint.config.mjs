@@ -4,7 +4,19 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['lib/', 'coverage/', 'example/'] },
+  {
+    ignores: [
+      'lib/',
+      'coverage/',
+      '.smoke/',
+      'example/.expo/',
+      'example/dist/',
+      'example/ios/',
+      'example/android/',
+      'example/test-results/',
+      'example/playwright-report/',
+    ],
+  },
   js.configs.recommended,
   tseslint.configs.recommended,
   reactHooks.configs.flat['recommended-latest'],
@@ -28,13 +40,15 @@ export default tseslint.config(
   },
   {
     // Node scripts
-    files: ['scripts/**'],
-    languageOptions: { globals: { console: 'readonly', process: 'readonly' } },
+    files: ['scripts/**', 'example/scripts/**'],
+    languageOptions: { globals: { console: 'readonly', process: 'readonly', URL: 'readonly' } },
   },
   {
     // Config files and jest.mock factories use CommonJS
-    files: ['*.js', 'src/__tests__/**'],
-    languageOptions: { globals: { module: 'writable', require: 'readonly', jest: 'readonly' } },
+    files: ['*.js', 'example/*.js', 'src/__tests__/**'],
+    languageOptions: {
+      globals: { module: 'writable', require: 'readonly', __dirname: 'readonly', jest: 'readonly' },
+    },
     rules: { '@typescript-eslint/no-require-imports': 'off' },
   },
 );
