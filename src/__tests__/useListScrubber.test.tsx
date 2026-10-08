@@ -253,33 +253,39 @@ describe('useListScrubber({ topBar })', () => {
     expect(await visible()).toBe(100); // pull-to-refresh, iOS bounce
   });
 
-  it('stays as it is during a drag, and slides back in when the finger lifts', async () => {
+  it('stays as it is during a drag, and after one that ends anywhere but the top', async () => {
     const { result, scroll, visible } = await withBar();
     scroll(300);
     result.current.isDragging.set(true);
     scroll(2000);
     scroll(700);
     expect(await visible()).toBe(0);
+    const timings = mockTimings.length;
     await lift(result);
-    expect(mockTimings.at(-1)).toMatchObject({ to: 0, duration: 250 }); // the mock's animation ends at once
-    expect(await visible()).toBe(100);
-    expect(mockScrollTo).not.toHaveBeenCalled(); // mid-list: the list stays where the drag left it
-    // While it slides in, the drag's last scroll doesn't move it; after, scrolls do again
-    scroll(720);
-    expect(await visible()).toBe(100);
-    await act(async () => mockTimings.at(-1)!.done!());
-    scroll(800);
-    expect(await visible()).toBe(20);
+    expect(mockTimings).toHaveLength(timings); // at the end of the list it doesn't come back
+    expect(await visible()).toBe(0);
+    expect(mockScrollTo).not.toHaveBeenCalled(); // the list stays where the drag left it
+    scroll(650); // a scroll up brings it back, as always
+    expect(await visible()).toBe(50);
   });
 
-  it('a drag that ends at the first row scrolls back to the top as the bar comes in', async () => {
-    const { result, scroll } = await withBar();
+  it('a drag that ends at the first row scrolls back to the top, and the bar slides in', async () => {
+    const { result, scroll, visible } = await withBar();
     scroll(300); // hidden: the thumb's track starts at offset 100, the first row
     result.current.isDragging.set(true);
     scroll(100);
     mockScrollTo.mockClear();
     await lift(result);
     expect(mockScrollTo).toHaveBeenCalledWith(result.current.listProps.ref, 0, 0, true);
+    expect(mockTimings.at(-1)).toMatchObject({ to: 0, duration: 250 }); // the mock's animation ends at once
+    expect(await visible()).toBe(100);
+    // While it slides in, the scroll back to the top doesn't move it; after, scrolls do again
+    scroll(40);
+    expect(await visible()).toBe(100);
+    await act(async () => mockTimings.at(-1)!.done!());
+    scroll(0);
+    scroll(60);
+    expect(await visible()).toBe(40);
   });
 
   it('show() slides it back in; shown, it stays', async () => {
@@ -300,6 +306,7 @@ describe('useListScrubber({ topBar })', () => {
     const { result, scroll } = await withBar(100, 400);
     scroll(300);
     result.current.isDragging.set(true);
+    scroll(100); // the top of the thumb's track
     await lift(result);
     expect(mockTimings.at(-1)).toMatchObject({ to: 0, duration: 400 });
     await act(async () => mockTimings.at(-1)!.done!());
@@ -380,6 +387,8 @@ describe('useListScrubber({ topBar })', () => {
     it('while the bar slides back in, it ends up in full whichever way the list goes', async () => {
       const { result, scroll } = await measured();
       scroll(800); // hidden
+      result.current.isDragging.set(true);
+      scroll(100); // dragged to the top: the bar slides back in when the finger lifts
       await lift(result as Hook);
       result.current.scrollToOffset(1000);
       await uiFrame();

@@ -45,7 +45,7 @@ export const LIST_SCRUBBER_DEFAULTS: Readonly<{
   timing: Readonly<ListScrubberTiming>;
   /** `useListScrubber`'s top bar. Override with its `topBar` option. */
   topBar: Readonly<{
-    /** How long the bar takes to slide back in, when the finger lifts from the thumb or on `show()` */
+    /** How long the bar takes to slide back in: after a drag to the top of the list, or on `show()` */
     revealMs: number;
   }>;
 }> = Object.freeze({
