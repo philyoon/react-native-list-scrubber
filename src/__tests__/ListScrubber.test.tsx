@@ -42,6 +42,8 @@ it('takes size overrides and keeps the other defaults', async () => {
 });
 
 describe('the thumb sits at the edge of its touch area', () => {
+  type Handlers = Record<'onBegin' | 'onUpdate', (e: object) => void>;
+  const pan = () => (getByGestureTestId('list-scrubber') as unknown as { handlers: Handlers }).handlers;
   const bar = () =>
     StyleSheet.flatten(
       (
@@ -65,6 +67,17 @@ describe('the thumb sits at the edge of its touch area', () => {
       ).toBeUndefined();
     },
   );
+
+  it('the bubble keeps its distance from the thumb when thumbEdgeGap moves it', async () => {
+    await setup({ metrics: { thumbEdgeGap: 19, bubbleGap: 20 }, labelAt: () => 'Jan' });
+    await act(async () => {
+      pan().onBegin({});
+      pan().onUpdate({ translationY: 10 });
+    });
+    let bubble = screen.getByText('Jan', { includeHiddenElements: true }).parent!;
+    while (!StyleSheet.flatten(bubble.props.style)?.transform) bubble = bubble.parent!;
+    expect(StyleSheet.flatten(bubble.props.style)).toMatchObject({ right: 19 + 8 + 20 });
+  });
 
   it('thumbEdgeGap moves it in; the 44pt touch area stays where it is', async () => {
     await setup({ metrics: { thumbEdgeGap: 19 } }); // centred, as before 0.2
@@ -528,7 +541,8 @@ describe('API options', () => {
     });
     let bubble = screen.getByText('Jan', { includeHiddenElements: true }).parent!;
     while (!StyleSheet.flatten(bubble.props.style)?.transform) bubble = bubble.parent!;
-    expect(StyleSheet.flatten(bubble.props.style)).toMatchObject({ left: 44 + 24 });
+    // thumbEdgeGap + thumbActiveWidth + bubbleGap, from the scrubber's edge
+    expect(StyleSheet.flatten(bubble.props.style)).toMatchObject({ left: 3 + 8 + 57 });
   });
 
   it.each(['left', 'right'] as const)(

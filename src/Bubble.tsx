@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
-import { TOUCH_WIDTH, type ListScrubberMetrics } from './defaults';
+import type { ListScrubberMetrics } from './defaults';
 import type { ListScrubberColors } from './types';
 
 /**
@@ -48,7 +48,8 @@ export function Bubble({
       style={[
         styles.anchor,
         {
-          [side]: TOUCH_WIDTH + m.bubbleGap,
+          // From the thumb as drawn while grabbed (the bubble shows only then), so it moves with thumbEdgeGap
+          [side]: m.thumbEdgeGap + m.thumbActiveWidth + m.bubbleGap,
           height: m.bubbleSize,
         },
         shift,

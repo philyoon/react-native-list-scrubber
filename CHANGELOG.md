@@ -4,8 +4,10 @@
 
 - Changed: the thumb is drawn 3pt from the list's edge, like a native scroll indicator, instead of centred in
   its 44pt touch area (22pt in). It sits in the margin beside the rows without an `edgeOffset`; its touch area
-  stays where it was. New `metrics.thumbEdgeGap` sets the distance; `19` restores the old look. The default
-  `bubbleGap` is now 24 (was 40), so the bubble stays as far from the thumb as before.
+  stays where it was. New `metrics.thumbEdgeGap` sets the distance; `19` restores the old look.
+- Changed: `metrics.bubbleGap` is measured from the thumb (as drawn while grabbed), not from its touch area,
+  so the bubble moves with `thumbEdgeGap`. The default, 57, keeps the bubble where it was; an app that set it
+  to `n` gets the same place with `n + 33`.
 
 ## 0.1.1
 

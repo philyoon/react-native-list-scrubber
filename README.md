@@ -258,7 +258,7 @@ component that takes the hook's result with sections:
 | `thumbEdgeGap`                          | 3       | From the list's edge, like a native scroll indicator      |
 | `thumbRadius`                           | 4       |                                                           |
 | `bubbleSize`                            | 64      | Height and minimum width                                  |
-| `bubbleGap`                             | 24      | From the touch area: keeps the bubble clear of the finger |
+| `bubbleGap`                             | 57      | From the thumb: keeps the bubble clear of the finger      |
 | `bubbleRadius` / `bubblePadding`        | 16 / 16 |                                                           |
 | `bubbleFontSize` / `bubbleLongFontSize` | 24 / 16 | Up to `bubbleShortLabelMaxLength` (2) characters / longer |
 
