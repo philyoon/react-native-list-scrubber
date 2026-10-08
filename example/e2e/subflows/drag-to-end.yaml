@@ -1,5 +1,7 @@
 # Shows the thumb (it appears only after the list scrolls), then drags it from the top of its track to
 # past the bottom of the screen: it clamps at the end. Points: see src/e2e.ts.
+# Callers retry the drag along with their check of where it ended: GitHub's iOS simulator now and then
+# drops a gesture.
 # Expo Go: host.exp.Exponent on iOS; npm run e2e:android sets APP_ID=host.exp.exponent
 # RTL: 1 for a right-to-left layout, with the thumb at the left edge (x 9%, not 91%). Not given a default
 # below: a subflow's own env wins over the caller's.
@@ -18,7 +20,7 @@ env:
       - swipe:
           start: 91%, 28%
           end: 91%, 99%
-          duration: 800 # a thumb drag doesn't fling: no need to go slowly
+          duration: 1500 # it ends at the end of the list: on a slow emulator (CI) a faster drag's last stretch can be lost
 - runFlow:
     when:
       true: ${typeof RTL != 'undefined' && RTL == 1}
@@ -26,5 +28,5 @@ env:
       - swipe:
           start: 9%, 28%
           end: 9%, 99%
-          duration: 800 # a thumb drag doesn't fling: no need to go slowly
+          duration: 1500 # it ends at the end of the list: on a slow emulator (CI) a faster drag's last stretch can be lost
 - waitForAnimationToEnd
