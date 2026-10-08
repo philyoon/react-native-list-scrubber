@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
 
 - Fixed: a drag ends where the finger lifts. The last stretch of a drag can come only with the finger lifting,
   with no move event for it, and the list stopped a little short: a fast drag to the end of the list could
