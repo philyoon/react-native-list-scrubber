@@ -2,8 +2,6 @@
 # demo named DEMO. Expo Go must be past its first-run screens: scripts/e2e.sh runs e2e/setup/expo-go.yaml first.
 # Every step waits for something that is there: Maestro takes about 7 s to decide something isn't.
 # Expo Go: host.exp.Exponent on iOS; npm run e2e:android sets APP_ID=host.exp.exponent
-# LINK, the link that opens the app (the flow adds ?demo=…), comes from scripts/e2e.sh: Expo Go's on Metro, or the
-# built app's with E2E_APP=build. No default here: a subflow's own env wins over what it's given.
 appId: ${APP_ID}
 env:
   APP_ID: host.exp.Exponent
@@ -14,7 +12,7 @@ env:
 # the next one on an error screen, scrolled, or in the wrong layout direction (src/e2e.ts sets it as the app
 # loads)
 - stopApp
-- openLink: ${LINK}?demo=${DEMO}
+- openLink: exp://127.0.0.1:8081/--/?demo=${DEMO}
 - extendedWaitUntil:
     visible:
       id: list-scrubber-a11y

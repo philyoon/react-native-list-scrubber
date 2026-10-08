@@ -5,16 +5,14 @@
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
-    "ios": "expo run:ios",
-    "android": "expo run:android",
+    "ios": "expo start --ios",
+    "android": "expo start --android",
     "web": "expo start --web",
     "export:web": "expo export --platform web",
     "web:e2e": "expo export --platform web && playwright test",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "e2e:start": "EXPO_PUBLIC_E2E=1 expo start --clear",
     "e2e:start:rtl": "EXPO_PUBLIC_E2E=1 EXPO_PUBLIC_E2E_RTL=1 expo start --clear",
-    "e2e:build:ios": "sh scripts/e2e-build.sh ios",
-    "e2e:build:android": "sh scripts/e2e-build.sh android",
     "e2e:ios": "sh scripts/e2e.sh ios",
     "e2e:android": "sh scripts/e2e.sh android"
   },

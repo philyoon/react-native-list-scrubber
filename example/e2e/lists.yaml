@@ -9,44 +9,32 @@ env:
     file: subflows/open.yaml
     env:
       DEMO: SectionList
-- retry:
-    maxRetries: 1
-    commands:
-      - runFlow: subflows/drag-to-end.yaml
-      - assertVisible: '.* Zel.*'
+- runFlow: subflows/drag-to-end.yaml
+- assertVisible: '.* Zel.*'
 - runFlow:
     file: subflows/open.yaml
     env:
       DEMO: FlashList
 - assertVisible: 'Mon, Oct 5'
-- retry:
-    maxRetries: 1
-    commands:
-      - runFlow: subflows/drag-to-end.yaml
-      - assertNotVisible: 'Mon, Oct 5'
+- runFlow: subflows/drag-to-end.yaml
+- assertNotVisible: 'Mon, Oct 5'
 # Rows show no year; the screen reader value does, once the thumb hides (5 s in e2e mode)
 - extendedWaitUntil:
     visible:
       id: list-scrubber-a11y
       text: '.*202[0-3].*'
     timeout: 10000
-- retry:
-    maxRetries: 1
-    commands:
-      - runFlow: subflows/drag-to-start.yaml
-      - assertVisible: 'Mon, Oct 5'
+- runFlow: subflows/drag-to-start.yaml
+- assertVisible: 'Mon, Oct 5'
 - runFlow:
     file: subflows/open.yaml
     env:
       DEMO: Legend List
 - assertVisible: 'Scroll position.*' # Android adds the value
+- runFlow: subflows/drag-to-end.yaml
 # Rows show no year; the screen reader value does, once the thumb hides (5 s in e2e mode)
-- retry:
-    maxRetries: 1
-    commands:
-      - runFlow: subflows/drag-to-end.yaml
-      - extendedWaitUntil:
-          visible:
-            id: list-scrubber-a11y
-            text: '.*202[0-3].*'
-          timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: list-scrubber-a11y
+      text: '.*202[0-3].*'
+    timeout: 10000

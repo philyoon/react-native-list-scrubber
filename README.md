@@ -460,16 +460,11 @@ it in the browser instead (Expo web); CI builds that web bundle on every push.
 
 ### End-to-end tests
 
-[Maestro](https://maestro.dev) flows in `example/e2e` drive the example, in Expo Go or built as an app of its
-own, on an iOS simulator or an Android emulator: dragging the thumb to the end and back on each list type,
-stopping part way in the right section, touches passing through the hidden thumb, the screen-reader control,
-and jumping from the A–Z index; a top bar that slides away; and the same drags in a right-to-left layout, in
-landscape, and at the largest system text size. They run on iPhone SE, iPhone 17 Pro, iPhone 17 Pro Max and a
-Pixel 8 emulator. CI (`.github/workflows/e2e-native.yml`) runs them, all but the right-to-left ones, in the
-built app on an iPhone Pro simulator and a Pixel 7 emulator: on every pull request and every push to `main`
-(which keeps the build caches warm for pull requests), in three parallel groups per platform. A flow that
-fails runs once more, since the slow CI simulators sometimes fail a flow on timing alone. Landscape runs on
-the emulator only, since a rotation upsets the touches on GitHub's iOS simulator.
+[Maestro](https://maestro.dev) flows in `example/e2e` drive the example in Expo Go on an iOS simulator or an
+Android emulator: dragging the thumb to the end and back on each list type, stopping part way in the right
+section, touches passing through the hidden thumb, the screen-reader control, and jumping from the A–Z index;
+a top bar that slides away; and the same drags in a right-to-left layout, in landscape, and at the largest
+system text size. They run on iPhone SE, iPhone 17 Pro, iPhone 17 Pro Max and a Pixel 8 emulator.
 
 From the repo root, with Expo Go installed on the simulator or emulator, start Metro in e2e mode and keep it
 running:
@@ -484,15 +479,6 @@ Then, in another terminal:
 npm run e2e:ios                          # iOS simulator
 npm run e2e:android                      # Android emulator (sets up adb reverse for Metro itself)
 npm run e2e:ios -- e2e/index.yaml        # just some flows (paths relative to example/)
-```
-
-Or, as CI does, build the example as a release app in e2e mode (no Metro, no Expo Go: `expo prebuild`
-generates `example/ios` and `example/android`, which aren't kept in git), install it, and run the flows in it
-with `E2E_APP=build`:
-
-```sh
-npm run e2e:build:ios                    # or e2e:build:android; builds and installs the app
-E2E_APP=build npm run e2e:ios
 ```
 
 The right-to-left flows in `example/e2e/rtl` need Metro in RTL mode instead, which forces a right-to-left

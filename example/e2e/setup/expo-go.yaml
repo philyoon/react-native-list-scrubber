@@ -2,44 +2,30 @@
 # simulator or emulator, so each flow's open (subflows/open.yaml) only waits for the app. Checks for something
 # that turns out not to be there cost Maestro about 7 s each, so the flows themselves make none.
 # Expo Go: host.exp.Exponent on iOS; npm run e2e:android sets APP_ID=host.exp.exponent
-# LINK, the link that opens the app (the flow adds ?demo=…), comes from scripts/e2e.sh: Expo Go's on Metro, or the
-# built app's with E2E_APP=build. No default here: a subflow's own env wins over what it's given.
 appId: ${APP_ID}
 env:
   APP_ID: host.exp.Exponent
 ---
 - stopApp
-- openLink: ${LINK}?demo=FlatList
-# The app (its first row: not its name, which the built app's icon on the home screen also shows), Expo Go's
-# first-run introduction, or iOS asking to open the link in the app. Up to 3 minutes: an app's first launch on a
-# fresh simulator took over a minute on GitHub's macOS runner
+- openLink: exp://127.0.0.1:8081/--/?demo=FlatList
+# The app, Expo Go's first-run introduction, or iOS asking to open the link in Expo Go
 - extendedWaitUntil:
-    visible: 'Ada Abby|Continue|Open'
-    timeout: 180000
+    visible: 'List Scrubber|Continue|Open'
+    timeout: 60000
+# One check for all of them (each check that finds nothing costs about 7 s): usually none is there
 - runFlow:
     when:
-      visible: Open
+      visible: 'Open|Continue|Toggle element inspector'
     commands:
-      # On a slow machine (CI) the first tap can land while the prompt is still animating in, and iOS drops
-      # it: tap until the prompt is gone
-      - repeat:
-          while:
-            visible: 'Open in .*'
-          times: 3
+      - runFlow:
+          when:
+            visible: Open
           commands:
-            - waitForAnimationToEnd
             - tapOn: Open
-      - extendedWaitUntil:
-          visible: 'Ada Abby|Continue'
-          timeout: 180000
-# Expo Go's first-run introduction to its developer menu, then the menu itself: they can come up a moment
-# after the app shows, so keep closing them until the app is in front
-- repeat:
-    while:
-      notVisible:
-        id: list-scrubber-a11y
-    times: 5
-    commands:
+            - extendedWaitUntil:
+                visible: 'List Scrubber|Continue'
+                timeout: 60000
+      # Expo Go's first-run introduction, then the developer menu itself
       - runFlow:
           when:
             visible: Continue
@@ -50,7 +36,6 @@ env:
             visible: Toggle element inspector
           commands:
             - tapOn: Close
-      - waitForAnimationToEnd
 - extendedWaitUntil:
     visible:
       id: list-scrubber-a11y
