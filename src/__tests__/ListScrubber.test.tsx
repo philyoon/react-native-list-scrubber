@@ -330,13 +330,13 @@ describe('while the finger is down', () => {
       ).props.style,
     );
 
-  it('keeps the track it started on while animated insets move, so the thumb stays under the finger', async () => {
-    const top = sharedZero();
-    top.set(20); // travel 100 − 20 − 48 = 32
-    await setup({ sections: [{ offset: 0, label: 'A' }], insets: { top } });
+  it('keeps the track it started on while a top bar moves, so the thumb stays under the finger', async () => {
+    const visibleHeight = sharedZero();
+    visibleHeight.set(20); // all of it shows: travel 100 − 20 − 48 = 32, from offset 0
+    await setup({ sections: [{ offset: 0, label: 'A' }], topBar: { height: 20, visibleHeight } });
     await act(async () => {
       pan().onBegin({});
-      top.set(0); // e.g. the header hides as the drag starts: the track would be 52 long
+      visibleHeight.set(0); // e.g. the bar hides as the drag starts: the track would be 52 long, from 20
       pan().onUpdate({ translationY: 16 });
     });
     expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 450, false); // half of 32
@@ -641,40 +641,49 @@ describe('API options', () => {
     expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 450, false);
   });
 
-  describe('animated insets (shared values)', () => {
+  describe('a top bar', () => {
     const shared = (n: number) => {
       const v = sharedZero();
       v.set(n);
       return v;
     };
+    // 30 tall, 20 showing: the track starts 20 down (travel 100 − 20 − 48 = 32), and its top stands for offset 10,
+    // where the rows come out from under the 10 hidden: offsets 10 to 900
+    const topBar = () => ({ height: 30, visibleHeight: shared(20) });
 
-    it('move the thumb within the rail, which keeps its place', async () => {
-      const scrollY = shared(450); // half of 900
-      // track 100 − 20 − 10 = 70, travel 70 − 48 = 22: the thumb is 20 down plus half of 22
-      await setup({ scrollY, insets: { top: shared(20), bottom: shared(10) } });
-      expect(style('list-scrubber-thumb').transform).toEqual([{ translateY: 31 }]);
+    it('draws the track below what shows of it, the rail keeping its place', async () => {
+      await setup({ scrollY: shared(455), topBar: topBar() }); // half of 10–900
+      expect(style('list-scrubber-thumb').transform).toEqual([{ translateY: 20 + 16 }]);
       const rail = screen.getByTestId('list-scrubber-a11y', { includeHiddenElements: true }).parent!;
       expect(StyleSheet.flatten(rail.props.style)).toMatchObject({ top: 0, bottom: 0 });
     });
 
-    it('combine with number insets, which place the rail', async () => {
-      // rail 100 − 10 = 90, track starts 20 into it: travel 90 − 20 − 48 = 22
-      await setup({ insets: { top: 10, bottom: shared(0) } });
+    it('a drag covers the rows, not the space the hidden part of the bar leaves above them', async () => {
+      await setup({ topBar: topBar() });
+      await drag(16); // half of 32
+      expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 455, false);
+      await drag(-100); // to the top of the track: the first row, not offset 0
+      expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 10, false);
+    });
+
+    it('below number insets, which place the rail', async () => {
+      // rail 100 − 10 = 90, the track 20 into it: travel 90 − 20 − 48 = 22
+      await setup({ insets: { top: 10 }, topBar: topBar() });
       const rail = screen.getByTestId('list-scrubber-a11y', { includeHiddenElements: true }).parent!;
-      expect(StyleSheet.flatten(rail.props.style)).toMatchObject({ top: 10, bottom: 0 });
-      await setup({ insets: { top: 10, bottom: shared(20) } });
-      await drag(11); // half of 22
-      expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 450, false);
+      expect(StyleSheet.flatten(rail.props.style)).toMatchObject({ top: 10 });
+      await drag(11);
+      expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 455, false);
     });
 
-    it('a drag maps the track it started on onto the list', async () => {
-      await setup({ insets: { top: shared(20) } }); // travel 100 − 20 − 48 = 32
-      await drag(16);
-      expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 450, false);
+    it('hiding more than the list scrolls: the track stands for the end of the list alone', async () => {
+      await setup({ scrollY: shared(900), topBar: { height: 2000, visibleHeight: shared(0) } });
+      expect(style('list-scrubber-thumb').transform).toEqual([{ translateY: 0 }]);
+      await drag(20);
+      expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 900, false);
     });
 
-    it('no drag when they cover the whole rail', async () => {
-      await setup({ insets: { top: shared(500) } });
+    it('no drag when it covers the whole rail', async () => {
+      await setup({ topBar: { height: 500, visibleHeight: shared(500) } });
       expect(style('list-scrubber-thumb').transform).toEqual([{ translateY: 100 }]);
       await drag(30);
       expect(mockScrollTo).not.toHaveBeenCalled();

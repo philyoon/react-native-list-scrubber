@@ -154,22 +154,50 @@ test('a collapsible header: the thumb, the bubble and the pinned header follow i
   expect(thumb.y - 24).toBeGreaterThanOrEqual(shown.y + shown.height - 1);
   await expect(header(page)).toHaveValue((await rowLetter())!);
 
-  // A drag hides the header, and the bubble, the pinned header and the rows agree
+  // During a drag the header stays where it was (big jumps would show and hide it), and the bubble and the
+  // pinned header agree
+  const before = await box(bar);
   await grab(page, thumb, thumb.y + 300);
   const b = await bubble(page);
-  await page.mouse.up();
-  const hidden = await box(bar);
-  expect(hidden.y + hidden.height).toBeLessThanOrEqual(
-    (await box(page.getByTestId('list-scrubber-a11y'))).y + 1,
-  );
+  expect(await box(bar)).toEqual(before);
+  const top = (await box(page.getByTestId('list-scrubber-a11y'))).y;
   await expect(header(page)).toHaveValue(b.label);
+  // Lifting the finger brings the header back; the pinned header moves below it and names the rows it covers
+  await page.mouse.up();
+  await expect.poll(async () => (await box(bar)).y).toBeCloseTo(top, 0); // all the way back
   await expect(header(page)).toHaveValue((await rowLetter())!);
 
-  // A short scroll up brings the header back; the pinned header moves below it and still names the rows it covers
-  await page.mouse.move(page.viewportSize()!.width / 2, page.viewportSize()!.height / 2); // over the rows
+  // A scroll down hides it again, and a short scroll up brings it back
+  const rows = { x: page.viewportSize()!.width / 2, y: page.viewportSize()!.height / 2 };
+  await page.mouse.move(rows.x, rows.y);
+  await page.mouse.wheel(0, 400);
+  await expect.poll(async () => (await box(pinned)).y).toBeLessThanOrEqual(top + 1);
   await page.mouse.wheel(0, -200);
-  await expect.poll(async () => (await box(pinned)).y).toBeGreaterThan(hidden.y + hidden.height + 100);
+  await expect.poll(async () => (await box(pinned)).y).toBeGreaterThan(top + 100);
   await expect(header(page)).toHaveValue((await rowLetter())!);
+
+  // Hidden again, then dragged back to the top: it stays hidden while the finger is down, and the drag stops at the
+  // first row, not the blank space the hidden bar leaves above it. When the finger lifts the bar slides in, and the
+  // list goes back to the very top with it
+  await page.mouse.move(rows.x, rows.y);
+  await page.mouse.wheel(0, 400);
+  await expect.poll(async () => (await box(pinned)).y).toBeLessThanOrEqual(top + 1);
+  const mid = await showThumb(page);
+  await grab(page, mid, 0);
+  expect((await box(pinned)).y).toBeLessThanOrEqual(top + 1);
+  expect(await rowLetter()).toBe('A');
+  const first = (await page.getByText('Ada Abby').boundingBox())!;
+  const p = await box(pinned);
+  expect(first.y).toBeGreaterThanOrEqual(p.y + p.height - 1); // the first row, right below the pinned header
+  expect(first.y).toBeLessThan(p.y + p.height + 32); // its text, centred in the 64pt row
+  await page.mouse.up();
+  await expect.poll(async () => (await box(bar)).y).toBeCloseTo(top, 0);
+  await expect(page.getByText('3,000 people')).toBeInViewport();
+  // The list back at the very top: the first row below the bar and the pinned header, not hidden under them
+  await expect
+    .poll(async () => (await page.getByText('Ada Abby').boundingBox())!.y)
+    .toBeGreaterThan((await box(pinned)).y + 31);
+  await expect(header(page)).toHaveValue('A');
 
   // The last section is still reachable
   const again = (await page.getByTestId('list-scrubber-thumb').boundingBox())!;
@@ -180,12 +208,4 @@ test('a collapsible header: the thumb, the bubble and the pinned header follow i
   );
   await page.mouse.up();
   await expect(header(page)).toHaveValue('Z');
-
-  // Dragged back to the top, the header is shown again
-  const end = (await page.getByTestId('list-scrubber-thumb').boundingBox())!;
-  await grab(page, { x: end.x + end.width / 2, y: end.y + end.height / 2 }, 0);
-  await page.mouse.up();
-  await expect(page.getByText('3,000 people')).toBeInViewport();
-  await expect(page.getByText('Ada Abby')).toBeInViewport();
-  await expect(header(page)).toHaveValue('A');
 });

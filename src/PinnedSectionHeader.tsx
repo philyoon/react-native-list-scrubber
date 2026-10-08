@@ -22,6 +22,11 @@ export interface PinnedSectionHeaderProps {
   height: number;
   /** The next section's header pushes this one out (default true) */
   push?: boolean;
+  /**
+   * Distance from the top of the list (default 0), e.g. below a top bar: `useListScrubber`'s `pinnedHeaderProps`
+   * pass the visible height of its `topBar`, and a `scrollY` that names the rows below it
+   */
+  top?: number | SharedValue<number>;
   /** The header box, e.g. background and padding */
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
@@ -42,14 +47,18 @@ export function PinnedSectionHeader({
   sections,
   height,
   push = true,
+  top = 0,
   style,
   textStyle,
   maxFontSizeMultiplier,
   testID = 'list-scrubber-pinned-header',
 }: PinnedSectionHeaderProps) {
   const pushStyle = usePinnedSectionHeaderStyle(scrollY, sections, height);
+  const topStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: typeof top === 'number' ? top : top.get() }],
+  }));
   return (
-    <View style={[styles.pinned, { height }]} testID={testID}>
+    <Animated.View style={[styles.pinned, { height }, topStyle]} testID={testID}>
       <Animated.View style={[styles.header, { height }, style, push && pushStyle]}>
         <CurrentSectionLabel
           scrollY={scrollY}
@@ -59,7 +68,7 @@ export function PinnedSectionHeader({
           testID={`${testID}-label`}
         />
       </Animated.View>
-    </View>
+    </Animated.View>
   );
 }
 
