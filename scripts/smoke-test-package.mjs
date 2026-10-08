@@ -136,7 +136,9 @@ export function WithSections({ sections }: { sections: Sections }) {
         renderItem={() => null}
         getItemLayout={flat.getItemLayout}
       />
-      <Animated.View style={[scrubber.topBarStyle, { backgroundColor: 'white' }]} />
+      <Animated.View {...scrubber.topBarProps}>
+        <View style={{ flex: 1, backgroundColor: 'white' }} />
+      </Animated.View>
       <PinnedSectionHeader {...header} top={bar?.visibleHeight} />
       <Animated.View style={push}>
         <CurrentSectionLabel {...label} />

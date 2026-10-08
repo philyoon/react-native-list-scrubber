@@ -25,7 +25,7 @@ import {
   type ListScrubberMetrics,
   type ListScrubberTiming,
 } from './defaults';
-import { clamp, labelPosition } from './math';
+import { clamp, labelPosition, type BarState } from './math';
 import { SectionText } from './SectionText';
 import type { ListScrubberColors, ListScrubberSection, ListScrubberTopBar } from './types';
 import { useA11yStepper } from './useA11yStepper';
@@ -125,6 +125,8 @@ interface ListScrubberLabelAtProps {
 /** `S` is the type of your sections: `{ offset, label }` plus any fields of your own */
 export type ListScrubberProps<S extends ListScrubberSection = ListScrubberSection> =
   ListScrubberBaseProps<S> & (ListScrubberSectionProps<S> | ListScrubberLabelAtProps);
+
+const NO_BAR: BarState = { height: 0, hidden: 0, fixed: true };
 
 const defaultFormatPercent = (percent: number) => `${percent}%`;
 
@@ -238,7 +240,14 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
     labels,
     labelAt,
     formatPercent: formatAccessibilityPercent,
-    cover: () => track.get().top,
+    bar: () =>
+      topBar
+        ? {
+            height: topBar.height,
+            hidden: topBar.height - topBar.visibleHeight.get(),
+            fixed: topBar.isFixed.get(),
+          }
+        : NO_BAR,
   });
 
   // Stable JS callbacks for the worklets to schedule: they read the latest props when they run.

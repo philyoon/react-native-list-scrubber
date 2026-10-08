@@ -78,6 +78,12 @@ export function sharedZero() {
   return { value: 0, get: () => v, set: (n: number) => (v = n) } as unknown as SharedValue<number>;
 }
 
+/** A boolean shared value stand-in with get/set */
+export function sharedFlag(on: boolean) {
+  let v = on;
+  return { value: on, get: () => v, set: (b: boolean) => (v = b) } as unknown as SharedValue<boolean>;
+}
+
 export const colors = { thumb: 'gray', thumbActive: 'red', bubble: 'black', bubbleText: 'white' };
 
 // List 1,000 tall in a 100 viewport: the 48 thumb travels 100 - 48 = 52.

@@ -16,7 +16,7 @@ import {
   type SharedValue,
 } from 'react-native-reanimated';
 import { scheduleOnUI } from 'react-native-worklets';
-import { clamp } from './math';
+import { clamp, scrollBelowBar } from './math';
 import type { ListScrubberSection, ListScrubberTopBar } from './types';
 import { useLatest } from './useLatest';
 import { useWarnIfUnmeasured } from './validate';
@@ -29,7 +29,7 @@ export interface UseListScrubberOptions<S extends readonly ListScrubberSection[]
   sections?: S;
   /**
    * A bar over the top of the list (a title, a search field…) that slides away as the list scrolls down and
-   * comes back on a scroll up. Draw it with `topBarStyle`, and start the list with a spacer as tall as the
+   * comes back on a scroll up. Spread `topBarProps` on it, and start the list with a spacer as tall as the
    * bar (plus a pinned header, if any). `scrubberProps` and `pinnedHeaderProps` then keep the scrubber and
    * the pinned header below it. During a thumb drag it stays as it was, and it slides back in when
    * the finger lifts.
@@ -130,10 +130,11 @@ export function useListScrubber<
         ? {
             height: barHeight,
             visibleHeight: barVisible,
+            isFixed: barPinned,
             show: () => scheduleOnUI(revealTopBar, barHidden, barRevealing),
           }
         : undefined,
-    [barHeight, barVisible, barHidden, barRevealing],
+    [barHeight, barVisible, barPinned, barHidden, barRevealing],
   );
   /** What a pinned header below the top bar covers: the rows just below the bar's visible part */
   const pinnedScrollY = useDerivedValue(() => scrollY.get() + barVisible.get());
@@ -190,12 +191,19 @@ export function useListScrubber<
     [scrollY, pinnedScrollY, topBar, sections],
   );
   const topBarLayout = useMemo((): ViewStyle => ({ ...TOP_BAR, height: barHeight }), [barHeight]);
-  const topBarStyles = useMemo(
-    (): [ViewStyle, typeof topBarStyle] => [topBarLayout, topBarStyle],
-    [topBarLayout, topBarStyle],
+  const showTopBar = topBar?.show;
+  const topBarProps = useMemo(
+    () => ({
+      style: [topBarLayout, topBarStyle] as [ViewStyle, typeof topBarStyle],
+      // On the web the bar keeps sliding with a screen reader on (a page can't tell), so it comes back when
+      // something in it gets focus, e.g. tabbing to its search field. Focus events bubble there
+      ...(Platform.OS === 'web' && showTopBar && { onFocus: showTopBar }),
+    }),
+    [topBarLayout, topBarStyle, showTopBar],
   );
   const scrollToOffset = useLatest((offset: number, { animated = false }: ScrollOptions = {}) => {
-    scheduleOnUI(scrollToClamped, listRef, contentHeight, viewportHeight, offset, animated);
+    const bar = { height: barHeight, hidden: barHidden, fixed: barPinned, revealing: barRevealing };
+    scheduleOnUI(scrollToVisible, listRef, scrollY, contentHeight, viewportHeight, bar, offset, animated);
   });
   const scrollToSection = useLatest((index: number, scrollOptions?: ScrollOptions) => {
     const section = sections?.[index];
@@ -215,7 +223,7 @@ export function useListScrubber<
     viewportHeight,
     isDragging,
     topBar,
-    topBarStyle: topBarStyles,
+    topBarProps,
     listProps,
     scrubberProps,
     pinnedHeaderProps,
@@ -224,17 +232,35 @@ export function useListScrubber<
   };
 }
 
-/** Scrolls within the list's range, read on the UI thread where the sizes are current */
-function scrollToClamped(
+/**
+ * Scrolls so content offset `offset` comes to the top of the list's visible part, below a top bar where it
+ * will be once it has followed the scroll; within the list's range, read on the UI thread where the sizes and
+ * the bar are current
+ */
+function scrollToVisible(
   listRef: AnimatedRef<any>,
+  scrollY: SharedValue<number>,
   contentHeight: SharedValue<number>,
   viewportHeight: SharedValue<number>,
+  bar: {
+    height: number;
+    hidden: SharedValue<number>;
+    fixed: SharedValue<boolean>;
+    revealing: SharedValue<boolean>;
+  },
   offset: number,
   animated: boolean,
 ) {
   'worklet';
   const maxScroll = Math.max(0, contentHeight.get() - viewportHeight.get());
-  scrollTo(listRef, 0, clamp(offset, 0, maxScroll), animated);
+  // While it slides back in, the bar ignores scrolling and ends up in full
+  const revealing = bar.revealing.get();
+  const state = {
+    height: bar.height,
+    hidden: revealing ? 0 : bar.hidden.get(),
+    fixed: revealing || bar.fixed.get(),
+  };
+  scrollTo(listRef, 0, scrollBelowBar(offset, scrollY.get(), state, maxScroll).scroll, animated);
 }
 
 /**
@@ -306,16 +332,19 @@ export interface UseListScrubberResult<
   /** True while the scrubber's thumb is dragged, set on the UI thread: read it from worklets */
   isDragging: SharedValue<boolean>;
   /**
-   * With the `topBar` option: the bar's height, `visibleHeight` (how much of it is on screen, e.g. to bring a
-   * section to just below it with `scrollToOffset(offset - visibleHeight.get())`), and `show()`, which slides
-   * it back in (e.g. when its search field gets focus)
+   * With the `topBar` option: the bar's height, `visibleHeight` (how much of it is on screen), `isFixed`
+   * (it stays in place, with a screen reader on), and `show()`, which slides it back in
    */
   topBar: (ListScrubberTopBar & { show: () => void }) | undefined;
   /**
-   * Style for the top bar's view (an Animated.View): over the top of the list, as tall as the bar, sliding
-   * with the scroll. Add your own background and contents. Without the `topBar` option it isn't needed.
+   * Spread on an Animated.View that holds the top bar: its `style` puts it over the top of the list, as tall
+   * as the bar, sliding with the scroll, and on the web its `onFocus` brings the bar back when something in
+   * it gets focus. Draw the bar inside it. Without the `topBar` option it isn't needed.
    */
-  topBarStyle: [ViewStyle, ReturnType<typeof useAnimatedStyle<ViewStyle>>];
+  topBarProps: {
+    style: [ViewStyle, ReturnType<typeof useAnimatedStyle<ViewStyle>>];
+    onFocus?: () => void;
+  };
   /** Spread on the list */
   listProps: {
     ref: AnimatedRef<TList>;
@@ -336,8 +365,11 @@ export interface UseListScrubberResult<
     sections: readonly ListScrubberSection[];
     top?: SharedValue<number>;
   };
-  /** Scroll to the start of `sections[index]` (the hook's sections) */
+  /** Scroll so `sections[index]` (the hook's sections) starts at the top of the list, below a top bar */
   scrollToSection: (index: number, options?: { animated?: boolean }) => void;
-  /** Scroll to a content offset, clamped to the list's range */
+  /**
+   * Scroll so a content offset is at the top of the list, clamped to its range. With a top bar, just below
+   * the bar's visible part, where it will be once it has followed the scroll
+   */
   scrollToOffset: (offset: number, options?: { animated?: boolean }) => void;
 }

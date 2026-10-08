@@ -3,11 +3,12 @@
 ## Unreleased
 
 - `useListScrubber({ topBar: { height } })`: a bar over the top of the list that slides away as the list
-  scrolls down and comes back on a scroll up. Draw it with `topBarStyle`; `scrubberProps` and
-  `pinnedHeaderProps` keep the scrubber and a pinned header below it. During a thumb drag it stays as it was,
-  the drag reaches the first row rather than the space a hidden bar leaves, and the bar slides back in when
-  the finger lifts. `scrubber.topBar` has its `height`, `visibleHeight` and `show()`. See the README's "A top
-  bar that slides away".
+  scrolls down and comes back on a scroll up. Draw it inside a view that spreads `topBarProps`;
+  `scrubberProps` and `pinnedHeaderProps` keep the scrubber and a pinned header below it. During a thumb drag
+  it stays as it was, the drag reaches the first row rather than the space a hidden bar leaves, and the bar
+  slides back in when the finger lifts. `scrollToSection` and `scrollToOffset` bring a section to just below
+  it. On the web, it comes back when something in it gets focus. `scrubber.topBar` has its `height`,
+  `visibleHeight`, `isFixed` and `show()`. See the README's "A top bar that slides away".
 - Breaking: `headerProps` is now `pinnedHeaderProps`, so it isn't confused with a top bar. It also carries the
   pinned header's new `top` prop.
 - Breaking: `ListScrubber`'s `insets` take numbers only again. For a header that slides away, use `topBar`

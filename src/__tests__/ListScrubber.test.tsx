@@ -7,6 +7,7 @@ import {
   reactions,
   sectionText,
   setup,
+  sharedFlag,
   sharedZero,
 } from './support';
 import type { SharedValue } from 'react-native-reanimated';
@@ -14,6 +15,9 @@ import { act, fireEvent, screen } from '@testing-library/react-native';
 import { I18nManager, StyleSheet, type ViewStyle } from 'react-native';
 import { getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
 import { LIST_SCRUBBER_DEFAULTS, ListScrubber } from '../index';
+
+/** A top bar that slides with the scroll */
+const fixed = sharedFlag(false);
 
 it('dragging scrolls the list in proportion and asks for the label at that spot', async () => {
   // fireGestureHandler always ends the gesture, so the bubble is gone afterwards: check what was asked.
@@ -334,7 +338,10 @@ describe('while the finger is down', () => {
   it('keeps the track it started on while a top bar moves, so the thumb stays under the finger', async () => {
     const visibleHeight = sharedZero();
     visibleHeight.set(20); // all of it shows: travel 100 − 20 − 48 = 32, from offset 0
-    await setup({ sections: [{ offset: 0, label: 'A' }], topBar: { height: 20, visibleHeight } });
+    await setup({
+      sections: [{ offset: 0, label: 'A' }],
+      topBar: { height: 20, visibleHeight, isFixed: fixed },
+    });
     await act(async () => {
       pan().onBegin({});
       visibleHeight.set(0); // e.g. the bar hides as the drag starts: the track would be 52 long, from 20
@@ -650,7 +657,7 @@ describe('API options', () => {
     };
     // 30 tall, 20 showing: the track starts 20 down (travel 100 − 20 − 48 = 32), and its top stands for
     // offset 10, where the rows come out from under the 10 hidden: offsets 10 to 900
-    const topBar = () => ({ height: 30, visibleHeight: shared(20) });
+    const topBar = () => ({ height: 30, visibleHeight: shared(20), isFixed: fixed });
 
     it('draws the track below what shows of it, the rail keeping its place', async () => {
       await setup({ scrollY: shared(455), topBar: topBar() }); // half of 10–900
@@ -684,7 +691,7 @@ describe('API options', () => {
       await act(async () => {});
       expect(onSectionChange).toHaveBeenCalledWith(1, { offset: 25, label: 'B' });
       const labelAt = jest.fn(() => 'x');
-      await setup({ labelAt, topBar: { height: 20, visibleHeight: shared(20) } });
+      await setup({ labelAt, topBar: { height: 20, visibleHeight: shared(20), isFixed: fixed } });
       await drag(16); // half of 32: offset 450
       expect(labelAt).toHaveBeenLastCalledWith(450 + 20 + 40, 450); // halfway down the 80 uncovered
     });
@@ -699,14 +706,17 @@ describe('API options', () => {
     });
 
     it('hiding more than the list scrolls: the track stands for the end of the list alone', async () => {
-      await setup({ scrollY: shared(900), topBar: { height: 2000, visibleHeight: shared(0) } });
+      await setup({
+        scrollY: shared(900),
+        topBar: { height: 2000, visibleHeight: shared(0), isFixed: fixed },
+      });
       expect(style('list-scrubber-thumb').transform).toEqual([{ translateY: 0 }]);
       await drag(20);
       expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 900, false);
     });
 
     it('no drag when it covers the whole rail', async () => {
-      await setup({ topBar: { height: 500, visibleHeight: shared(500) } });
+      await setup({ topBar: { height: 500, visibleHeight: shared(500), isFixed: fixed } });
       expect(style('list-scrubber-thumb').transform).toEqual([{ translateY: 100 }]);
       await drag(30);
       expect(mockScrollTo).not.toHaveBeenCalled();
