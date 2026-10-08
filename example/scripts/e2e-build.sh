@@ -24,7 +24,10 @@ case "$platform" in
     ;;
   android)
     CI=1 npx expo prebuild --platform android
-    (cd android && ./gradlew assembleRelease --build-cache --console=plain -q -PreactNativeArchitectures="${ANDROID_ARCH:-arm64-v8a}")
+    # The JS bundle is always rebuilt: Gradle doesn't see EXPO_PUBLIC_E2E change, and could otherwise reuse (or take
+    # from its build cache) a bundle built without e2e mode
+    (cd android && ./gradlew :app:createBundleReleaseJsAndAssets --rerun assembleRelease --build-cache \
+      --console=plain -q -PreactNativeArchitectures="${ANDROID_ARCH:-arm64-v8a}")
     apk=android/app/build/outputs/apk/release/app-release.apk
     echo "Built $apk"
     [ -n "$NO_INSTALL" ] || adb ${MAESTRO_DEVICE:+-s "$MAESTRO_DEVICE"} install -r "$apk"
