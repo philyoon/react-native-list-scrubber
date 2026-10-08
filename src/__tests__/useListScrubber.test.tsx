@@ -416,6 +416,68 @@ describe('useListScrubber({ topBar })', () => {
     });
   });
 
+  describe('snap', () => {
+    type Handlers = { onBeginDrag: () => void; onEndDrag: (e: unknown) => void; onMomentumEnd: () => void };
+    /** The list scrolls up to 1,400 */
+    async function measured(bar: BarOptions & { snap?: boolean } = {}) {
+      const hook = await withBar(100, bar);
+      await act(() => {
+        hook.result.current.listProps.onLayout({ nativeEvent: { layout: { height: 600 } } } as never);
+        hook.result.current.listProps.onContentSizeChange(390, 2000);
+      });
+      const handlers = () => hook.result.current.listProps.onScroll as unknown as Handlers;
+      /** A touch scroll through `ys`, ending with `velocity` */
+      const swipe = (ys: number[], velocity = 0) => {
+        handlers().onBeginDrag();
+        ys.forEach(hook.scroll);
+        handlers().onEndDrag({ velocity: { x: 0, y: velocity } });
+      };
+      mockScrollTo.mockClear();
+      return { ...hook, handlers, swipe };
+    }
+
+    it('is on by default: a bar less than half hidden comes back when the finger lifts', async () => {
+      expect(LIST_SCRUBBER_DEFAULTS.topBar.snap).toBe(true);
+      const { result, swipe } = await measured();
+      swipe([300, 240]); // 40 of it hidden
+      expect(mockScrollTo).toHaveBeenCalledWith(result.current.listProps.ref, 0, 200, true);
+      mockScrollTo.mockClear();
+      swipe([200, 600]); // hidden in full: nothing to settle
+      expect(mockScrollTo).not.toHaveBeenCalled();
+    });
+
+    it('after momentum, hides a bar half hidden or more, once', async () => {
+      const { result, swipe, handlers, scroll } = await measured();
+      swipe([300, 270], 1.5); // 70 hidden; momentum follows
+      expect(mockScrollTo).not.toHaveBeenCalled();
+      handlers().onMomentumEnd();
+      expect(mockScrollTo).toHaveBeenCalledWith(result.current.listProps.ref, 0, 300, true);
+      scroll(300); // the snap's own scroll ends with momentum on Android: nothing more
+      handlers().onMomentumEnd();
+      expect(mockScrollTo).toHaveBeenCalledTimes(1);
+    });
+
+    it('not after scrolling from code, during a thumb drag, while fixed or sliding in, or when off', async () => {
+      const { result, swipe, handlers, scroll } = await measured();
+      scroll(300);
+      scroll(240); // from code: no touch began
+      handlers().onMomentumEnd();
+      result.current.isDragging.set(true);
+      swipe([300, 240]);
+      result.current.isDragging.set(false);
+      result.current.topBar!.isFixed.set(true);
+      swipe([300, 240]);
+      result.current.topBar!.isFixed.set(false);
+      result.current.topBar!.show();
+      await act(() => jest.advanceTimersByTime(20)); // sliding in until its animation ends
+      swipe([300, 240]);
+      expect(mockScrollTo).not.toHaveBeenCalled();
+      const off = await measured({ snap: false });
+      off.swipe([300, 240]);
+      expect(mockScrollTo).not.toHaveBeenCalled();
+    });
+  });
+
   it('without the option: no bar, and nothing reacts to the scroll or a drag for one', async () => {
     const { result } = await renderHook(() => useListScrubber());
     expect(result.current.topBar).toBeUndefined();

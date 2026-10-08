@@ -54,6 +54,19 @@ export function scrollBelowBar(
   return { scroll, cover: coverAt(scroll) };
 }
 
+/**
+ * Where to scroll so that a top bar `height` tall, `hidden` of it hidden at scroll offset `y`, ends up shown
+ * or hidden in full, whichever is closer (it follows the scroll by as much as the list moves). Hidden needs
+ * room below: past `maxScroll` the list can't scroll that far, so the bar is shown instead. Undefined when
+ * it's already shown or hidden in full.
+ */
+export function snapTarget(height: number, hidden: number, y: number, maxScroll: number): number | undefined {
+  'worklet';
+  if (hidden < 0.5 || hidden > height - 0.5) return undefined;
+  const shows = height - hidden;
+  return hidden < height / 2 || y + shows > maxScroll ? Math.max(0, y - hidden) : y + shows;
+}
+
 /** Index of the section that contains `y`, given ascending section start offsets. */
 export function sectionIndexAt(starts: readonly number[], y: number): number {
   'worklet';

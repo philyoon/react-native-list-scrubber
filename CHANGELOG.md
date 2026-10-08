@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- New: when a touch scroll ends with the top bar partly shown, it settles, shown or hidden, whichever is
+  closer: the list scrolls the rest of the way, as Android's collapsing app bars and iOS's large titles do.
+  It's on by default; `topBar: { height, snap: false }` turns it off. Not after a thumb drag or scrolling from
+  code, and not on the web. Fixes #70.
 - Breaking: a thumb drag that ends at the top of the list no longer brings the top bar back by default: the
   bar stays as the drag left it, as after a drag anywhere else, and a scroll up brings it back. For 0.3.0's
   behaviour (the list scrolls to the very top and the bar slides in when the finger lifts), pass

@@ -17,7 +17,7 @@ import {
 } from 'react-native-reanimated';
 import { scheduleOnUI } from 'react-native-worklets';
 import { LIST_SCRUBBER_DEFAULTS } from './defaults';
-import { clamp, scrollBelowBar } from './math';
+import { clamp, scrollBelowBar, snapTarget } from './math';
 import { useListHeader, type ListHeaderContent } from './ListHeader';
 import type { ListScrubberLayout, ListScrubberSection, ListScrubberTopBar } from './types';
 import { useLatest } from './useLatest';
@@ -31,9 +31,10 @@ interface BaseOptions {
    * header below it. During a thumb drag it stays as it was, and after it a scroll up brings it back. With
    * `revealOnDragToTop`, a drag that ends at the top of the list brings it back when the finger lifts, and
    * the list scrolls to the very top with it. It slides in over `revealMs` (default:
-   * LIST_SCRUBBER_DEFAULTS.topBar.revealMs).
+   * LIST_SCRUBBER_DEFAULTS.topBar.revealMs). With `snap` (the default), a touch scroll that leaves it partly
+   * shown settles it when the scroll ends, shown or hidden, whichever is closer; not on the web.
    */
-  topBar?: { height: number; revealMs?: number; revealOnDragToTop?: boolean };
+  topBar?: { height: number; revealMs?: number; revealOnDragToTop?: boolean; snap?: boolean };
   /**
    * A PinnedSectionHeader `height` tall: `pinnedHeaderProps` carry its height and placement. Over a list with
    * section headers of its own (a SectionList's, as `sectionListLayout` gives) it sits over them, and the
@@ -131,6 +132,7 @@ export function useListScrubber<
   const revealMs = options.topBar?.revealMs ?? LIST_SCRUBBER_DEFAULTS.topBar.revealMs;
   const revealOnDragToTop =
     options.topBar?.revealOnDragToTop ?? LIST_SCRUBBER_DEFAULTS.topBar.revealOnDragToTop;
+  const snap = barHeight > 0 && (options.topBar?.snap ?? LIST_SCRUBBER_DEFAULTS.topBar.snap);
   useWarnIfUnstable(userOnScroll);
   const listRef = useAnimatedRef<TList>();
   const scrollY = useSharedValue(0);
@@ -153,22 +155,46 @@ export function useListScrubber<
     barPinned.set(screenReader);
     if (screenReader) scheduleOnUI(revealTopBar, barHidden, barRevealing, revealMs);
   }, [screenReader, barPinned, barHidden, barRevealing, revealMs]);
+  /** A touch scroll is under way (snap): set when the finger starts it, cleared once the bar is settled */
+  const touchScrolling = useSharedValue(false);
+  // Snap: when a touch scroll ends with the bar partly shown, the list scrolls the rest of the way, so the
+  // bar and the rows move together as they did during the scroll. Only after a touch: scrolling from code
+  // (scrollToSection, the thumb) already lands where it means to. The end is the finger lifting without
+  // momentum (zero velocity: iOS sends no momentum events then), or momentum ending
+  const settle = () => {
+    'worklet';
+    if (!touchScrolling.get()) return;
+    touchScrolling.set(false);
+    if (barPinned.get() || barRevealing.get() || isDragging.get()) return;
+    const maxScroll = Math.max(0, contentHeight.get() - viewportHeight.get());
+    const to = snapTarget(barHeight, barHidden.get(), scrollY.get(), maxScroll);
+    if (to !== undefined) scrollTo(listRef, 0, to, true);
+  };
   const onScroll = useAnimatedScrollHandler(
-    (e) => {
-      const y = e.contentOffset.y;
-      // The top bar follows the scroll by as much as it moves, up or down, within its height, and shows at
-      // the very top. Pull-to-refresh and iOS's bounce (negative offsets) don't move it. During a drag it
-      // stays as it was (big jumps would show and hide it); while it slides back in,
-      // the drag's last scroll mustn't stop it
-      if (barHeight > 0 && !barPinned.get() && !isDragging.get() && !barRevealing.get()) {
-        const now = Math.max(0, y);
-        const delta = now - Math.max(0, scrollY.get());
-        barHidden.set(clamp(barHidden.get() + delta, 0, Math.min(barHeight, now)));
-      }
-      scrollY.set(y);
-      userOnScroll?.(e);
+    {
+      onScroll: (e) => {
+        const y = e.contentOffset.y;
+        // The top bar follows the scroll by as much as it moves, up or down, within its height, and shows at
+        // the very top. Pull-to-refresh and iOS's bounce (negative offsets) don't move it. During a drag it
+        // stays as it was (big jumps would show and hide it); while it slides back in,
+        // the drag's last scroll mustn't stop it
+        if (barHeight > 0 && !barPinned.get() && !isDragging.get() && !barRevealing.get()) {
+          const now = Math.max(0, y);
+          const delta = now - Math.max(0, scrollY.get());
+          barHidden.set(clamp(barHidden.get() + delta, 0, Math.min(barHeight, now)));
+        }
+        scrollY.set(y);
+        userOnScroll?.(e);
+      },
+      onBeginDrag: () => {
+        if (snap) touchScrolling.set(true);
+      },
+      onEndDrag: (e) => {
+        if (!e.velocity?.y) settle();
+      },
+      onMomentumEnd: () => settle(),
     },
-    [userOnScroll, barHeight],
+    [userOnScroll, barHeight, snap],
   );
   // With revealOnDragToTop: a drag that ended at the top of the thumb's track is at the first row, below
   // the space the hidden bar left; when the finger lifts, the list scrolls back to the very top and the bar
