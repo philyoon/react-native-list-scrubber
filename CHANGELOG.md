@@ -7,6 +7,9 @@
   `scrollViewProps`), each with only props that list documents: FlatList's and SectionList's carry the
   layout's `getItemLayout`, so it's no longer passed separately. `listProps` is unchanged, for any other
   scrollable component. See the README's "Usage", now in steps.
+- Breaking: `useListScrubber`'s result no longer has `listRef`, `onScroll`, `contentHeight` and
+  `viewportHeight`: they're in the spreads already. Read `listProps.ref`, `listProps.onScroll`,
+  `scrubberProps.contentHeight` and `scrubberProps.viewportHeight` instead. `scrollY` and `isDragging` stay.
 - Breaking: `listLayout` and `sectionListLayout` take `sectionLabel`, not `label`: the label of the row's (or
   the section's) section. They also return `sectionHeaders`: whether the list draws section headers of its
   own.

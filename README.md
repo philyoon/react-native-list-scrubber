@@ -255,9 +255,12 @@ Each piece is public, for what the steps above don't cover:
   `pinnedHeader: { height, push }` (`push` defaults to true).
 - **`scrollToOffset(y)`** scrolls to one of those coordinates, below a top bar and pinned header, clamped to
   the list's range.
-- **The pieces the spreads are made of**: `listRef`, `scrollY`, `onScroll`, and the `contentHeight`,
-  `viewportHeight` and `isDragging` shared values. `isDragging` is true while the thumb is dragged, for
-  worklets of your own. `ListScrubber` and `PinnedSectionHeader` also take `scrollY` and `sections` directly.
+- **`scrollY` and `isDragging`**, shared values for worklets of your own: the scroll offset, and whether the
+  thumb is being dragged.
+- **The pieces the spreads are made of**, in the spreads themselves: the list's ref and scroll handler in
+  `listProps.ref` and `listProps.onScroll`, and its measured heights in `scrubberProps.contentHeight` and
+  `scrubberProps.viewportHeight`. `ListScrubber` and `PinnedSectionHeader` also take `scrollY` and `sections`
+  directly.
 
 ### Labels that aren't sections
 
@@ -436,7 +439,7 @@ hidden thumb lets touches through to the list, so it can only be grabbed once sh
   [Usage](#usage)), so the scroll handler never runs.
 - A prop after the list's spread (`{...scrubber.flatListProps}`…) replaces one of its own. Pass `onScroll`,
   `onLayout`, `onContentSizeChange` and `ListHeaderComponent` to `useListScrubber` instead, and use
-  `scrubber.listRef` rather than your own `ref`. Development builds warn when the list's `onLayout` or
+  `scrubber.listProps.ref` rather than your own `ref`. Development builds warn when the list's `onLayout` or
   `onContentSizeChange` from `listProps` never ran a few seconds after it mounted (unless the scrubber is
   given that size itself, as `contentHeight` or `viewportHeight`).
 - The content isn't taller than the list: there's nothing to scrub, so nothing is drawn.

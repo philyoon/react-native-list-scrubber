@@ -189,7 +189,7 @@ describe('a list that never reports its size', () => {
       ) : null;
     }
     const view = await render(<Screen />);
-    const attach = () => ((list.listRef as unknown as { current: object | null }).current = {});
+    const attach = () => ((list.listProps.ref as unknown as { current: object | null }).current = {});
     const wait = (ms: number) => act(() => jest.advanceTimersByTime(ms));
     return { ...view, list, attach, wait };
   };

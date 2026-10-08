@@ -93,9 +93,9 @@ export type UseListScrubberOptions<S extends readonly ListScrubberSection[] | un
  * If the list needs its own onScroll / onLayout / onContentSizeChange, pass them in `options`.
  *
  * Without `sections` (e.g. with `labelAt`), `scrubberProps` has none and `pinnedHeaderProps` isn't useful.
- * Returns the props to spread, and the pieces they're made of (`listRef`, `scrollY`, `onScroll`, and the
- * `contentHeight` / `viewportHeight` / `isDragging` shared values) for wiring them by hand: all of it is
- * public API.
+ * Returns the props to spread, and `scrollY` and `isDragging` for worklets of your own. The pieces the
+ * spreads are made of are in them, for wiring by hand: `listProps.ref` and `.onScroll`, and
+ * `scrubberProps.contentHeight` / `.viewportHeight`. All of it is public API.
  * Measuring the list doesn't re-render the component calling this hook.
  *
  * `scrollToSection(index)` and `scrollToOffset(y)` move the list from code, e.g. for a tappable A–Z index
@@ -300,11 +300,7 @@ export function useListScrubber<
     }
   });
   return {
-    listRef,
     scrollY,
-    onScroll,
-    contentHeight,
-    viewportHeight,
     isDragging,
     topBar,
     topBarProps,
@@ -440,14 +436,8 @@ export interface UseListScrubberResult<
   S extends readonly ListScrubberSection[] | undefined = undefined,
   TList extends Component<any, any> = any,
 > {
-  listRef: AnimatedRef<TList>;
   /** Scroll offset, updated on the UI thread */
   scrollY: SharedValue<number>;
-  onScroll: ScrollHandlerProcessed<Record<string, unknown>>;
-  /** The list's content height, set as it's measured (a shared value: measuring doesn't re-render you) */
-  contentHeight: SharedValue<number>;
-  /** The list's own height, set as it's measured */
-  viewportHeight: SharedValue<number>;
   /** True while the scrubber's thumb is dragged, set on the UI thread: read it from worklets */
   isDragging: SharedValue<boolean>;
   /**
