@@ -49,20 +49,12 @@ env:
 - copyTextFrom:
     id: list-scrubber-a11y
 - assertVisible: '.* ${maestro.copiedText.slice(-1)}.*'
-# The bar comes back when the finger lifts from the thumb. Where the bar is, not just whether it's there: iOS
-# still reports the hidden bar, clipped behind the demo's title, so its checks look below the demo's hint
-- assertVisible:
-    text: 3,000 people
-    below: A top bar that slides away as you scroll
-# A scroll down hides it again, and a scroll up brings it back
-- swipe:
-    start: 50%, 70%
-    end: 50%, 40%
-    duration: 1500
-- waitForAnimationToEnd
+# The bar stays hidden when the drag ends anywhere but the top. Where the bar is, not just whether it's there:
+# iOS still reports the hidden bar, clipped behind the demo's title, so its checks look below the demo's hint
 - assertNotVisible:
     text: 3,000 people
     below: A top bar that slides away as you scroll
+# A scroll up brings it back, still part way down the list, and a scroll down hides it again
 - swipe:
     start: 50%, 45%
     end: 50%, 75%
@@ -72,6 +64,14 @@ env:
     text: 3,000 people
     below: A top bar that slides away as you scroll
 - assertNotVisible: Ada Abby
+- swipe:
+    start: 50%, 70%
+    end: 50%, 40%
+    duration: 1500
+- waitForAnimationToEnd
+- assertNotVisible:
+    text: 3,000 people
+    below: A top bar that slides away as you scroll
 # The drag to the end grabs the thumb at the top of its track, so start again from the top of the list, with
 # the header scrolled away: the last section is still reachable
 - runFlow:
@@ -95,7 +95,7 @@ env:
     commands:
       - runFlow: subflows/drag-to-end.yaml
       - assertVisible: '.* Zel.*'
-# Back to the top: the header is shown again
+# A drag that ends at the top brings the bar back
 - retry:
     maxRetries: 1
     commands:
