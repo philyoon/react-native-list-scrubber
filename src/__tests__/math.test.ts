@@ -8,6 +8,12 @@ describe('label helpers', () => {
     expect(labelPosition(900, 1000, 100)).toBe(999);
   });
 
+  it('labelPosition with the top covered (a top bar) reads the rows below it', () => {
+    expect(labelPosition(0, 1000, 100, 20)).toBe(20);
+    expect(labelPosition(450, 1000, 100, 20)).toBe(450 + 20 + 40); // halfway down the 80 uncovered
+    expect(labelPosition(900, 1000, 100, 20)).toBe(999);
+  });
+
   it('sectionIndexAt finds the section containing an offset', () => {
     const starts = [0, 100, 250, 900];
     expect(sectionIndexAt(starts, 0)).toBe(0);

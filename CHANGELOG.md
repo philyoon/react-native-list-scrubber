@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+- `useListScrubber({ topBar: { height } })`: a bar over the top of the list that slides away as the list
+  scrolls down and comes back on a scroll up. Draw it with `topBarStyle`; `scrubberProps` and
+  `pinnedHeaderProps` keep the scrubber and a pinned header below it. During a thumb drag it stays as it was,
+  the drag reaches the first row rather than the space a hidden bar leaves, and the bar slides back in when
+  the finger lifts. `scrubber.topBar` has its `height`, `visibleHeight` and `show()`. See the README's "A top
+  bar that slides away".
+- Breaking: `headerProps` is now `pinnedHeaderProps`, so it isn't confused with a top bar. It also carries the
+  pinned header's new `top` prop.
+- Breaking: `ListScrubber`'s `insets` take numbers only again. For a header that slides away, use `topBar`
+  instead of a shared-value `insets.top`.
+- `PinnedSectionHeader` takes `top`: its distance from the top of the list, a number or a shared value.
+- With a screen reader on (iOS and Android), the top bar stays in place, so its contents are never reachable
+  off screen. The scrubber's screen-reader steps (and web keyboard keys) bring a section to just below the
+  bar, and its value and the bubble's label name the rows below the bar, not the ones it covers.
+
 ## 0.2.0
 
 - Fixed: a drag ends where the finger lifts. The last stretch of a drag can come only with the finger lifting,

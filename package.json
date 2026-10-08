@@ -15,7 +15,8 @@
     "reanimated",
     "gesture-handler",
     "accessibility",
-    "contacts"
+    "contacts",
+    "collapsing-header"
   ],
   "license": "MIT",
   "author": "Phil Yoon",

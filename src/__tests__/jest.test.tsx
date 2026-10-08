@@ -45,7 +45,7 @@ const mountScreen = async (
     list = useListScrubber(options);
     return (
       <>
-        <PinnedSectionHeader {...list.headerProps} height={32} />
+        <PinnedSectionHeader {...list.pinnedHeaderProps} height={32} />
         <ListScrubber {...list.scrubberProps} labelAt={labelAt} accessibilityLabel="Scroll position" />
       </>
     );
@@ -190,11 +190,11 @@ describe('useListScrubber', () => {
   it('carries sections like the real hook, with stable props', async () => {
     const plain = (await renderHook(() => useListScrubber())).result.current;
     expect('sections' in plain.scrubberProps).toBe(false);
-    expect(plain.headerProps.sections).toEqual([]);
+    expect(plain.pinnedHeaderProps.sections).toEqual([]);
     const { result, rerender } = await renderHook(() => useListScrubber({ sections }));
     const first = result.current;
     expect(first.scrubberProps.sections).toBe(sections);
-    expect(first.headerProps).toEqual({ scrollY: first.scrollY, sections });
+    expect(first.pinnedHeaderProps).toEqual({ scrollY: first.scrollY, sections });
     expect(first.scrubberProps.isDragging).toBe(first.isDragging);
     expect(first.isDragging.get()).toBe(false);
     await rerender({});
@@ -208,6 +208,31 @@ describe('useListScrubber', () => {
     scrollY.set((y) => y + 10);
     scrollY.value = scrollY.value * 2;
     expect(scrollY.get()).toBe(20);
+  });
+});
+
+describe('useListScrubber({ topBar })', () => {
+  it('always shows the bar in full; the pinned header sits below it and names the rows there', async () => {
+    let list!: ReturnType<typeof useListScrubber>;
+    function Screen() {
+      list = useListScrubber({ sections, topBar: { height: 100 } });
+      return <PinnedSectionHeader {...list.pinnedHeaderProps} height={32} />;
+    }
+    await render(<Screen />);
+    expect(list.topBar!.visibleHeight.get()).toBe(100);
+    expect(list.scrubberProps.topBar).toBe(list.topBar);
+    expect(list.pinnedHeaderProps.top).toBe(list.topBar!.visibleHeight);
+    expect(list.topBarStyle[0]).toMatchObject({ position: 'absolute', height: 100 });
+    // 450 + 100: the rows just below the bar are in M (from 500)
+    await act(() =>
+      (list.listProps.onScroll as unknown as (e: unknown) => void)({ contentOffset: { y: 450 } }),
+    );
+    expect(screen.getByTestId('list-scrubber-pinned-header-label')).toHaveTextContent('M');
+    list.topBar!.visibleHeight.set(0);
+    list.topBar!.show();
+    expect(list.topBar!.visibleHeight.get()).toBe(100);
+    list.pinnedHeaderProps.scrollY.set(0); // read-only, like a derived value
+    expect(list.pinnedHeaderProps.scrollY.get()).toBe(550);
   });
 });
 

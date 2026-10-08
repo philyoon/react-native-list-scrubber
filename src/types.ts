@@ -1,3 +1,16 @@
+import type { SharedValue } from 'react-native-reanimated';
+
+/**
+ * A bar over the top of the list that slides away as the list scrolls down and comes back on a scroll up
+ * (`useListScrubber`'s `topBar` option). The scrubber and a pinned header stay below its visible part.
+ */
+export interface ListScrubberTopBar {
+  /** Its full height (pt) */
+  height: number;
+  /** How much of it shows now (pt), on the UI thread */
+  visibleHeight: SharedValue<number>;
+}
+
 /** A labelled section start, e.g. `{ offset: 0, label: 'A' }`. */
 export interface ListScrubberSection {
   /**
