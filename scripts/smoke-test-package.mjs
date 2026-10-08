@@ -92,6 +92,7 @@ import {
   type ListScrubberProps,
   type ListScrubberSection,
   type ListScrubberTiming,
+  type ListScrubberTopBar,
   type PinnedSectionHeaderProps,
   type UseListScrubberOptions,
   type UseListScrubberResult,
@@ -121,9 +122,10 @@ function Scrubber({ scrubber }: { scrubber: UseListScrubberResult<any, Sections>
 }
 
 export function WithSections({ sections }: { sections: Sections }) {
-  const options: UseListScrubberOptions<Sections> = { sections };
+  const options: UseListScrubberOptions<Sections> = { sections, topBar: { height: 120 } };
   const scrubber = useListScrubber(options);
-  const header: PinnedSectionHeaderProps = { ...scrubber.headerProps, height: 32, push: false };
+  const header: PinnedSectionHeaderProps = { ...scrubber.pinnedHeaderProps, height: 32, push: false };
+  const bar: ListScrubberTopBar | undefined = scrubber.topBar;
   const label: CurrentSectionLabelProps = { scrollY: scrubber.scrollY, sections };
   const push = usePinnedSectionHeaderStyle(scrubber.scrollY, sections, 32);
   return (
@@ -134,7 +136,8 @@ export function WithSections({ sections }: { sections: Sections }) {
         renderItem={() => null}
         getItemLayout={flat.getItemLayout}
       />
-      <PinnedSectionHeader {...header} />
+      <Animated.View style={[scrubber.topBarStyle, { backgroundColor: 'white' }]} />
+      <PinnedSectionHeader {...header} top={bar?.visibleHeight} />
       <Animated.View style={push}>
         <CurrentSectionLabel {...label} />
       </Animated.View>

@@ -1,8 +1,8 @@
-# Collapsible: a header over the list slides away as it scrolls down and comes back on a scroll up. The
-# thumb's track starts below whatever is left of it (an animated insets.top), and the header is shown again at
-# the top of the list. (The pinned letter header is hidden from screen readers, so Maestro can't read it on
-# iOS: the flow checks the scrubber's screen-reader value and the rows instead. The web tests check the pinned
-# header's position.)
+# Collapsible: a top bar over the list (useListScrubber's topBar) slides away as it scrolls down and comes back
+# on a scroll up, and when the finger lifts from the thumb. The thumb's track starts below whatever is left of
+# it, and the bar is shown again at the top of the list. (The pinned letter header is hidden from
+# screen readers, so Maestro can't read it on iOS: the flow checks the scrubber's screen-reader value and the
+# rows instead. The web tests check the pinned header's position.)
 # Expo Go: host.exp.Exponent on iOS; npm run e2e:android sets APP_ID=host.exp.exponent
 appId: ${APP_ID}
 env:
@@ -49,13 +49,28 @@ env:
 - copyTextFrom:
     id: list-scrubber-a11y
 - assertVisible: '.* ${maestro.copiedText.slice(-1)}.*'
-# A scroll up brings the header back
+# The bar comes back when the finger lifts from the thumb. Where the bar is, not just whether it's there: iOS
+# still reports the hidden bar, clipped behind the demo's title, so its checks look below the demo's hint
+- assertVisible:
+    text: 3,000 people
+    below: A top bar that slides away as you scroll
+# A scroll down hides it again, and a scroll up brings it back
+- swipe:
+    start: 50%, 70%
+    end: 50%, 40%
+    duration: 1500
+- waitForAnimationToEnd
+- assertNotVisible:
+    text: 3,000 people
+    below: A top bar that slides away as you scroll
 - swipe:
     start: 50%, 45%
     end: 50%, 75%
     duration: 1500
 - waitForAnimationToEnd
-- assertVisible: 3,000 people
+- assertVisible:
+    text: 3,000 people
+    below: A top bar that slides away as you scroll
 - assertNotVisible: Ada Abby
 # The drag to the end grabs the thumb at the top of its track, so start again from the top of the list, with
 # the header scrolled away: the last section is still reachable

@@ -16,7 +16,7 @@ npm install
 CI runs these on every pull request. Run them before you push:
 
 ```sh
-npm run format:check   # Prettier (npx prettier --write … to fix)
+npm run format:check   # Prettier (npm run format to fix)
 npm run typecheck
 npm run lint
 npm test -- --coverage # must stay at 100% statements, branches, functions and lines

@@ -56,6 +56,13 @@ function sharedValue<T>(initial: T): SharedValue<T> {
   return value as unknown as SharedValue<T>;
 }
 
+/** A read-only value `by` more than `source`, changing with it (the mock's derived value) */
+function offsetBy(source: SharedValue<number>, by: number): SharedValue<number> {
+  const value = { get: () => source.get() + by, set: () => {} };
+  listeners.set(value, listeners.get(source)!);
+  return value as unknown as SharedValue<number>;
+}
+
 const read = (v: number | SharedValue<number>) => (typeof v === 'number' ? v : v.get());
 
 /** A number, or a shared value read on each change: the mock's own update; any other read as it is at render */
@@ -156,6 +163,7 @@ export function useListScrubber<S extends readonly ListScrubberSection[] | undef
   options: UseListScrubberOptions<S> = {},
 ): UseListScrubberResult<any, S> {
   const { sections } = options;
+  const barHeight = Math.max(0, options.topBar?.height ?? 0);
   // Stable identities, like the real hook's; the handlers read the latest options
   const [values] = useState(() => ({
     listRef: { current: null } as never, // like an animated ref before the list mounts
@@ -196,17 +204,40 @@ export function useListScrubber<S extends readonly ListScrubberSection[] | undef
     }),
     [values, onScroll, onContentSizeChange, onLayout],
   );
-  const scrubberProps = useMemo(
-    () => ({ ...values, ...(sections && { sections }) }) as never,
-    [values, sections],
+  // The mock's top bar always shows in full: the pinned header sits below it and names the rows there
+  const topBar = useMemo(() => {
+    if (barHeight <= 0) return undefined;
+    const visibleHeight = sharedValue(barHeight);
+    return { height: barHeight, visibleHeight, show: () => visibleHeight.set(barHeight) };
+  }, [barHeight]);
+  const topBarStyle = useMemo(
+    () =>
+      [
+        { position: 'absolute', top: 0, left: 0, right: 0, height: barHeight },
+        {},
+      ] as UseListScrubberResult['topBarStyle'],
+    [barHeight],
   );
-  const headerProps = useMemo(() => ({ scrollY, sections: sections ?? NO_SECTIONS }), [scrollY, sections]);
+  const scrubberProps = useMemo(
+    () => ({ ...values, ...(topBar && { topBar }), ...(sections && { sections }) }) as never,
+    [values, topBar, sections],
+  );
+  const pinnedHeaderProps = useMemo(
+    () => ({
+      scrollY: topBar ? offsetBy(scrollY, barHeight) : scrollY,
+      sections: sections ?? NO_SECTIONS,
+      ...(topBar && { top: topBar.visibleHeight }),
+    }),
+    [scrollY, topBar, barHeight, sections],
+  );
   return {
     ...values,
     onScroll: onScroll as never,
+    topBar,
+    topBarStyle,
     listProps,
     scrubberProps,
-    headerProps,
+    pinnedHeaderProps,
     scrollToSection,
     scrollToOffset,
   };

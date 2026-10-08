@@ -1,6 +1,6 @@
 {
   "name": "react-native-list-scrubber",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Fast scrolling for long React Native lists: a draggable thumb with section labels (A–Z, dates…), on the UI thread with Reanimated 4 (New Architecture), and an adjustable screen-reader control.",
   "keywords": [
     "react-native",
@@ -15,7 +15,8 @@
     "reanimated",
     "gesture-handler",
     "accessibility",
-    "contacts"
+    "contacts",
+    "collapsing-header"
   ],
   "license": "MIT",
   "author": "Phil Yoon",
@@ -55,7 +56,8 @@
     "prepare": "bob build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "format:check": "prettier --check src scripts eslint.config.mjs example/src example/e2e example/web-e2e example/playwright.config.ts example/scripts README.md CHANGELOG.md CONTRIBUTING.md",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "jest",
     "example": "npm --prefix example run",
     "e2e:start": "npm --prefix example run e2e:start",
