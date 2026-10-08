@@ -231,7 +231,8 @@ describe('useListScrubber({ topBar })', () => {
   const lift = (result: Hook) =>
     act(() => {
       result.current.isDragging.set(false);
-      mockReactions.at(-1)!.react(false, true);
+      const reaction = mockReactions.at(-1)!;
+      reaction.react(reaction.prepare(), true);
     });
 
   it('slides away as the list scrolls down, comes back on a scroll up, and shows at the top', async () => {
