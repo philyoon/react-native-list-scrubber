@@ -6,6 +6,7 @@
 # First it runs e2e/setup/expo-go.yaml, which gets past the screens a fresh device can show.
 # Flows under e2e/large-text run at the largest system text size: this script sets it on the device first
 # and restores the previous size afterwards.
+# E2E_RETRIES=n runs a flow that failed again, up to n more times (CI uses 1).
 # MAESTRO_DEVICE picks the device when more than one is running: a simulator UDID or an emulator serial such as
 # emulator-5554. It's passed to Maestro (--device), and to simctl or adb.
 set -e
@@ -87,15 +88,52 @@ if ! setup_output=$(maestro_ e2e/setup/expo-go.yaml 2>&1); then
   exit 1
 fi
 
+# The flow files among the given paths (a folder stands for the flows in it)
+flow_files() {
+  for path in "$@"; do
+    if [ -d "$path" ]; then ls "$path"/*.yaml; else echo "$path"; fi
+  done
+}
+
+# Runs the given flows; with E2E_RETRIES=n, runs the ones that failed again, up to n more times. A flow that fails
+# on timing alone on a slow simulator (CI) then passes, and a real failure still fails every time.
+run() {
+  out=$(mktemp)
+  rc=$(mktemp)
+  flows="$*"
+  tries=${E2E_RETRIES:-0}
+  while :; do
+    # Maestro's output as it comes, and its exit code
+    # shellcheck disable=SC2086 # flow paths have no spaces
+    { maestro_ $flows; echo $? >"$rc"; } 2>&1 | tee "$out"
+    [ "$(cat "$rc")" = 0 ] && return 0
+    [ "$tries" -gt 0 ] || return 1
+    tries=$((tries - 1))
+    # The flows that failed, by name ("[Failed] name (…)"); a single flow's run doesn't list it
+    failed=''
+    for name in $(sed -n 's/^\[Failed\] \([^ ]*\).*/\1/p' "$out"); do
+      # shellcheck disable=SC2086
+      for file in $(flow_files $flows); do
+        [ "$(basename "$file" .yaml)" = "$name" ] && failed="$failed $file"
+      done
+    done
+    # shellcheck disable=SC2086
+    [ -n "$failed" ] || [ "$(flow_files $flows | wc -l)" -ne 1 ] || failed=$flows
+    [ -n "$failed" ] || return 1
+    echo "Running again:$failed"
+    flows=$failed
+  done
+}
+
 status=0
 if [ -n "$normal" ]; then
   # shellcheck disable=SC2086 # flow paths have no spaces
-  maestro_ $normal || { status=1; on_screen; }
+  run $normal || { status=1; on_screen; }
 fi
 if [ -n "$large" ]; then
   large_text_on
   trap large_text_off EXIT
   # shellcheck disable=SC2086
-  maestro_ $large || status=1
+  run $large || status=1
 fi
 exit $status

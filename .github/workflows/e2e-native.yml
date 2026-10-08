@@ -3,8 +3,9 @@ name: Native e2e
 # an Android emulator, in the example built as a release app of its own (scripts/e2e-build.sh): no Metro, no Expo
 # Go. Each platform builds the app once; three groups of flows then run side by side on it.
 # Caches: npm, the native builds (CocoaPods and Xcode's build folder, Gradle), Maestro, and the emulator's boot
-# snapshot. A change in JavaScript only rebuilds the app's bundle. The build caches are saved again by every run
-# (a cache key can't be overwritten, so each run's key ends in its run ID) and restored from the newest match.
+# snapshot. A change in JavaScript only rebuilds the app's bundle. The build caches (about 1.4 GB each) are saved
+# by main's runs only, so pull requests don't fill the repository's 10 GB of cache and evict the others; a cache
+# key can't be overwritten, so each save's key ends in its run ID, and a run restores the newest match.
 on:
   pull_request:
   # On main too: a pull request can only use caches saved by its own runs or by main's, so main's runs keep them
@@ -21,6 +22,10 @@ env:
   # The first start of Maestro's driver on a fresh simulator or emulator can be slow
   MAESTRO_DRIVER_STARTUP_TIMEOUT: 240000
   E2E_APP: build
+  # A flow that fails runs once more (only the flows that failed): on the slow CI simulators a flow sometimes fails
+  # on timing alone (a drag lands short, an app launch outlasts a wait) and passes the second time; a real failure
+  # fails both times. Every run's Maestro output stays in ~/.maestro/tests for the artifact.
+  E2E_RETRIES: 1
 jobs:
   ios-build:
     runs-on: macos-latest
@@ -34,19 +39,28 @@ jobs:
           cache-dependency-path: example/package-lock.json
       - run: npm --prefix example ci
       # The native build, under its native inputs: with them unchanged, Xcode rebuilds little more than the bundle
-      - uses: actions/cache@v4
+      # Under Xcode's version too: a build folder from another Xcode is no use. (ios/ and its Podfile.lock come from
+      # expo prebuild, from these two files.)
+      - run: echo "XCODE=$(xcodebuild -version | head -1 | tr -d ' ')" >> "$GITHUB_ENV"
+      - uses: actions/cache/restore@v4
         with:
-          path: |
+          path: &ios-cache |
             example/ios/Pods
             example/ios/build
             ~/Library/Caches/CocoaPods
-          key:
-            ios-build-${{ hashFiles('example/package-lock.json', 'example/app.json') }}-${{ github.run_id }}
+          key: ios-build-${{ env.XCODE }}-${{ hashFiles('example/package-lock.json', 'example/app.json') }}-
           restore-keys: |
-            ios-build-${{ hashFiles('example/package-lock.json', 'example/app.json') }}-
-            ios-build-
+            ios-build-${{ env.XCODE }}-${{ hashFiles('example/package-lock.json', 'example/app.json') }}-
+            ios-build-${{ env.XCODE }}-
       - run: NO_INSTALL=1 sh scripts/e2e-build.sh ios
         working-directory: example
+      - uses: actions/cache/save@v4
+        if: github.event_name == 'push'
+        with:
+          path: *ios-cache
+          key:
+            ios-build-${{ env.XCODE }}-${{ hashFiles('example/package-lock.json', 'example/app.json') }}-${{
+            github.run_id }}
       # A tarball keeps the app's file modes, which an artifact's zip loses
       - run:
           tar -czf ListScrubber.app.tgz -C ios/build/Build/Products/Release-iphonesimulator ListScrubber.app
@@ -109,11 +123,7 @@ jobs:
           xcrun simctl bootstatus "$MAESTRO_DEVICE" -b
           xcrun simctl install "$MAESTRO_DEVICE" ListScrubber.app
         working-directory: example
-      # Once more if it fails: on the slow CI simulator a flow sometimes fails on timing alone (a drag lands short,
-      # an app launch outlasts a wait) and passes on a rerun; a real failure fails both times. Both runs' Maestro
-      # output stays in ~/.maestro/tests for the artifact.
-      - run:
-          sh scripts/e2e.sh ios ${{ matrix.shard.flows }} || sh scripts/e2e.sh ios ${{ matrix.shard.flows }}
+      - run: sh scripts/e2e.sh ios ${{ matrix.shard.flows }}
         working-directory: example
       - uses: actions/upload-artifact@v4
         if: failure()
@@ -137,14 +147,12 @@ jobs:
           java-version: 17
       - run: npm --prefix example ci
       # Gradle's downloads and its build cache (e2e-build.sh builds with --build-cache), under the native inputs
-      - uses: actions/cache@v4
+      - uses: actions/cache/restore@v4
         with:
-          path: |
+          path: &gradle-cache |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key:
-            android-gradle-${{ hashFiles('example/package-lock.json', 'example/app.json') }}-${{ github.run_id
-            }}
+          key: android-gradle-${{ hashFiles('example/package-lock.json', 'example/app.json') }}-
           restore-keys: |
             android-gradle-${{ hashFiles('example/package-lock.json', 'example/app.json') }}-
             android-gradle-
@@ -153,6 +161,12 @@ jobs:
         env:
           # The CI emulator's architecture only
           ANDROID_ARCH: x86_64
+      - uses: actions/cache/save@v4
+        if: github.event_name == 'push'
+        with:
+          path: *gradle-cache
+          key:
+            android-gradle-${{ hashFiles('example/package-lock.json', 'example/app.json') }}-${{ github.run_id }}
       - uses: actions/upload-artifact@v4
         with:
           name: android-app
@@ -233,10 +247,10 @@ jobs:
           emulator-options:
             -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           working-directory: example
-          # Each line runs in its own shell. The flows run once more if they fail, as on iOS above
+          # Each line runs in its own shell
           script: |
             adb install -r app-release.apk
-            sh scripts/e2e.sh android ${{ matrix.shard.flows }} || sh scripts/e2e.sh android ${{ matrix.shard.flows }}
+            sh scripts/e2e.sh android ${{ matrix.shard.flows }}
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
