@@ -6,6 +6,11 @@ export interface ListScrubberMetrics {
   thumbLength: number;
   /** Idle thumb width, thin so it doesn't cover row content */
   thumbWidth: number;
+  /**
+   * Gap between the list's edge and the thumb, like a native scroll indicator's: the thumb sits in the margin
+   * most lists leave beside their rows. Its touch area is wider, reaching into the list.
+   */
+  thumbEdgeGap: number;
   /** Width while dragging, shows it's grabbed */
   thumbActiveWidth: number;
   thumbRadius: number;
@@ -46,6 +51,7 @@ export const LIST_SCRUBBER_DEFAULTS: Readonly<{
   metrics: Object.freeze({
     thumbLength: 48,
     thumbWidth: 6,
+    thumbEdgeGap: 3,
     thumbActiveWidth: 8,
     thumbRadius: 4,
     bubbleSize: 64,

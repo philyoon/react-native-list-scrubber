@@ -224,7 +224,9 @@ Optional:
   typed too.
 - `side`: `'left'` or `'right'` edge of the list, as laid out left to right. Default: `'right'`. See
   [Right-to-left layouts](#right-to-left-layouts).
-- `edgeOffset`: distance from that edge, negative to sit in a margin outside the list. Default: `0`.
+- `edgeOffset`: moves the scrubber in from that edge, or out with a negative value. Default: `0`. The thumb is
+  drawn `metrics.thumbEdgeGap` (3pt) from the edge, in the margin most lists leave beside their rows, and its
+  44pt touch area reaches into the list, so it usually needs no offset.
 - `insets`: `{ top, bottom }` space the thumb stays out of, e.g. under a pinned header or above a toolbar.
 - `enabled`: `false` hides the scrubber and its screen-reader control, keeping its state. Default: `true`.
 - `testID`: prefix of the test IDs (`<testID>` for the drag gesture, `-thumb`, `-a11y`, `-label`). Default:
@@ -253,6 +255,7 @@ component that takes the hook's result with sections:
 | --------------------------------------- | ------- | --------------------------------------------------------- |
 | `thumbLength`                           | 48      | Longer than a fingertip                                   |
 | `thumbWidth` / `thumbActiveWidth`       | 6 / 8   | Thin when idle, thicker while grabbed                     |
+| `thumbEdgeGap`                          | 3       | From the list's edge, like a native scroll indicator      |
 | `thumbRadius`                           | 4       |                                                           |
 | `bubbleSize`                            | 64      | Height and minimum width                                  |
 | `bubbleGap`                             | 40      | Keeps the bubble clear of the finger                      |

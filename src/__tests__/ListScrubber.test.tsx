@@ -41,6 +41,39 @@ it('takes size overrides and keeps the other defaults', async () => {
   expect(StyleSheet.flatten(bar.props.style)!.width).toBe(LIST_SCRUBBER_DEFAULTS.metrics.thumbWidth);
 });
 
+describe('the thumb sits at the edge of its touch area', () => {
+  const bar = () =>
+    StyleSheet.flatten(
+      (
+        screen
+          .getByTestId('list-scrubber-thumb', { includeHiddenElements: true })
+          .children.at(-1) as unknown as { props: { style: ViewStyle } }
+      ).props.style,
+    )!;
+
+  it.each(['left', 'right'] as const)(
+    'side="%s": thumbEdgeGap from the list edge, by left/right (RTL mirrors it with the rail)',
+    async (side) => {
+      await setup({ side });
+      expect(bar()).toMatchObject({ position: 'absolute', [side]: 3 });
+      expect(bar()[side === 'left' ? 'right' : 'left']).toBeUndefined();
+      // Flex alignment would flip in RTL where left/right don't (web): the touch area doesn't use it
+      expect(
+        StyleSheet.flatten(
+          screen.getByTestId('list-scrubber-thumb', { includeHiddenElements: true }).props.style,
+        ).alignItems,
+      ).toBeUndefined();
+    },
+  );
+
+  it('thumbEdgeGap moves it in; the 44pt touch area stays where it is', async () => {
+    await setup({ metrics: { thumbEdgeGap: 19 } }); // centred, as before 0.2
+    expect(bar()).toMatchObject({ right: 19 });
+    const touch = screen.getByTestId('list-scrubber-thumb', { includeHiddenElements: true });
+    expect(StyleSheet.flatten(touch.props.style)).toMatchObject({ right: 0, width: 44 });
+  });
+});
+
 it('a longer thumb shortens the travel', async () => {
   await setup({ metrics: { thumbLength: 50 } }); // travel 50
   await drag(25);
