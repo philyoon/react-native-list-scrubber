@@ -56,8 +56,18 @@ Names describe what's on screen and what it's measured from, not how it's built.
 
 - Distances say where they're measured from: `thumbEdgeGap` (from the list's edge), `bubbleGap` (from the
   thumb), `insets` (from the list's top and bottom).
-- Suffixes: `*Props` is an object to spread, `*Style` a style, `on*` a callback, `is*` a boolean, `*Ms` a
-  duration in milliseconds. Lengths are in points and carry no suffix.
+- Where React Native has a name for something, use it: `onLayout`, `testID`, `accessibilityLabel`,
+  `maxFontSizeMultiplier`, `style` and `textStyle`.
+- Suffixes: `*Props` is an object to spread, `*Style` a style, `on*` a callback, `*Ms` a duration in
+  milliseconds. Distances, sizes and offsets are in points and carry no suffix.
+- Booleans: `is*` is for state the library sets and you read (`isDragging`). Options you set are plain words,
+  as in React Native (`enabled`, `animated`, `push`).
+- What you call to make something happen is a verb (`scrollToSection`, `show`); what computes a value is named
+  for the value (`listLayout`, `sectionIndexAt`); hooks are `use*`.
+- Groups of overrides are named for what they hold and take a partial object: `colors`, `metrics`, `timing`.
+- Exported types start with `ListScrubber` (`ListScrubberSection`), except a component's props
+  (`<Component>Props`) and the hook's `UseListScrubberOptions` and `UseListScrubberResult`. Constants are
+  `UPPER_SNAKE_CASE` (`LIST_SCRUBBER_DEFAULTS`).
 - The same thing has the same name everywhere: in the props, the hook's result, the types and the docs.
 
 ## 7. Types follow your data
