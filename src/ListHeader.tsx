@@ -23,9 +23,14 @@ interface Content {
  * The list's header: a spacer as tall as what's drawn over the list's top (a top bar, a pinned header), then
  * your own header below it. One component for the life of the hook: a list remounts its header whenever the
  * component changes, so the latest spacer and header come from a store instead. Development builds warn when
- * there's a spacer to draw but it never is, e.g. a `ListHeaderComponent` given to the list replaced it.
+ * there's a spacer to draw but it never is, e.g. a `ListHeaderComponent` given to the list replaced it,
+ * unless `warnIfUndrawn` is false (the Jest mock: tests don't lay views out).
  */
-export function useListHeader(spacerHeight: number, own: ListHeaderContent | undefined) {
+export function useListHeader(
+  spacerHeight: number,
+  own: ListHeaderContent | undefined,
+  warnIfUndrawn = true,
+) {
   const [store] = useState(() => createStore({ spacerHeight, own }));
   useLayoutEffect(() => store.set({ spacerHeight, own }), [store, spacerHeight, own]);
   const [ListHeader] = useState(() => {
@@ -47,7 +52,7 @@ export function useListHeader(spacerHeight: number, own: ListHeaderContent | und
     return ListHeader;
   });
   useEffect(() => {
-    if (!__DEV__ || spacerHeight <= 0) return;
+    if (!__DEV__ || !warnIfUndrawn || spacerHeight <= 0) return;
     const timer = setTimeout(() => {
       if (store.drawn) return;
       warnOnce(
@@ -59,7 +64,7 @@ export function useListHeader(spacerHeight: number, own: ListHeaderContent | und
       );
     }, UNMEASURED_AFTER_MS);
     return () => clearTimeout(timer);
-  }, [store, spacerHeight]);
+  }, [store, spacerHeight, warnIfUndrawn]);
   return ListHeader;
 }
 

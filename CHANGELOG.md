@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Fixed: in the Jest mock (`react-native-list-scrubber/jest`), the list header drew the spacer for a top bar
+  or pinned header one render late: right after their height changed it still had the old one, or none from a
+  height of 0. It now follows in the same render, like the real hook's. Fixes #75.
 - New: `scrubber.topBar.hide()`, to hide the top bar from code, beside `show()`. Near the top of the list the
   list scrolls down by what shows instead, and the bar follows.
 - New: `topBar: { onVisibilityChange }`, called on the JS thread with `'shown'` or `'hidden'` when the bar
