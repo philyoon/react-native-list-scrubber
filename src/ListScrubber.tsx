@@ -58,7 +58,7 @@ interface ListScrubberBaseProps<S extends ListScrubberSection> {
    * don't flip this for RTL there. On web, left/right aren't mirrored: pass 'left' for an RTL page.
    */
   side?: 'left' | 'right';
-  /** Distance from that edge (negative to sit in a margin outside the list) */
+  /** Moves the scrubber (the thumb and its touch area) in from that edge; negative to sit outside the list */
   edgeOffset?: number;
   /** Space at the top and bottom of the list the thumb stays out of (e.g. a pinned header or a toolbar) */
   insets?: { top?: number; bottom?: number };
@@ -337,6 +337,10 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
           )}
           <View
             style={{
+              position: 'absolute',
+              top: 0,
+              // At the edge of the touch area, by left/right like the bubble (flex alignment flips in RTL)
+              [side]: m.thumbEdgeGap,
               width: thumbWidth,
               height: m.thumbLength,
               borderRadius: m.thumbRadius,
@@ -382,8 +386,5 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     width: TOUCH_WIDTH,
-    // The thumb is centred in the touch area
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

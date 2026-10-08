@@ -5,15 +5,16 @@ import { I18nManager, useWindowDimensions, type ViewStyle } from 'react-native';
 export const E2E = process.env.EXPO_PUBLIC_E2E === '1';
 export const E2E_RTL = E2E && process.env.EXPO_PUBLIC_E2E_RTL === '1';
 
-/** Half the scrubber's 44pt touch area: the thumb's centre is this far in from the card's edge */
+/** Half the scrubber's 44pt touch area: its centre is this far in from the card's edge (the thumb itself is drawn nearer the edge) */
 const THUMB_HALF = 22;
 
 /**
  * Maestro can't target the thumb (it is hidden from screen readers, and Maestro finds elements through
  * the accessibility tree) and its swipe points must be fixed screen percentages. So in e2e mode the list
  * card is pinned to fixed percentages of the screen, and the flows' points land on the thumb on any
- * phone, in portrait or landscape: its centre is at x 91% (9% in right-to-left layouts, where it moves to
- * the left edge), and y 28% / 95% are inside the 48pt thumb at the top / bottom of the card.
+ * phone, in portrait or landscape: the centre of its 44pt touch area is at x 91% (9% in right-to-left
+ * layouts, where it moves to the left edge), and y 28% / 95% are inside the 48pt thumb at the top / bottom
+ * of the card.
  * Checked on iPhone SE, 17 Pro and 17 Pro Max, and a Pixel 8 emulator.
  * Keep the flows' points in step with these numbers.
  */

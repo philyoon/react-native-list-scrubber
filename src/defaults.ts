@@ -6,12 +6,20 @@ export interface ListScrubberMetrics {
   thumbLength: number;
   /** Idle thumb width, thin so it doesn't cover row content */
   thumbWidth: number;
+  /**
+   * Gap between the list's edge and the thumb, like a native scroll indicator's: the thumb sits in the margin
+   * most lists leave beside their rows. Its touch area is wider, reaching into the list.
+   */
+  thumbEdgeGap: number;
   /** Width while dragging, shows it's grabbed */
   thumbActiveWidth: number;
   thumbRadius: number;
   /** Bubble height and minimum width, big enough to read a letter beside the finger */
   bubbleSize: number;
-  /** Gap between the thumb's touch area and the bubble, so the finger doesn't cover it */
+  /**
+   * Gap between the thumb and the bubble, wide enough that the finger doesn't cover it: the default puts the
+   * bubble beyond the thumb's 44pt touch area, wherever in it the finger is
+   */
   bubbleGap: number;
   bubbleRadius: number;
   bubblePadding: number;
@@ -46,10 +54,11 @@ export const LIST_SCRUBBER_DEFAULTS: Readonly<{
   metrics: Object.freeze({
     thumbLength: 48,
     thumbWidth: 6,
+    thumbEdgeGap: 3,
     thumbActiveWidth: 8,
     thumbRadius: 4,
     bubbleSize: 64,
-    bubbleGap: 40,
+    bubbleGap: 57,
     bubbleRadius: 16,
     bubblePadding: 16,
     bubbleFontSize: 24,
