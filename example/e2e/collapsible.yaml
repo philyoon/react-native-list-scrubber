@@ -88,11 +88,19 @@ env:
           end: 50%, 25%
           duration: 1500
       - waitForAnimationToEnd
-- runFlow: subflows/drag-to-end.yaml
 # Rows of the last section, as the other flows check: on iPhones with a home indicator the drag's touch can
 # end in the strip at the bottom of the screen a little before the end of the list
-- assertVisible: '.* Zel.*'
+- retry:
+    maxRetries: 1
+    commands:
+      - runFlow: subflows/drag-to-end.yaml
+      - assertVisible: '.* Zel.*'
 # Back to the top: the header is shown again
-- runFlow: subflows/drag-to-start.yaml
-- assertVisible: 3,000 people
-- assertVisible: Ada Abby
+- retry:
+    maxRetries: 1
+    commands:
+      - runFlow: subflows/drag-to-start.yaml
+      - assertVisible: Ada Abby
+- assertVisible:
+    text: 3,000 people
+    below: A top bar that slides away as you scroll
