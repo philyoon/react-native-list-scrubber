@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { StyleSheet, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
 import type { ListScrubberMetrics } from './defaults';
+import type { Track } from './useScrubGesture';
 import type { ListScrubberColors } from './types';
 
 /**
@@ -11,7 +12,8 @@ import type { ListScrubberColors } from './types';
 export function Bubble({
   metrics: m,
   colors,
-  railHeight,
+  track,
+  dragTrack,
   side,
   dragging,
   dragTop,
@@ -21,8 +23,9 @@ export function Bubble({
 }: {
   metrics: ListScrubberMetrics;
   colors: ListScrubberColors;
-  /** The bubble stays inside this height */
-  railHeight: number;
+  /** The thumb's track, and the one its drag started with: the bubble stays inside it */
+  track: SharedValue<Track>;
+  dragTrack: SharedValue<Track>;
   /** The thumb's edge: the bubble goes on the other side of it */
   side: 'left' | 'right';
   dragging: SharedValue<boolean>;
@@ -32,9 +35,11 @@ export function Bubble({
   children: ReactNode;
 }) {
   const shift = useAnimatedStyle(() => {
-    const top = dragging.get() ? dragTop.get() : 0;
+    const drag = dragging.get();
+    const top = drag ? dragTop.get() : 0;
     const overhang = (m.bubbleSize - m.thumbLength) / 2;
-    const y = Math.max(0, overhang - top) - Math.max(0, top + m.thumbLength + overhang - railHeight);
+    const length = (drag ? dragTrack : track).get().travel + m.thumbLength;
+    const y = Math.max(0, overhang - top) - Math.max(0, top + m.thumbLength + overhang - length);
     return { transform: [{ translateY: y }], ...(shown && { opacity: shown.get() ? 1 : 0 }) };
   });
   return (

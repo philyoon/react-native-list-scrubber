@@ -82,8 +82,8 @@ const scrubber = useListScrubber({ onLayout, onContentSizeChange, onScroll: mySc
 ```
 
 `onScroll` there is a worklet (it runs on the UI thread); keep its identity stable. The hook also returns the
-pieces `listProps` and `scrubberProps` are made of (`listRef`, `scrollY`, `onScroll`, and the `contentHeight`
-and `viewportHeight` shared values) for wiring them by hand; all of these are public API.
+pieces `listProps` and `scrubberProps` are made of (`listRef`, `scrollY`, `onScroll`, and the `contentHeight`,
+`viewportHeight` and `isDragging` shared values) for wiring them by hand; all of these are public API.
 
 Colours, sizes and timings have neutral defaults; override any of them (see [Props](#props)). You pass the
 text and haptics.
@@ -179,6 +179,45 @@ Both scroll on the UI thread without animating by default: a long animated scrol
 settles. The screen-reader value follows on its own. To jump by label, find the index first, e.g.
 `sections.findIndex((s) => s.label === 'M')`.
 
+### A header that slides away
+
+A screen header drawn over the list can slide away as the list scrolls down and come back on a scroll up,
+moved only by a transform. Start the list with a spacer as tall as the header (and a pinned header, if any) so
+row offsets never change, and keep how much of the header shows in a shared value. Then:
+
+- Pass it as the scrubber's `insets.top`. A shared value inset moves the thumb's track on the UI thread; a
+  drag keeps the track it started on, so the thumb stays under the finger.
+- Move the `PinnedSectionHeader` below the header, and give it `scrollY` plus that height: it names the
+  section of the rows it covers.
+- Read `scrubber.isDragging` in the worklet that moves the header, to keep it hidden during a drag.
+- To scroll a section in below the header: `scrubber.scrollToOffset(section.offset - shown.get())`.
+
+```tsx
+const scrubber = useListScrubber({ sections }); // listLayout(…, { listHeaderHeight: BAR + HEADER })
+const hidden = useSharedValue(0); // how much of the BAR-tall header is hidden
+useAnimatedReaction(
+  () => Math.max(0, scrubber.scrollY.get()),
+  (y, prev) => {
+    if (scrubber.isDragging.get()) hidden.set(Math.min(BAR, y));
+    else if (prev !== null) hidden.set(Math.min(Math.max(hidden.get() + y - prev, 0), BAR, y));
+  },
+);
+const shown = useDerivedValue(() => BAR - hidden.get());
+const headerScrollY = useDerivedValue(() => scrubber.scrollY.get() + shown.get());
+const barStyle = useAnimatedStyle(() => ({ transform: [{ translateY: -hidden.get() }] }));
+const pinnedStyle = useAnimatedStyle(() => ({ transform: [{ translateY: shown.get() }] }));
+
+<Animated.FlatList {...scrubber.listProps} ListHeaderComponent={<View style={{ height: BAR + HEADER }} />} … />
+<Animated.View style={[{ position: 'absolute', top: 0, left: 0, right: 0 }, pinnedStyle]}>
+  <PinnedSectionHeader scrollY={headerScrollY} sections={sections} height={HEADER} push={false} />
+</Animated.View>
+<Animated.View style={[{ position: 'absolute', top: 0, left: 0, right: 0, height: BAR }, barStyle]}>…</Animated.View>
+<ListScrubber {...scrubber.scrubberProps} insets={{ top: shown }} accessibilityLabel="Scroll position" />
+```
+
+The example app's Collapsible demo is this, complete. The screen-reader value still describes the top of the
+list, under the header.
+
 ### Labels that aren't sections
 
 `labelAt` computes any label on the JS thread. It can lag a frame or two behind a fast drag, so prefer
@@ -228,6 +267,10 @@ Optional:
   drawn `metrics.thumbEdgeGap` (3pt) from the edge, in the margin most lists leave beside their rows, and its
   44pt touch area reaches into the list, so it usually needs no offset.
 - `insets`: `{ top, bottom }` space the thumb stays out of, e.g. under a pinned header or above a toolbar.
+  Numbers, or shared values for space that moves (see
+  [A header that slides away](#a-header-that-slides-away)).
+- `isDragging`: a shared value the scrubber sets while its thumb is dragged (`scrubberProps` passes the
+  hook's).
 - `enabled`: `false` hides the scrubber and its screen-reader control, keeping its state. Default: `true`.
 - `testID`: prefix of the test IDs (`<testID>` for the drag gesture, `-thumb`, `-a11y`, `-label`). Default:
   `list-scrubber`.
@@ -401,8 +444,8 @@ it in the browser instead (Expo web); CI builds that web bundle on every push.
 [Maestro](https://maestro.dev) flows in `example/e2e` drive the example in Expo Go on an iOS simulator or an
 Android emulator: dragging the thumb to the end and back on each list type, stopping part way in the right
 section, touches passing through the hidden thumb, the screen-reader control, and jumping from the A–Z index;
-and the same drags in a right-to-left layout, in landscape, and at the largest system text size. They run on
-iPhone SE, iPhone 17 Pro, iPhone 17 Pro Max and a Pixel 8 emulator.
+a header that slides away; and the same drags in a right-to-left layout, in landscape, and at the largest
+system text size. They run on iPhone SE, iPhone 17 Pro, iPhone 17 Pro Max and a Pixel 8 emulator.
 
 From the repo root, with Expo Go installed on the simulator or emulator, start Metro in e2e mode and keep it
 running:

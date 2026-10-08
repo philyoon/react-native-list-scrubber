@@ -195,6 +195,8 @@ describe('useListScrubber', () => {
     const first = result.current;
     expect(first.scrubberProps.sections).toBe(sections);
     expect(first.headerProps).toEqual({ scrollY: first.scrollY, sections });
+    expect(first.scrubberProps.isDragging).toBe(first.isDragging);
+    expect(first.isDragging.get()).toBe(false);
     await rerender({});
     expect(result.current.listProps).toBe(first.listProps);
     expect(result.current.scrubberProps).toBe(first.scrubberProps);

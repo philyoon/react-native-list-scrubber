@@ -1,0 +1,70 @@
+# Collapsible: a header over the list slides away as it scrolls down and comes back on a scroll up. The
+# thumb's track starts below whatever is left of it (an animated insets.top), and the header is shown again at
+# the top of the list. (The pinned letter header is hidden from screen readers, so Maestro can't read it on
+# iOS: the flow checks the scrubber's screen-reader value and the rows instead. The web tests check the pinned
+# header's position.)
+# Expo Go: host.exp.Exponent on iOS; npm run e2e:android sets APP_ID=host.exp.exponent
+appId: ${APP_ID}
+env:
+  APP_ID: host.exp.Exponent
+---
+- runFlow:
+    file: subflows/open.yaml
+    env:
+      DEMO: Collapsible
+- assertVisible: 3,000 people
+- assertVisible: Ada Abby
+# Scroll past the header (120pt, under 30% of any phone's height): it slides away, and the thumb's track
+# starts at the top of the list again, where the drags below grab it (points: see src/e2e.ts)
+- swipe:
+    start: 50%, 70%
+    end: 50%, 40%
+    duration: 1500 # slow: no fling
+- waitForAnimationToEnd
+# Part way down: the screen-reader value names a section in the middle, and its rows are on screen
+- swipe:
+    start: 50%, 60%
+    end: 50%, 56%
+    duration: 800
+- swipe:
+    start: 91%, 28%
+    end: 91%, 45%
+    duration: 800
+- waitForAnimationToEnd
+- assertNotVisible: Ada Abby
+# The value follows once the thumb hides (5 s in e2e mode); Android reads the label with it
+- extendedWaitUntil:
+    visible:
+      id: list-scrubber-a11y
+      text: '(.*\W)?[B-Y]'
+    timeout: 10000
+- copyTextFrom:
+    id: list-scrubber-a11y
+- assertVisible: '.* ${maestro.copiedText.slice(-1)}.*'
+# A scroll up brings the header back
+- swipe:
+    start: 50%, 45%
+    end: 50%, 75%
+    duration: 1500
+- waitForAnimationToEnd
+- assertVisible: 3,000 people
+- assertNotVisible: Ada Abby
+# The drag to the end grabs the thumb at the top of its track, so start again from the top of the list, with
+# the header scrolled away: the last section is still reachable
+- runFlow:
+    file: subflows/open.yaml
+    env:
+      DEMO: Collapsible
+- swipe:
+    start: 50%, 70%
+    end: 50%, 40%
+    duration: 1500
+- waitForAnimationToEnd
+- runFlow: subflows/drag-to-end.yaml
+# Rows of the last section, as the other flows check: on iPhones with a home indicator the drag's touch can
+# end in the strip at the bottom of the screen a little before the end of the list
+- assertVisible: '.* Zel.*'
+# Back to the top: the header is shown again
+- runFlow: subflows/drag-to-start.yaml
+- assertVisible: 3,000 people
+- assertVisible: Ada Abby

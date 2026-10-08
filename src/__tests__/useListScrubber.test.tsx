@@ -14,7 +14,9 @@ describe('useListScrubber', () => {
     expect(result.current.scrubberProps).toMatchObject({
       viewportHeight: result.current.viewportHeight,
       contentHeight: result.current.contentHeight,
+      isDragging: result.current.isDragging, // the scrubber sets it; worklets can read it
     });
+    expect(result.current.isDragging.get()).toBe(false);
     expect(result.current.listProps.scrollEventThrottle).toBe(16);
   });
 

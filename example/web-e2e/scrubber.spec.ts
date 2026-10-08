@@ -131,3 +131,61 @@ test('the screen-reader control works from the keyboard', async ({ page }) => {
   await expect(page.getByText('Ada Abby')).toBeInViewport();
   await expect(control).toHaveAttribute('aria-valuetext', 'A');
 });
+
+test('a collapsible header: the thumb, the bubble and the pinned header follow it', async ({ page }) => {
+  await open(page, 'Collapsible');
+  const bar = page.getByTestId('collapsible-header');
+  const pinned = page.getByTestId('list-scrubber-pinned-header');
+  const box = async (locator: ReturnType<Page['getByTestId']>) => (await locator.boundingBox())!;
+  /** The letter of the contact row just below the pinned header: what that header should name */
+  const rowLetter = async () => {
+    const p = await box(pinned);
+    const name = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.textContent ?? '', {
+      x: page.viewportSize()!.width / 2,
+      y: p.y + p.height + 20,
+    });
+    return name.trim().split(' ').at(-1)![0];
+  };
+
+  // Scrolled a little: the header is partly hidden, and the thumb starts below what's left of it
+  const thumb = await showThumb(page);
+  const shown = await box(bar);
+  expect(shown.y + shown.height).toBeGreaterThan((await box(page.getByTestId('list-scrubber-a11y'))).y);
+  expect(thumb.y - 24).toBeGreaterThanOrEqual(shown.y + shown.height - 1);
+  await expect(header(page)).toHaveValue((await rowLetter())!);
+
+  // A drag hides the header, and the bubble, the pinned header and the rows agree
+  await grab(page, thumb, thumb.y + 300);
+  const b = await bubble(page);
+  await page.mouse.up();
+  const hidden = await box(bar);
+  expect(hidden.y + hidden.height).toBeLessThanOrEqual(
+    (await box(page.getByTestId('list-scrubber-a11y'))).y + 1,
+  );
+  await expect(header(page)).toHaveValue(b.label);
+  await expect(header(page)).toHaveValue((await rowLetter())!);
+
+  // A short scroll up brings the header back; the pinned header moves below it and still names the rows it covers
+  await page.mouse.move(page.viewportSize()!.width / 2, page.viewportSize()!.height / 2); // over the rows
+  await page.mouse.wheel(0, -200);
+  await expect.poll(async () => (await box(pinned)).y).toBeGreaterThan(hidden.y + hidden.height + 100);
+  await expect(header(page)).toHaveValue((await rowLetter())!);
+
+  // The last section is still reachable
+  const again = (await page.getByTestId('list-scrubber-thumb').boundingBox())!;
+  await grab(
+    page,
+    { x: again.x + again.width / 2, y: again.y + again.height / 2 },
+    page.viewportSize()!.height,
+  );
+  await page.mouse.up();
+  await expect(header(page)).toHaveValue('Z');
+
+  // Dragged back to the top, the header is shown again
+  const end = (await page.getByTestId('list-scrubber-thumb').boundingBox())!;
+  await grab(page, { x: end.x + end.width / 2, y: end.y + end.height / 2 }, 0);
+  await page.mouse.up();
+  await expect(page.getByText('3,000 people')).toBeInViewport();
+  await expect(page.getByText('Ada Abby')).toBeInViewport();
+  await expect(header(page)).toHaveValue('A');
+});

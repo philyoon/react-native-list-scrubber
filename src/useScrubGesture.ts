@@ -12,9 +12,17 @@ import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
 import { useLatest } from './useLatest';
 import { clamp, labelPosition, sectionIndexAt } from './math';
 
+/** Where the thumb's track starts in the rail (pt, moved by animated insets) and how far the thumb can travel along it */
+export interface Track {
+  top: number;
+  travel: number;
+}
+
 /**
- * The drag: maps the distance the thumb can move (`travel`) onto the list's scroll range and scrolls it, all on the
- * UI thread. With section `offsets` it also picks the section under the finger (`sectionIdx`).
+ * The drag: maps the distance the thumb can move (the track's `travel`) onto the list's scroll range and scrolls
+ * it, all on the UI thread. With section `offsets` it also picks the section under the finger (`sectionIdx`).
+ * A drag keeps the track it started with (`dragTrack`), so the thumb stays under the finger even if animated
+ * insets move meanwhile.
  * The JS callbacks must be stable (useLatest): the gesture is rebuilt only when its numbers change.
  */
 export function useScrubGesture({
@@ -22,7 +30,8 @@ export function useScrubGesture({
   scrollY,
   opacity,
   dragging,
-  travel,
+  track,
+  maxTravel,
   maxScroll,
   contentHeight,
   viewportHeight,
@@ -40,8 +49,10 @@ export function useScrubGesture({
   scrollY: SharedValue<number>;
   opacity: SharedValue<number>;
   dragging: SharedValue<boolean>;
-  /** How far the thumb travels (pt) */
-  travel: number;
+  /** The thumb's track now (UI thread) */
+  track: SharedValue<Track>;
+  /** How far the thumb travels without animated insets (pt): no drag without room */
+  maxTravel: number;
   maxScroll: number;
   contentHeight: number;
   viewportHeight: number;
@@ -58,6 +69,8 @@ export function useScrubGesture({
   onSection?: (index: number) => void;
 }) {
   const dragTop = useSharedValue(0);
+  /** The track when the drag began */
+  const dragTrack = useSharedValue<Track>({ top: 0, travel: 0 });
   const startTop = useSharedValue(0);
   /** Section under the finger (UI thread), -1 before the first drag */
   const sectionIdx = useSharedValue(-1);
@@ -81,14 +94,16 @@ export function useScrubGesture({
     () =>
       Gesture.Pan()
         .withTestId(testID)
-        .enabled(enabled && travel > 0 && maxScroll > 0)
+        .enabled(enabled && maxTravel > 0 && maxScroll > 0)
         .minDistance(0)
         .onBegin(() => {
+          const { travel } = track.get();
+          dragTrack.set(track.get());
           dragging.set(true);
           startTop.set(clamp((scrollY.get() / maxScroll) * travel, 0, travel));
           dragTop.set(startTop.get());
           if (offsets.length) {
-            const y = labelPosition((startTop.get() / travel) * maxScroll, contentHeight, viewportHeight);
+            const y = labelPosition(clamp(scrollY.get(), 0, maxScroll), contentHeight, viewportHeight);
             sectionIdx.set(sectionIndexAt(offsets, y));
           }
           offsetWaiting.set(false);
@@ -96,6 +111,8 @@ export function useScrubGesture({
           scheduleOnRN(onBegin);
         })
         .onUpdate((e) => {
+          const { travel } = dragTrack.get();
+          if (travel <= 0) return; // animated insets cover the whole rail: nowhere to drag
           const top = clamp(startTop.get() + e.translationY, 0, travel);
           dragTop.set(top);
           const offset = (top / travel) * maxScroll;
@@ -126,9 +143,11 @@ export function useScrubGesture({
       opacity,
       dragging,
       dragTop,
+      dragTrack,
       startTop,
       sectionIdx,
-      travel,
+      track,
+      maxTravel,
       maxScroll,
       contentHeight,
       viewportHeight,
@@ -148,7 +167,7 @@ export function useScrubGesture({
     ],
   );
 
-  return { pan, dragTop, sectionIdx };
+  return { pan, dragTop, dragTrack, sectionIdx };
 }
 
 /** JS finished one onDragOffset call: send the newest offset if frames came in meanwhile, else stand by */
