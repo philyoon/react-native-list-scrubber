@@ -176,9 +176,9 @@ test('a collapsible header: the thumb, the bubble and the pinned header follow i
   await expect.poll(async () => (await box(pinned)).y).toBeGreaterThan(top + 100);
   await expect(header(page)).toHaveValue((await rowLetter())!);
 
-  // Hidden again, then dragged back to the top: it stays hidden while the finger is down, and the drag stops at the
-  // first row, not the blank space the hidden bar leaves above it. When the finger lifts the bar slides in, and the
-  // list goes back to the very top with it
+  // Hidden again, then dragged back to the top: it stays hidden while the finger is down, and the drag stops
+  // at the first row, not the blank space the hidden bar leaves above it. When the finger lifts the bar
+  // slides in, and the list goes back to the very top with it
   await page.mouse.move(rows.x, rows.y);
   await page.mouse.wheel(0, 400);
   await expect.poll(async () => (await box(pinned)).y).toBeLessThanOrEqual(top + 1);

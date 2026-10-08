@@ -306,9 +306,10 @@ function LegendListDemo() {
 /** The top bar's height */
 const BAR = 120;
 
-// A top bar (title, count, search field) over the list that slides away as it scrolls down and comes back on a
-// scroll up: useListScrubber's `topBar`. The list starts with a spacer as tall as the bar and the pinned letter
-// header, so row offsets never change; scrubberProps and pinnedHeaderProps keep both below the bar's visible part.
+// A top bar (title, count, search field) over the list that slides away as it scrolls down and comes back on
+// a scroll up: useListScrubber's `topBar`. The list starts with a spacer as tall as the bar and the pinned
+// letter header, so row offsets never change; scrubberProps and pinnedHeaderProps keep both below
+// the bar's visible part.
 function CollapsibleDemo() {
   const colors = useColors();
   const { sections, getItemLayout } = useMemo(

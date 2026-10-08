@@ -69,8 +69,8 @@ interface ListScrubberBaseProps<S extends ListScrubberSection> {
   insets?: { top?: number; bottom?: number };
   /**
    * A bar over the top of the list that slides away as it scrolls (`useListScrubber`'s `topBar`, which
-   * `scrubberProps` passes): the thumb's track starts below its visible part, and reaches the top of the list's
-   * rows rather than the space a hidden bar leaves above them. A drag keeps the track it started with.
+   * `scrubberProps` passes): the thumb's track starts below its visible part, and reaches the top of the
+   * list's rows rather than the space a hidden bar leaves above them. A drag keeps the track it started with.
    */
   topBar?: ListScrubberTopBar;
   /**
@@ -212,8 +212,9 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
   const maxTravel = Math.max(0, railHeight - m.thumbLength);
   const maxScroll = Math.max(0, contentHeight - viewportHeight);
   /**
-   * The thumb's track now (UI thread, so a top bar moves it without a render): below the visible part of the top bar,
-   * and from the offset where the rows come out from under it: the space a hidden bar leaves above them is skipped
+   * The thumb's track now (UI thread, so a top bar moves it without a render): below the visible part of the
+   * top bar, and from the offset where the rows come out from under it: the space a hidden bar leaves
+   * above them is skipped
    */
   const track = useDerivedValue(() => {
     const shown = topBar ? clamp(topBar.visibleHeight.get(), 0, railHeight) : 0;

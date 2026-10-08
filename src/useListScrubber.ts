@@ -23,15 +23,16 @@ import { useWarnIfUnmeasured } from './validate';
 
 export interface UseListScrubberOptions<S extends readonly ListScrubberSection[] | undefined = undefined> {
   /**
-   * The list's labelled sections (ascending offsets). Given here, `scrubberProps` and `pinnedHeaderProps` carry
-   * them, so the scrubber and a pinned header always read the same ones.
+   * The list's labelled sections (ascending offsets). Given here, `scrubberProps` and `pinnedHeaderProps`
+   * carry them, so the scrubber and a pinned header always read the same ones.
    */
   sections?: S;
   /**
    * A bar over the top of the list (a title, a search field…) that slides away as the list scrolls down and
-   * comes back on a scroll up. Draw it with `topBarStyle`, and start the list with a spacer as tall as the bar
-   * (plus a pinned header, if any). `scrubberProps` and `pinnedHeaderProps` then keep the scrubber and the pinned
-   * header below it. During a thumb drag it stays as it was, and it slides back in when the finger lifts.
+   * comes back on a scroll up. Draw it with `topBarStyle`, and start the list with a spacer as tall as the
+   * bar (plus a pinned header, if any). `scrubberProps` and `pinnedHeaderProps` then keep the scrubber and
+   * the pinned header below it. During a thumb drag it stays as it was, and it slides back in when
+   * the finger lifts.
    */
   topBar?: { height: number };
   // The list's own handlers, called after the scrubber's (listProps sets these props on the list)
@@ -95,9 +96,10 @@ export function useListScrubber<
   const onScroll = useAnimatedScrollHandler(
     (e) => {
       const y = e.contentOffset.y;
-      // The top bar follows the scroll by as much as it moves, up or down, within its height, and shows at the
-      // very top. Pull-to-refresh and iOS's bounce (negative offsets) don't move it. During a drag it stays as it
-      // was (big jumps would show and hide it); while it slides back in, the drag's last scroll mustn't stop it
+      // The top bar follows the scroll by as much as it moves, up or down, within its height, and shows at
+      // the very top. Pull-to-refresh and iOS's bounce (negative offsets) don't move it. During a drag it
+      // stays as it was (big jumps would show and hide it); while it slides back in,
+      // the drag's last scroll mustn't stop it
       if (barHeight > 0 && !barPinned.get() && !isDragging.get() && !barRevealing.get()) {
         const now = Math.max(0, y);
         const delta = now - Math.max(0, scrollY.get());
@@ -108,8 +110,9 @@ export function useListScrubber<
     },
     [userOnScroll, barHeight],
   );
-  // When the finger lifts from the thumb the top bar slides back in. A drag that ended at the top of the thumb's
-  // track is at the first row, below the space the hidden bar left: the list scrolls back to the top with it
+  // When the finger lifts from the thumb the top bar slides back in. A drag that ended at the top of the
+  // thumb's track is at the first row, below the space the hidden bar left: the list scrolls back
+  // to the top with it
   useAnimatedReaction(
     () => isDragging.get(),
     (dragging, was) => {
@@ -234,7 +237,9 @@ function scrollToClamped(
   scrollTo(listRef, 0, clamp(offset, 0, maxScroll), animated);
 }
 
-/** Whether a screen reader (VoiceOver, TalkBack) is on, followed as it changes; false while `watch` is false */
+/**
+ * Whether a screen reader (VoiceOver, TalkBack) is on, followed as it changes; false while `watch` is false
+ */
 function useScreenReaderEnabled(watch: boolean): boolean {
   const [enabled, setEnabled] = useState(false);
   useEffect(() => {
@@ -302,13 +307,13 @@ export interface UseListScrubberResult<
   isDragging: SharedValue<boolean>;
   /**
    * With the `topBar` option: the bar's height, `visibleHeight` (how much of it is on screen, e.g. to bring a
-   * section to just below it with `scrollToOffset(offset - visibleHeight.get())`), and `show()`, which slides it
-   * back in (e.g. when its search field gets focus)
+   * section to just below it with `scrollToOffset(offset - visibleHeight.get())`), and `show()`, which slides
+   * it back in (e.g. when its search field gets focus)
    */
   topBar: (ListScrubberTopBar & { show: () => void }) | undefined;
   /**
-   * Style for the top bar's view (an Animated.View): over the top of the list, as tall as the bar, sliding with
-   * the scroll. Add your own background and contents. Without the `topBar` option it isn't needed.
+   * Style for the top bar's view (an Animated.View): over the top of the list, as tall as the bar, sliding
+   * with the scroll. Add your own background and contents. Without the `topBar` option it isn't needed.
    */
   topBarStyle: [ViewStyle, ReturnType<typeof useAnimatedStyle<ViewStyle>>];
   /** Spread on the list */
