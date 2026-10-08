@@ -16,9 +16,9 @@ labels beside your finger.
   the next one pushes it out, like iOS Contacts. `listLayout` computes the sections and the list's
   `getItemLayout` from the same row heights, so the two can't disagree.
 - **A top bar that slides away.** One option, `topBar`, gives the list a title or search bar that hides as you
-  scroll down and comes back on a scroll up, like Android's collapsing app bars. The scrubber and the pinned
-  header stay below it, and a thumb drag doesn't make it jump. See
-  [A top bar that slides away](#a-top-bar-that-slides-away).
+  scroll down and comes back on a scroll up. The scrubber, the pinned header and the bar move as one: the bar
+  stays put while you drag the thumb, the drag never uncovers the space it leaves, and it slides back in when
+  you let go. See [A top bar that slides away](#a-top-bar-that-slides-away).
 - **Accessible by default.** An adjustable "Scroll position" control is always present: VoiceOver and TalkBack
   users swipe up or down to step from section to section and hear its label. Labels follow the system text
   size up to 1.5×.
