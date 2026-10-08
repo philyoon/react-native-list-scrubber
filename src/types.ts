@@ -13,6 +13,18 @@ export interface ListScrubberTopBar {
   isFixed: SharedValue<boolean>;
 }
 
+/**
+ * A list's layout, as `listLayout` and `sectionListLayout` give it: pass it to `useListScrubber`'s `layout`.
+ * Its offsets count from the top of your content; the hook places it below a top bar or pinned header.
+ */
+export interface ListScrubberLayout<S extends ListScrubberSection = ListScrubberSection> {
+  sections: S[];
+  /** For FlatList and SectionList (`flatListProps` and `sectionListProps` carry it) */
+  getItemLayout: (data: unknown, index: number) => { length: number; offset: number; index: number };
+  /** The list draws section headers of its own (a SectionList's): a pinned header sits over them */
+  sectionHeaders: boolean;
+}
+
 /** A labelled section start, e.g. `{ offset: 0, label: 'A' }`. */
 export interface ListScrubberSection {
   /**

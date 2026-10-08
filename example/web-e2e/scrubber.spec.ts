@@ -147,11 +147,16 @@ test('a collapsible header: the thumb, the bubble and the pinned header follow i
     return name.trim().split(' ').at(-1)![0];
   };
 
-  // Scrolled a little: the header is partly hidden, and the thumb starts below what's left of it
+  // The top of the list: where the header is when it shows in full
+  const top = (await box(bar)).y;
+
+  // Scrolled a little: the header is partly hidden, the pinned header sits right below what's left of it,
+  // and the thumb starts below both
   const thumb = await showThumb(page);
   const shown = await box(bar);
-  expect(shown.y + shown.height).toBeGreaterThan((await box(page.getByTestId('list-scrubber-a11y'))).y);
-  expect(thumb.y - 24).toBeGreaterThanOrEqual(shown.y + shown.height - 1);
+  const below = await box(pinned);
+  expect(below.y).toBeCloseTo(shown.y + shown.height, 0);
+  expect(thumb.y - 24).toBeGreaterThanOrEqual(below.y + below.height - 1);
   await expect(header(page)).toHaveValue((await rowLetter())!);
 
   // During a drag the header stays where it was (big jumps would show and hide it), and the bubble and the
@@ -160,7 +165,6 @@ test('a collapsible header: the thumb, the bubble and the pinned header follow i
   await grab(page, thumb, thumb.y + 300);
   const b = await bubble(page);
   expect(await box(bar)).toEqual(before);
-  const top = (await box(page.getByTestId('list-scrubber-a11y'))).y;
   await expect(header(page)).toHaveValue(b.label);
   // Lifting the finger brings the header back; the pinned header moves below it and names the rows it covers
   await page.mouse.up();
@@ -216,4 +220,26 @@ test('a collapsible header: the thumb, the bubble and the pinned header follow i
   await expect.poll(async () => (await box(pinned)).y).toBeLessThanOrEqual(top + 1);
   await page.getByTestId('collapsible-search').focus();
   await expect.poll(async () => (await box(bar)).y).toBeCloseTo(top, 0);
+});
+
+for (const demo of ['FlatList', 'FlashList', 'Legend List']) {
+  test(`${demo}: the list's spread draws the pinned header's space, so the first row starts below it`, async ({
+    page,
+  }) => {
+    await open(page, demo);
+    const pinned = (await page.getByTestId('list-scrubber-pinned-header').boundingBox())!;
+    const spacer = (await page.getByTestId('list-scrubber-spacer').boundingBox())!;
+    expect(spacer.y).toBeCloseTo(pinned.y, 0);
+    expect(spacer.height).toBeCloseTo(pinned.height, 0);
+  });
+}
+
+test("SectionList: the pinned header sits on the list's own first header, with no space for it", async ({
+  page,
+}) => {
+  await open(page, 'SectionList');
+  await expect(page.getByTestId('list-scrubber-spacer')).toHaveCount(0);
+  const pinned = (await page.getByTestId('list-scrubber-pinned-header').boundingBox())!;
+  const first = (await page.getByText('A', { exact: true }).first().boundingBox())!;
+  expect(first.y).toBeLessThan(pinned.y + pinned.height);
 });

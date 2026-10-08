@@ -33,7 +33,7 @@ import { useAutoHide } from './useAutoHide';
 import { useMirroredNumber } from './useMirroredNumber';
 import { useLatest } from './useLatest';
 import { useScrubGesture } from './useScrubGesture';
-import { useMarkSizesUsed, useSectionOffsets, warnIfInvalid } from './validate';
+import { useMarkSizesUsed, useSectionOffsets, useStableSections, warnIfInvalid } from './validate';
 
 interface ListScrubberBaseProps<S extends ListScrubberSection> {
   scrollY: SharedValue<number>;
@@ -65,7 +65,11 @@ interface ListScrubberBaseProps<S extends ListScrubberSection> {
   side?: 'left' | 'right';
   /** Moves the scrubber (the thumb and its touch area) in from that edge; negative to sit outside the list */
   edgeOffset?: number;
-  /** Space at the top and bottom of the list the thumb stays out of (e.g. a pinned header or a toolbar) */
+  /**
+   * Space at the top and bottom of the list the thumb stays out of (e.g. a pinned header or a toolbar).
+   * What's under the top one counts as covered: screen-reader steps land below it and labels describe the
+   * rows there. `useListScrubber`'s `pinnedHeader` sets it.
+   */
   insets?: { top?: number; bottom?: number };
   /**
    * A bar over the top of the list that slides away as it scrolls (`useListScrubber`'s `topBar`, which
@@ -150,7 +154,7 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
   contentHeight: contentHeightProp,
   viewportHeight: viewportHeightProp,
   colors: colorsProp,
-  sections,
+  sections: sectionsProp,
   labelAt,
   accessibilitySteps,
   accessibilityLabel,
@@ -171,6 +175,7 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
   maxFontSizeMultiplier = MAX_FONT_SCALE,
   testID = 'list-scrubber',
 }: ListScrubberProps<S>) {
+  const sections = useStableSections(sectionsProp);
   // Shared values from useListScrubber are mirrored here, so a new size re-renders only the scrubber
   const contentHeight = useMirroredNumber(contentHeightProp);
   const viewportHeight = useMirroredNumber(viewportHeightProp);
@@ -224,7 +229,8 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
   const track = useDerivedValue(() => {
     const shown = topBar ? clamp(topBar.visibleHeight.get(), 0, railHeight) : 0;
     const start = topBar ? clamp(topBar.height - topBar.visibleHeight.get(), 0, maxScroll) : 0;
-    return { top: shown, travel: Math.max(0, railHeight - shown - m.thumbLength), start };
+    const travel = Math.max(0, railHeight - shown - m.thumbLength);
+    return { top: shown, travel, start, cover: shown + railTop };
   });
 
   const ownDragging = useSharedValue(false);
@@ -243,6 +249,7 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
     labels,
     labelAt,
     formatPercent: formatAccessibilityPercent,
+    still: railTop,
     bar: () =>
       topBar
         ? {
@@ -266,7 +273,7 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
   });
   const onDragOffset = useLatest((offset: number) => {
     // The top bar stays put during a drag (useListScrubber), so this is the cover the drag began with
-    const next = labelAt?.(labelPosition(offset, contentHeight, viewportHeight, track.get().top), offset);
+    const next = labelAt?.(labelPosition(offset, contentHeight, viewportHeight, track.get().cover), offset);
     if (next != null) setLabel(next);
   });
   const onSection = useLatest((index: number) => {

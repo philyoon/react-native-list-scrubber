@@ -2,10 +2,10 @@ import { listLayout, sectionListLayout } from '../index';
 
 describe('listLayout', () => {
   const names = ['Ada', 'Alan', 'Bob', 'Cy', 'Cleo'];
-  const label = (n: string) => n[0]!;
+  const sectionLabel = (n: string) => n[0]!;
 
   it('starts a section wherever the label changes, the first at 0', () => {
-    const { sections } = listLayout(names, { label, itemHeight: 64, listHeaderHeight: 32 });
+    const { sections } = listLayout(names, { sectionLabel, itemHeight: 64, listHeaderHeight: 32 });
     expect(sections).toEqual([
       { offset: 0, label: 'A' },
       { offset: 32 + 2 * 64, label: 'B' },
@@ -14,12 +14,12 @@ describe('listLayout', () => {
   });
 
   it('getItemLayout for fixed heights counts the list header', () => {
-    const { getItemLayout } = listLayout(names, { label, itemHeight: 64, listHeaderHeight: 32 });
+    const { getItemLayout } = listLayout(names, { sectionLabel, itemHeight: 64, listHeaderHeight: 32 });
     expect(getItemLayout(null, 3)).toEqual({ length: 64, offset: 32 + 3 * 64, index: 3 });
   });
 
   it("adds up each row's own height", () => {
-    const { sections, getItemLayout } = listLayout(names, { label, itemHeight: (n) => n.length * 10 });
+    const { sections, getItemLayout } = listLayout(names, { sectionLabel, itemHeight: (n) => n.length * 10 });
     // Rows: 30, 40, 30, 20, 40
     expect(sections).toEqual([
       { offset: 0, label: 'A' },
@@ -30,7 +30,7 @@ describe('listLayout', () => {
   });
 
   it('gives nothing for no rows', () => {
-    expect(listLayout([], { label, itemHeight: 64 }).sections).toEqual([]);
+    expect(listLayout([], { sectionLabel, itemHeight: 64 }).sections).toEqual([]);
   });
 });
 
@@ -72,7 +72,7 @@ describe('sectionListLayout', () => {
 
   it('takes a label and per-row heights', () => {
     const { sections, getItemLayout } = sectionListLayout(data, {
-      label: (s, i) => `${i + 1}. ${s.title}`,
+      sectionLabel: (s, i) => `${i + 1}. ${s.title}`,
       itemHeight: (name, i, section) => (section.title === 'A' ? 10 * (i + 1) : name.length),
     });
     expect(sections).toEqual([

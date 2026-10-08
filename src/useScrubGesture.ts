@@ -14,13 +14,15 @@ import { clamp, labelPosition, sectionIndexAt } from './math';
 
 /**
  * Where the thumb's track starts in the rail (pt: below the visible part of a top bar), how far the thumb can
- * travel along it, and the first scroll offset it covers (`start`: past the space a hidden top bar leaves at
- * the top of the list)
+ * travel along it, the first scroll offset it covers (`start`: past the space a hidden top bar leaves at
+ * the top of the list), and how much of the list's top is covered (`cover`: the bar's visible part and the
+ * rail's top inset, e.g. a pinned header): labels describe the rows below it
  */
 export interface Track {
   top: number;
   travel: number;
   start: number;
+  cover: number;
 }
 
 /**
@@ -75,7 +77,7 @@ export function useScrubGesture({
 }) {
   const dragTop = useSharedValue(0);
   /** The track when the drag began */
-  const dragTrack = useSharedValue<Track>({ top: 0, travel: 0, start: 0 });
+  const dragTrack = useSharedValue<Track>({ top: 0, travel: 0, start: 0, cover: 0 });
   const startTop = useSharedValue(0);
   /** Section under the finger (UI thread), -1 before the first drag */
   const sectionIdx = useSharedValue(-1);
@@ -103,7 +105,7 @@ export function useScrubGesture({
       const move = (translationY: number) => {
         'worklet';
         // `top`: the top bar's visible part when the drag began, which the labels describe the rows below
-        const { travel, start, top: cover } = dragTrack.get();
+        const { travel, start, cover } = dragTrack.get();
         if (travel <= 0) return; // a top bar covers the whole rail: nowhere to drag
         const top = clamp(startTop.get() + translationY, 0, travel);
         dragTop.set(top);
@@ -129,7 +131,7 @@ export function useScrubGesture({
           .enabled(enabled && maxTravel > 0 && maxScroll > 0)
           .minDistance(0)
           .onBegin(() => {
-            const { travel, start, top: cover } = track.get();
+            const { travel, start, cover } = track.get();
             dragTrack.set(track.get());
             dragging.set(true);
             const range = maxScroll - start;

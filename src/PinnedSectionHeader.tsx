@@ -12,14 +12,14 @@ import { MAX_FONT_SCALE } from './defaults';
 import { SectionText } from './SectionText';
 import { sectionIndexAt } from './math';
 import type { ListScrubberSection } from './types';
-import { useSectionOffsets } from './validate';
+import { useSectionOffsets, useStableSections, warnOnce } from './validate';
 
 export interface PinnedSectionHeaderProps {
   scrollY: SharedValue<number>;
   /** Section offsets are where each section's header starts in the list */
   sections: readonly ListScrubberSection[];
-  /** Header height */
-  height: number;
+  /** Header height. `useListScrubber`'s `pinnedHeaderProps` carry it when given its `pinnedHeader` option */
+  height?: number;
   /** The next section's header pushes this one out (default true) */
   push?: boolean;
   /**
@@ -45,7 +45,7 @@ export interface PinnedSectionHeaderProps {
 export function PinnedSectionHeader({
   scrollY,
   sections,
-  height,
+  height: heightProp,
   push = true,
   top = 0,
   style,
@@ -53,6 +53,14 @@ export function PinnedSectionHeader({
   maxFontSizeMultiplier,
   testID = 'list-scrubber-pinned-header',
 }: PinnedSectionHeaderProps) {
+  if (__DEV__ && heightProp === undefined) {
+    warnOnce(
+      'pinned height',
+      'react-native-list-scrubber: PinnedSectionHeader has no `height`: pass it, or give useListScrubber ' +
+        '`pinnedHeader: { height }` and spread its pinnedHeaderProps.',
+    );
+  }
+  const height = heightProp ?? 0;
   const pushStyle = usePinnedSectionHeaderStyle(scrollY, sections, height);
   const topStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: typeof top === 'number' ? top : top.get() }],
@@ -96,12 +104,13 @@ export interface CurrentSectionLabelProps {
  */
 export function CurrentSectionLabel({
   scrollY,
-  sections,
+  sections: sectionsProp,
   height,
   style,
   maxFontSizeMultiplier = MAX_FONT_SCALE,
   testID = 'list-scrubber-section-label',
 }: CurrentSectionLabelProps) {
+  const sections = useStableSections(sectionsProp);
   const offsets = useSectionOffsets(sections);
   const labels = useMemo(() => sections.map((s) => s.label), [sections]);
   // Compared by value: the label re-renders only when its style changes, and an inline `style={{…}}` (or a
@@ -145,7 +154,7 @@ export function usePinnedSectionHeaderStyle(
   sections: readonly ListScrubberSection[],
   height: number,
 ) {
-  const offsets = useSectionOffsets(sections);
+  const offsets = useSectionOffsets(useStableSections(sections));
   return useAnimatedStyle(() => {
     const y = scrollY.get();
     const next = offsets[sectionIndexAt(offsets, y) + 1];

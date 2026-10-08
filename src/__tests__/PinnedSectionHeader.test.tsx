@@ -167,3 +167,20 @@ it('PinnedSectionHeader sits `top` below the top of the list: a number, or a sha
   );
   expect(translate()).toEqual([{ translateY: 80 }]);
 });
+
+it('warns once without a height, and draws nothing', async () => {
+  const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  try {
+    const sections = [{ offset: 0, label: 'A' }];
+    await render(<PinnedSectionHeader scrollY={sharedZero()} sections={sections} />);
+    await render(<PinnedSectionHeader scrollY={sharedZero()} sections={sections} />);
+    expect(
+      warn.mock.calls.filter((c) => String(c[0]).includes('PinnedSectionHeader has no `height`')),
+    ).toHaveLength(1);
+    expect(StyleSheet.flatten(screen.getByTestId('list-scrubber-pinned-header').props.style)).toMatchObject({
+      height: 0,
+    });
+  } finally {
+    warn.mockRestore();
+  }
+});

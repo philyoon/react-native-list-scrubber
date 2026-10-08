@@ -88,6 +88,7 @@ import {
   usePinnedSectionHeaderStyle,
   type CurrentSectionLabelProps,
   type ListScrubberColors,
+  type ListScrubberLayout,
   type ListScrubberMetrics,
   type ListScrubberProps,
   type ListScrubberSection,
@@ -104,7 +105,7 @@ const metrics: Partial<ListScrubberMetrics> = { thumbLength: LIST_SCRUBBER_DEFAU
 const timing: Partial<ListScrubberTiming> = { fadeMs: 100 };
 type Sections = readonly ListScrubberSection[];
 const contacts = [{ name: 'Ada' }, { name: 'Bea' }];
-const flat = listLayout(contacts, { label: (c) => c.name[0]!, itemHeight: 64 });
+const flat: ListScrubberLayout = listLayout(contacts, { sectionLabel: (c) => c.name[0]!, itemHeight: 64 });
 const grouped = sectionListLayout([{ title: 'A', data: contacts }], { itemHeight: 64, sectionHeaderHeight: 32 });
 export const layouts: Sections[] = [flat.sections, grouped.sections];
 
@@ -144,6 +145,29 @@ export function WithSections({ sections }: { sections: Sections }) {
         <CurrentSectionLabel {...label} />
       </Animated.View>
       <Scrubber scrubber={scrubber} />
+    </View>
+  );
+}
+
+export function WithLayout() {
+  const scrubber = useListScrubber({
+    layout: flat,
+    topBar: { height: 120, revealMs: 200 },
+    pinnedHeader: { height: 32 },
+    ListHeaderComponent: <View />,
+  });
+  const grouped = useListScrubber({ layout: sectionListLayout([{ title: 'A', data: contacts }], { itemHeight: 64 }) });
+  const scroller = useListScrubber({ layout: flat, topBar: { height: 120 } });
+  return (
+    <View style={{ flex: 1 }}>
+      <Animated.FlatList {...scrubber.flatListProps} data={contacts} renderItem={() => null} />
+      <Animated.FlatList {...grouped.sectionListProps} data={contacts} renderItem={() => null} />
+      <Animated.ScrollView {...scroller.scrollViewProps}>
+        <scroller.ListHeader />
+      </Animated.ScrollView>
+      <PinnedSectionHeader {...scrubber.pinnedHeaderProps} />
+      <Scrubber scrubber={scrubber} />
+      <Animated.View style={{ height: scrubber.spacerHeight }} />
     </View>
   );
 }

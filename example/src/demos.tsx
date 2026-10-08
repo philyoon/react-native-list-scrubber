@@ -109,18 +109,15 @@ function MonthHeader(props: { scrubber: SectionScrubber }) {
   return (
     <PinnedSectionHeader
       {...props.scrubber.pinnedHeaderProps}
-      height={HEADER}
-      push={false}
       style={[styles.header, { backgroundColor: colors.header }]}
       textStyle={{ color: colors.secondary, fontWeight: '700', fontSize: 14 }}
     />
   );
 }
 
-/** Month sections for fixed-height rows under a HEADER spacer, newest first */
-function monthSections(entries: Entry[]): ListScrubberSection[] {
-  return listLayout(entries, { label: (e) => monthLabel(e.date), itemHeight: ROW, listHeaderHeight: HEADER })
-    .sections;
+/** Month sections for fixed-height rows, newest first */
+function monthLayout(entries: Entry[]) {
+  return listLayout(entries, { sectionLabel: (e) => monthLabel(e.date), itemHeight: ROW });
 }
 
 /**
@@ -130,36 +127,27 @@ function monthSections(entries: Entry[]): ListScrubberSection[] {
  */
 const FAST_FILL = { windowSize: 5, maxToRenderPerBatch: 24, updateCellsBatchingPeriod: 16 } as const;
 
-// FlatList: fixed rows via getItemLayout, sections from the first row of each letter,
-// and a pinned letter header drawn on the UI thread
-// (PinnedSectionHeader; the list has no headers to push it).
+// FlatList: fixed rows via getItemLayout, sections from the first row of each letter, and a pinned letter
+// header drawn on the UI thread. The list has no headers of its own, so the pinned one takes its own space
+// at the top: the list's spread draws it, and the scrubber stays below it.
 function FlatListDemo() {
   const colors = useColors();
-  const { sections, getItemLayout } = useMemo(
-    () =>
-      listLayout(CONTACTS, {
-        label: (c) => c.last[0]!.toUpperCase(),
-        itemHeight: ROW,
-        listHeaderHeight: HEADER,
-      }),
+  const layout = useMemo(
+    () => listLayout(CONTACTS, { sectionLabel: (c) => c.last[0]!.toUpperCase(), itemHeight: ROW }),
     [],
   );
-  const scrubber = useListScrubber({ sections });
+  const scrubber = useListScrubber({ layout, pinnedHeader: { height: HEADER } });
   return (
     <>
       <Animated.FlatList
-        {...scrubber.listProps}
+        {...scrubber.flatListProps}
         data={CONTACTS}
         keyExtractor={(c) => c.id}
-        ListHeaderComponent={<View style={{ height: HEADER }} />}
         renderItem={({ item }) => <ContactRow item={item} colors={colors} />}
-        getItemLayout={getItemLayout}
         {...FAST_FILL}
       />
       <PinnedSectionHeader
         {...scrubber.pinnedHeaderProps}
-        height={HEADER}
-        push={false}
         style={[styles.header, { backgroundColor: colors.header }]}
         textStyle={{ color: colors.secondary, fontWeight: '700', fontSize: 14 }}
       />
@@ -177,15 +165,15 @@ const AnimatedSectionList = Animated.createAnimatedComponent(SectionList<Contact
 function SectionListDemo() {
   const colors = useColors();
   const data = useMemo(() => groupByLetter(CONTACTS), []);
-  const { sections, getItemLayout } = useMemo(
+  const layout = useMemo(
     () => sectionListLayout(data, { itemHeight: ROW, sectionHeaderHeight: HEADER }),
     [data],
   );
-  const scrubber = useListScrubber({ sections });
+  const scrubber = useListScrubber({ layout, pinnedHeader: { height: HEADER } });
   return (
     <>
       <AnimatedSectionList
-        {...scrubber.listProps}
+        {...scrubber.sectionListProps}
         sections={data}
         keyExtractor={(c) => c.id}
         stickySectionHeadersEnabled={false}
@@ -195,12 +183,10 @@ function SectionListDemo() {
           </View>
         )}
         renderItem={({ item }) => <ContactRow item={item} colors={colors} />}
-        getItemLayout={getItemLayout}
         {...FAST_FILL}
       />
       <PinnedSectionHeader
         {...scrubber.pinnedHeaderProps}
-        height={HEADER}
         style={[styles.header, { backgroundColor: colors.header }]}
         textStyle={{ color: colors.secondary, fontWeight: '700', fontSize: 14 }}
       />
@@ -215,11 +201,11 @@ function SectionListDemo() {
 function IndexDemo() {
   const colors = useColors();
   const data = useMemo(() => groupByLetter(CONTACTS), []);
-  const { sections, getItemLayout } = useMemo(
+  const layout = useMemo(
     () => sectionListLayout(data, { itemHeight: ROW, sectionHeaderHeight: HEADER }),
     [data],
   );
-  const scrubber = useListScrubber({ sections });
+  const scrubber = useListScrubber({ layout, pinnedHeader: { height: HEADER } });
   return (
     <>
       <ScrollView
@@ -228,7 +214,7 @@ function IndexDemo() {
         style={[styles.index, { borderColor: colors.border }]}
         contentContainerStyle={styles.indexContent}
       >
-        {sections.map((section, i) => (
+        {layout.sections.map((section, i) => (
           <Pressable
             key={section.label}
             onPress={() => scrubber.scrollToSection(i)}
@@ -243,7 +229,7 @@ function IndexDemo() {
       </ScrollView>
       <View style={{ flex: 1 }}>
         <AnimatedSectionList
-          {...scrubber.listProps}
+          {...scrubber.sectionListProps}
           sections={data}
           keyExtractor={(c) => c.id}
           stickySectionHeadersEnabled={false}
@@ -253,12 +239,10 @@ function IndexDemo() {
             </View>
           )}
           renderItem={({ item }) => <ContactRow item={item} colors={colors} />}
-          getItemLayout={getItemLayout}
           {...FAST_FILL}
         />
         <PinnedSectionHeader
           {...scrubber.pinnedHeaderProps}
-          height={HEADER}
           style={[styles.header, { backgroundColor: colors.header }]}
           textStyle={{ color: colors.secondary, fontWeight: '700', fontSize: 14 }}
         />
@@ -273,15 +257,14 @@ const AnimatedFlashList = Animated.createAnimatedComponent(FlashList<Entry>);
 // FlashList v2 measures rows itself; content height comes from onContentSizeChange.
 function FlashListDemo() {
   const colors = useColors();
-  const sections = useMemo(() => monthSections(ENTRIES), []);
-  const scrubber = useListScrubber({ sections });
+  const layout = useMemo(() => monthLayout(ENTRIES), []);
+  const scrubber = useListScrubber({ layout, pinnedHeader: { height: HEADER } });
   return (
     <>
       <AnimatedFlashList
-        {...scrubber.listProps}
+        {...scrubber.flashListProps}
         data={ENTRIES}
         keyExtractor={(e) => e.id}
-        ListHeaderComponent={<View style={{ height: HEADER }} />}
         renderItem={({ item }) => <EntryRow item={item} colors={colors} />}
       />
       <MonthHeader scrubber={scrubber} />
@@ -293,16 +276,15 @@ function FlashListDemo() {
 // Legend List: exact sizes with getFixedItemSize, Reanimated entry point.
 function LegendListDemo() {
   const colors = useColors();
-  const sections = useMemo(() => monthSections(ENTRIES), []);
-  const scrubber = useListScrubber({ sections });
+  const layout = useMemo(() => monthLayout(ENTRIES), []);
+  const scrubber = useListScrubber({ layout, pinnedHeader: { height: HEADER } });
   return (
     <>
       <AnimatedLegendList
-        {...scrubber.listProps}
+        {...scrubber.legendListProps}
         data={ENTRIES}
         keyExtractor={(e) => e.id}
         renderItem={({ item }) => <EntryRow item={item} colors={colors} />}
-        ListHeaderComponent={<View style={{ height: HEADER }} />}
         getFixedItemSize={() => ROW}
         recycleItems
       />
@@ -316,36 +298,26 @@ function LegendListDemo() {
 const BAR = 120;
 
 // A top bar (title, count, search field) over the list that slides away as it scrolls down and comes back on
-// a scroll up: useListScrubber's `topBar`. The list starts with a spacer as tall as the bar and the pinned
-// letter header, so row offsets never change; scrubberProps and pinnedHeaderProps keep both below
-// the bar's visible part.
+// a scroll up: useListScrubber's `topBar`. The list's spread draws the space the bar and the pinned letter
+// header need at its top; scrubberProps and pinnedHeaderProps keep both below the bar's visible part.
 function CollapsibleDemo() {
   const colors = useColors();
-  const { sections, getItemLayout } = useMemo(
-    () =>
-      listLayout(CONTACTS, {
-        label: (c) => c.last[0]!.toUpperCase(),
-        itemHeight: ROW,
-        listHeaderHeight: BAR + HEADER,
-      }),
+  const layout = useMemo(
+    () => listLayout(CONTACTS, { sectionLabel: (c) => c.last[0]!.toUpperCase(), itemHeight: ROW }),
     [],
   );
-  const scrubber = useListScrubber({ sections, topBar: { height: BAR } });
+  const scrubber = useListScrubber({ layout, topBar: { height: BAR }, pinnedHeader: { height: HEADER } });
   return (
     <>
       <Animated.FlatList
-        {...scrubber.listProps}
+        {...scrubber.flatListProps}
         data={CONTACTS}
         keyExtractor={(c) => c.id}
-        ListHeaderComponent={<View style={{ height: BAR + HEADER }} />}
         renderItem={({ item }) => <ContactRow item={item} colors={colors} />}
-        getItemLayout={getItemLayout}
         {...FAST_FILL}
       />
       <PinnedSectionHeader
         {...scrubber.pinnedHeaderProps}
-        height={HEADER}
-        push={false}
         style={[styles.header, { backgroundColor: colors.header }]}
         textStyle={{ color: colors.secondary, fontWeight: '700', fontSize: 14 }}
       />
@@ -374,14 +346,14 @@ const LOREM =
 // ScrollView: a long document with fixed-height chapters.
 function ScrollViewDemo() {
   const colors = useColors();
-  const { sections } = useMemo(
-    () => listLayout(CHAPTERS, { label: (n) => `Ch. ${n}`, itemHeight: CHAPTER }),
+  const layout = useMemo(
+    () => listLayout(CHAPTERS, { sectionLabel: (n) => `Ch. ${n}`, itemHeight: CHAPTER }),
     [],
   );
-  const scrubber = useListScrubber({ sections });
+  const scrubber = useListScrubber({ layout });
   return (
     <>
-      <Animated.ScrollView {...scrubber.listProps}>
+      <Animated.ScrollView {...scrubber.scrollViewProps}>
         {CHAPTERS.map((n) => (
           <View key={n} style={{ height: CHAPTER, padding: 20 }}>
             <Text style={{ color: colors.text, fontSize: 20, fontWeight: '700', marginBottom: 8 }}>

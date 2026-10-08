@@ -12,4 +12,9 @@ export {
 export { listLayout, sectionListLayout } from './layout';
 export { sectionIndexAt } from './math';
 export { LIST_SCRUBBER_DEFAULTS, type ListScrubberMetrics, type ListScrubberTiming } from './defaults';
-export type { ListScrubberColors, ListScrubberSection, ListScrubberTopBar } from './types';
+export type {
+  ListScrubberColors,
+  ListScrubberLayout,
+  ListScrubberSection,
+  ListScrubberTopBar,
+} from './types';
