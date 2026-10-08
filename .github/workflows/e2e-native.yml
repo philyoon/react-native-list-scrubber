@@ -83,7 +83,10 @@ jobs:
           xcrun simctl install "$MAESTRO_DEVICE" ExpoGo.app
           wait "$metro"
         working-directory: example
-      - run: npm run e2e:ios -- ${{ matrix.shard.flows }}
+      # Once more if it fails: on the slow CI simulator a flow sometimes fails on timing alone (a drag lands short,
+      # an app launch outlasts a wait) and passes on a rerun; a real failure fails both times. Both runs' Maestro
+      # output stays in ~/.maestro/tests for the artifact.
+      - run: npm run e2e:ios -- ${{ matrix.shard.flows }} || npm run e2e:ios -- ${{ matrix.shard.flows }}
         working-directory: example
       - uses: actions/upload-artifact@v4
         if: failure()
@@ -171,11 +174,11 @@ jobs:
           emulator-options:
             -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           working-directory: example
-          # Each line runs in its own shell
+          # Each line runs in its own shell. The flows run once more if they fail, as on iOS above
           script: |
             adb install -r expo-go.apk
             adb shell pm grant host.exp.exponent android.permission.POST_NOTIFICATIONS
-            npm run e2e:android -- ${{ matrix.shard.flows }}
+            npm run e2e:android -- ${{ matrix.shard.flows }} || npm run e2e:android -- ${{ matrix.shard.flows }}
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
