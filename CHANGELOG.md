@@ -1,23 +1,42 @@
 # Changelog
 
-## Unreleased
+## 0.4.0
 
-- Fixed: in the Jest mock (`react-native-list-scrubber/jest`), the list header drew the spacer for a top bar
-  or pinned header one render late: right after their height changed it still had the old one, or none from a
-  height of 0. It now follows in the same render, like the real hook's. Fixes #75.
-- New: `scrubber.topBar.hide()`, to hide the top bar from code, beside `show()`. Near the top of the list the
-  list scrolls down by what shows instead, and the bar follows.
-- New: `topBar: { onVisibilityChange }`, called on the JS thread with `'shown'` or `'hidden'` when the bar
-  ends up shown or hidden in full, e.g. to change the status bar. `topBar.visibleHeight` still gives the exact
-  position, on the UI thread.
-- New: when a touch scroll ends with the top bar partly shown, it settles, shown or hidden, whichever is
-  closer: the list scrolls the rest of the way, as Android's collapsing app bars and iOS's large titles do.
-  It's on by default; `topBar: { height, snap: false }` turns it off. Not after a thumb drag or scrolling from
-  code, and not on the web. Fixes #70.
-- Breaking: a thumb drag that ends at the top of the list no longer brings the top bar back by default: the
-  bar stays as the drag left it, as after a drag anywhere else, and a scroll up brings it back. For 0.3.0's
-  behaviour (the list scrolls to the very top and the bar slides in when the finger lifts), pass
-  `topBar: { height, revealOnDragToTop: true }`. The default is in `LIST_SCRUBBER_DEFAULTS.topBar`.
+The top bar settles and can be driven from code: a scroll that leaves it partly shown snaps it shown or
+hidden, `hide()` joins `show()`, and `onVisibilityChange` tells the app when it's shown or hidden. A thumb
+drag to the top no longer brings it back on its own.
+
+### Upgrading from 0.3
+
+No code needs to change. Two defaults of the top bar behave differently; each has an option for 0.3.0's
+behaviour:
+
+- A thumb drag that ends at the top of the list leaves the bar as the drag left it, as a drag anywhere else
+  does, and a scroll up brings it back. For 0.3.0's behaviour (the list scrolls to the very top and the bar
+  slides in when the finger lifts), pass `topBar: { height, revealOnDragToTop: true }`.
+- A touch scroll that ends with the bar partly shown settles it (below). For 0.3.0's behaviour, where it stays
+  where the scroll left it, pass `topBar: { height, snap: false }`.
+
+### New
+
+- Snap: when a touch scroll ends with the top bar partly shown, the list scrolls the rest of the way, so the
+  bar ends up shown if less than half of it was hidden, and hidden otherwise (shown, near the end of the list,
+  where there's no room to hide it), as Android's collapsing app bars and iOS's large titles do. Not after a
+  thumb drag or scrolling from code, and not on the web, which doesn't say when a scroll ends. On by default:
+  `topBar.snap`. Fixes #70.
+- `scrubber.topBar.hide()`, beside `show()`: the bar slides out over `revealMs`. Near the top of the list,
+  where it covers the space above the rows, the list scrolls down by what shows instead, and the bar follows.
+- `topBar: { onVisibilityChange }`: called on the JS thread with `'shown'` or `'hidden'` when the bar ends up
+  shown or hidden in full, not while it's part way, e.g. to change the status bar. `topBar.visibleHeight`
+  still gives its exact position, on the UI thread.
+- `topBar: { revealOnDragToTop }`, off by default (see above).
+- `LIST_SCRUBBER_DEFAULTS.topBar` has `snap` and `revealOnDragToTop` beside `revealMs`.
+
+### Fixed
+
+- The Jest mock (`react-native-list-scrubber/jest`): the list header drew the spacer for a top bar or pinned
+  header one render late: right after their height changed it still had the old one, or none from a height
+  of 0. It now follows in the same render, like the real hook's. Fixes #75.
 
 ## 0.3.0
 
