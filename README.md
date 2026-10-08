@@ -7,7 +7,7 @@
 Fast scrolling for React Native lists. Drag a scrollbar thumb to jump through thousands of rows, with section
 labels beside your finger.
 
-<img src="docs/demo.webp" width="320" alt="Dragging the thumb through 3,000 contacts on Android: the bubble and the pinned header follow letter by letter, and the top bar slides back in when the finger lifts" />
+<img src="docs/demo.webp" width="320" alt="Dragging the thumb through 3,000 contacts on Android: the bubble and the pinned header follow letter by letter, and the top bar slides back in when the drag ends at the top" />
 
 - **Keeps up with your finger.** Built on Reanimated 4 and Gesture Handler: the drag, the list scroll _and the
   bubble label_ run on the UI thread, even while JS is busy rendering rows.
@@ -17,8 +17,8 @@ labels beside your finger.
   `getItemLayout` from the same row heights, so the two can't disagree.
 - **A top bar that slides away.** One option, `topBar`, gives the list a title or search bar that hides as you
   scroll down and comes back on a scroll up. The scrubber, the pinned header and the bar move as one: the bar
-  stays put while you drag the thumb, the drag never uncovers the space it leaves, and it slides back in when
-  you let go. See [A top bar that slides away](#a-top-bar-that-slides-away).
+  stays put while you drag the thumb, the drag never uncovers the space it leaves, and a drag to the top
+  brings it back when you let go. See [A top bar that slides away](#a-top-bar-that-slides-away).
 - **Accessible by default.** An adjustable "Scroll position" control is always present: VoiceOver and TalkBack
   users swipe up or down to step from section to section and hear its label. Labels follow the system text
   size up to 1.5×.
@@ -197,9 +197,10 @@ const scrubber = useListScrubber({ layout, topBar: { height: BAR }, pinnedHeader
 - The bar follows the scroll by as much as it moves, up or down, and is always shown at the very top of the
   list. The scrubber and the pinned header stay below its visible part.
 - During a thumb drag the bar stays as it was, so big jumps don't show and hide it. The drag reaches the first
-  row, not the empty space a hidden bar leaves above it. When the finger lifts the bar slides back in, in
-  `revealMs` (default 250; `topBar: { height: BAR, revealMs: 400 }` to change it); at the top of the list, the
-  list scrolls back up with it.
+  row, not the empty space a hidden bar leaves above it. When a drag to the top ends, the list scrolls back to
+  the very top and the bar slides in with it, in `revealMs` (default 250;
+  `topBar: { height: BAR, revealMs: 400 }` to change it). Anywhere else it stays as the drag left it, and a
+  scroll up brings it back.
 - `scrubber.topBar` gives the bar's `height`, `visibleHeight` (how much of it is on screen) and `isFixed` (it
   stays in place), as shared values, and `show()`, which slides it back in.
 - With a screen reader on (VoiceOver, TalkBack) the bar stays in place: hidden, its contents would still be

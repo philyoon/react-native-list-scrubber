@@ -166,9 +166,11 @@ test('a collapsible header: the thumb, the bubble and the pinned header follow i
   const b = await bubble(page);
   expect(await box(bar)).toEqual(before);
   await expect(header(page)).toHaveValue(b.label);
-  // Lifting the finger brings the header back; the pinned header moves below it and names the rows it covers
+  // Lifting the finger mid-list leaves it as it was, as after any scroll down; the pinned header still names
+  // the rows it covers
   await page.mouse.up();
-  await expect.poll(async () => (await box(bar)).y).toBeCloseTo(top, 0); // all the way back
+  await page.waitForTimeout(400); // longer than the bar would take to slide in
+  expect(await box(bar)).toEqual(before);
   await expect(header(page)).toHaveValue((await rowLetter())!);
 
   // A scroll down hides it again, and a short scroll up brings it back
@@ -212,6 +214,22 @@ test('a collapsible header: the thumb, the bubble and the pinned header follow i
   );
   await page.mouse.up();
   await expect(header(page)).toHaveValue('Z');
+
+  // Hidden, dragged to the end and back to the top: it stays hidden at the end, and slides in at the top
+  await page.mouse.move(rows.x, rows.y);
+  await page.mouse.wheel(0, -2000);
+  await page.mouse.wheel(0, 400);
+  await expect.poll(async () => (await box(pinned)).y).toBeLessThanOrEqual(top + 1);
+  const hidden = await showThumb(page);
+  await grab(page, hidden, page.viewportSize()!.height);
+  await page.mouse.up();
+  await page.waitForTimeout(400);
+  expect((await box(pinned)).y).toBeLessThanOrEqual(top + 1);
+  const end = await showThumb(page);
+  await grab(page, end, 0);
+  await page.mouse.up();
+  await expect.poll(async () => (await box(bar)).y).toBeCloseTo(top, 0);
+  await expect(header(page)).toHaveValue('A');
 
   // Hidden, it comes back when something in it gets focus (on the web a page can't tell a screen reader's on)
   await page.mouse.move(rows.x, rows.y);

@@ -28,8 +28,9 @@ interface BaseOptions {
    * A bar over the top of the list (a title, a search field…) that slides away as the list scrolls down and
    * comes back on a scroll up. Draw it inside a view that spreads `topBarProps`. The list's spread draws the
    * space it needs at the top, and `scrubberProps` and `pinnedHeaderProps` keep the scrubber and the pinned
-   * header below it. During a thumb drag it stays as it was, and it slides back in when the finger lifts,
-   * over `revealMs` (default: LIST_SCRUBBER_DEFAULTS.topBar.revealMs).
+   * header below it. During a thumb drag it stays as it was; a drag that ends at the top of the list
+   * brings it back when the finger lifts, sliding in over `revealMs` (default:
+   * LIST_SCRUBBER_DEFAULTS.topBar.revealMs).
    */
   topBar?: { height: number; revealMs?: number };
   /**
@@ -166,14 +167,15 @@ export function useListScrubber<
     },
     [userOnScroll, barHeight],
   );
-  // When the finger lifts from the thumb the top bar slides back in. A drag that ended at the top of the
-  // thumb's track is at the first row, below the space the hidden bar left: the list scrolls back
-  // to the top with it
+  // A drag that ended at the top of the thumb's track is at the first row, below the space the hidden bar
+  // left: when the finger lifts, the list scrolls back to the very top and the bar slides in with it.
+  // Anywhere else the bar stays as the drag left it, as after any scroll down: a scroll up brings it back
   useAnimatedReaction(
     () => isDragging.get(),
     (dragging, was) => {
       if (!was || dragging || barHeight <= 0) return;
-      if (barHidden.get() > 0 && scrollY.get() <= barHidden.get() + 0.5) scrollTo(listRef, 0, 0, true);
+      if (barHidden.get() <= 0 || scrollY.get() > barHidden.get() + 0.5) return;
+      scrollTo(listRef, 0, 0, true);
       revealTopBar(barHidden, barRevealing, revealMs);
     },
     [barHeight, revealMs],
