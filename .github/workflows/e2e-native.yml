@@ -3,10 +3,10 @@ name: Native e2e
 # an Android emulator, in the example built as a release app of its own (scripts/e2e-build.sh): no Metro, no Expo
 # Go. iOS builds the app and runs every flow in one job; Android builds it once, then three groups of flows run
 # side by side on it.
-# Caches: npm, CocoaPods' downloads, Gradle, Maestro, and the emulator's boot snapshot. The Gradle cache (about
-# 1.4 GB) is saved by main's runs only, so pull requests don't fill the repository's 10 GB of cache and evict the
-# others; a cache key can't be overwritten, so each save's key ends in its run ID, and a run restores the newest
-# match.
+# Caches: npm, CocoaPods' downloads, Xcode's build folder (irgaly/xcode-cache), Gradle, Maestro, and the
+# emulator's boot snapshot. The build caches (over 1 GB each) are saved by main's runs and manual ones only, so
+# pull requests don't fill the repository's 10 GB of cache and evict the others; a cache key can't be
+# overwritten, so each save's key ends in its run ID or commit, and a run restores the newest match.
 on:
   pull_request:
   # On main too: a pull request can only use caches saved by its own runs or by main's, so main's runs keep them
@@ -63,19 +63,50 @@ jobs:
         if: steps.maestro-cache.outputs.cache-hit != 'true'
         run: curl -fsSL https://get.maestro.mobile.dev | bash
       - run: echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
-      # CocoaPods' downloads only. Not Xcode's build folder: expo prebuild recreates ios/, and npm ci gives every
-      # native source in node_modules a new timestamp, so Xcode rebuilt everything from a restored one anyway
+      # CocoaPods' downloads, under the inputs expo prebuild generates the Podfile from (Podfile.lock doesn't exist
+      # until then)
       - uses: actions/cache@v4
         with:
           path: ~/Library/Caches/CocoaPods
           key: cocoapods-${{ hashFiles('example/package-lock.json', 'example/app.json') }}
           restore-keys: cocoapods-
-      - run: NO_INSTALL=1 sh scripts/e2e-build.sh ios
+      - run: echo "XCODE=$(xcodebuild -version | head -1 | tr -d ' ')" >> "$GITHUB_ENV"
+      # ExpoModulesJSI's framework, built into node_modules by a build phase (about 1 min), which npm ci removes.
+      # The build script skips slices whose source hash matches.
+      - uses: actions/cache/restore@v4
+        with:
+          path: &jsi-cache example/node_modules/expo-modules-jsi/apple/Products
+          key: expo-jsi-${{ env.XCODE }}-${{ hashFiles('example/package-lock.json') }}
+      # Generates ios/ (expo prebuild deletes and recreates it) and installs the pods
+      - run: E2E_BUILD_STEP=prepare sh scripts/e2e-build.sh ios
         working-directory: example
+      # Xcode's build folder, kept outside ios/ for that reason, with the timestamps of the files it was built from:
+      # npm ci and prebuild give every file a new one, which alone would make Xcode rebuild everything. The action
+      # puts a file's old timestamp back when its content is unchanged, so it runs once the generated files exist.
+      # Saved (when the job succeeds) by main's and manual runs, not by pull requests', like the Gradle cache.
+      - uses: irgaly/xcode-cache@4141f139f00e335c6e1031fb93e667181f86146f # v1.9.2
+        with:
+          key: xcode-deriveddata-${{ env.XCODE }}-${{ github.sha }}
+          restore-keys: xcode-deriveddata-${{ env.XCODE }}-
+          deriveddata-directory: ${{ runner.temp }}/DerivedData
+          restore-mtime-targets: |
+            example/ios/**/*
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+      - run: E2E_BUILD_STEP=compile sh scripts/e2e-build.sh ios
+        working-directory: example
+        env:
+          NO_INSTALL: 1
+          E2E_DERIVED_DATA: ${{ runner.temp }}/DerivedData
+      - uses: actions/cache/save@v4
+        if: github.event_name != 'pull_request'
+        with:
+          path: *jsi-cache
+          key: expo-jsi-${{ env.XCODE }}-${{ hashFiles('example/package-lock.json') }}
       - name: Install the app
         run: |
           xcrun simctl bootstatus "$MAESTRO_DEVICE" -b
-          xcrun simctl install "$MAESTRO_DEVICE" ios/build/Build/Products/Release-iphonesimulator/ListScrubber.app
+          app=$RUNNER_TEMP/DerivedData/Build/Products/Release-iphonesimulator/ListScrubber.app
+          xcrun simctl install "$MAESTRO_DEVICE" "$app"
         working-directory: example
       # Not landscape.yaml on iOS: after a rotation, GitHub's macOS simulator lost Maestro's touches in the lower
       # part of the screen, in that flow and the ones after it (they pass locally on the same simulator model). It
@@ -121,7 +152,7 @@ jobs:
           # The CI emulator's architecture only
           ANDROID_ARCH: x86_64
       - uses: actions/cache/save@v4
-        if: github.event_name == 'push'
+        if: github.event_name != 'pull_request'
         with:
           path: *gradle-cache
           key:
