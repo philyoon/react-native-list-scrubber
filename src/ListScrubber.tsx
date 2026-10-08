@@ -87,6 +87,8 @@ interface ListScrubberBaseProps<S extends ListScrubberSection> {
   /** Extra style for the bubble box (e.g. a shadow) */
   bubbleStyle?: StyleProp<ViewStyle>;
   bubbleTextStyle?: StyleProp<TextStyle>;
+  /** Cap on the system text size for the bubble's label (default 1.5): the bubble doesn't grow with it */
+  maxFontSizeMultiplier?: number;
   /**
    * Prefix of the test IDs: `<testID>` (the drag gesture), `-thumb`, `-a11y`, `-label`
    * (default 'list-scrubber')
@@ -166,6 +168,7 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
   timing,
   bubbleStyle,
   bubbleTextStyle: bubbleTextStyleProp,
+  maxFontSizeMultiplier = MAX_FONT_SCALE,
   testID = 'list-scrubber',
 }: ListScrubberProps<S>) {
   // Shared values from useListScrubber are mirrored here, so a new size re-renders only the scrubber
@@ -366,7 +369,7 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
                 style={sectionLabelStyle}
                 fontSizes={sectionFontSizes}
                 sizeToLabels
-                maxFontSizeMultiplier={MAX_FONT_SCALE}
+                maxFontSizeMultiplier={maxFontSizeMultiplier}
               />
             </Bubble>
           ) : (
@@ -375,7 +378,7 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
               <Bubble {...bubbleProps}>
                 <Text
                   numberOfLines={1}
-                  maxFontSizeMultiplier={MAX_FONT_SCALE}
+                  maxFontSizeMultiplier={maxFontSizeMultiplier}
                   style={[bubbleTextStyle(label, m, colors), bubbleTextStyleProp]}
                 >
                   {label}

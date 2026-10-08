@@ -1,7 +1,7 @@
 import { mockReactions, mockScrollTo, mockTimings } from './support';
 import { act, renderHook } from '@testing-library/react-native';
 import { AccessibilityInfo, Platform } from 'react-native';
-import { ListScrubber, useListScrubber } from '../index';
+import { LIST_SCRUBBER_DEFAULTS, ListScrubber, useListScrubber } from '../index';
 
 describe('useListScrubber', () => {
   it('measures the list from its layout and content size', async () => {
@@ -217,8 +217,8 @@ describe('scrolling from code', () => {
 
 describe('useListScrubber({ topBar })', () => {
   type Hook = { current: ReturnType<typeof useListScrubber> };
-  async function withBar(height = 100) {
-    const hook = await renderHook(() => useListScrubber({ topBar: { height } }));
+  async function withBar(height = 100, revealMs?: number) {
+    const hook = await renderHook(() => useListScrubber({ topBar: { height, revealMs } }));
     const scroll = (y: number) =>
       (hook.result.current.onScroll as unknown as (e: unknown) => void)({ contentOffset: { y } });
     /** What shows of the bar (a derived value: the mock computes it on render) */
@@ -293,6 +293,20 @@ describe('useListScrubber({ topBar })', () => {
     result.current.topBar!.show();
     await uiFrame();
     expect(mockTimings).toHaveLength(timings);
+  });
+
+  it('slides back in over `revealMs`', async () => {
+    expect(LIST_SCRUBBER_DEFAULTS.topBar.revealMs).toBe(250);
+    const { result, scroll } = await withBar(100, 400);
+    scroll(300);
+    result.current.isDragging.set(true);
+    await lift(result);
+    expect(mockTimings.at(-1)).toMatchObject({ to: 0, duration: 400 });
+    await act(async () => mockTimings.at(-1)!.done!());
+    scroll(500);
+    result.current.topBar!.show();
+    await act(() => jest.advanceTimersByTime(20));
+    expect(mockTimings.at(-1)).toMatchObject({ to: 0, duration: 400 });
   });
 
   it('the scrubber and the pinned header get it from the spreads', async () => {

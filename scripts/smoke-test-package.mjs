@@ -108,7 +108,7 @@ const flat = listLayout(contacts, { label: (c) => c.name[0]!, itemHeight: 64 });
 const grouped = sectionListLayout([{ title: 'A', data: contacts }], { itemHeight: 64, sectionHeaderHeight: 32 });
 export const layouts: Sections[] = [flat.sections, grouped.sections];
 
-function Scrubber({ scrubber }: { scrubber: UseListScrubberResult<any, Sections> }) {
+function Scrubber({ scrubber }: { scrubber: UseListScrubberResult<Sections> }) {
   return (
     <ListScrubber
       {...scrubber.scrubberProps}

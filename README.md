@@ -85,10 +85,11 @@ scrubber's:
 const scrubber = useListScrubber({ onLayout, onContentSizeChange, onScroll: myScrollWorklet });
 ```
 
-`onScroll` there is a worklet (it runs on the UI thread); keep its identity stable. The hook also returns the
-pieces `listProps` and `scrubberProps` are made of (`listRef`, `scrollY`, `onScroll`, and the `contentHeight`,
-`viewportHeight` and `isDragging` shared values) for wiring them by hand; all of these are public API.
-`isDragging` is true while the thumb is dragged, for worklets of your own.
+`onScroll` there is a worklet (it runs on the UI thread); keep its identity stable (development builds warn
+when it's a new function on every render). The hook also returns the pieces `listProps` and `scrubberProps`
+are made of (`listRef`, `scrollY`, `onScroll`, and the `contentHeight`, `viewportHeight` and `isDragging`
+shared values) for wiring them by hand; all of these are public API. `isDragging` is true while the thumb is
+dragged, for worklets of your own.
 
 Colours, sizes and timings have neutral defaults; override any of them (see [Props](#props)). You pass the
 text and haptics.
@@ -211,8 +212,9 @@ const scrubber = useListScrubber({ sections, topBar: { height: BAR } });
 - `scrubberProps` keeps the thumb's track below the visible part of the bar, and `pinnedHeaderProps` keeps the
   pinned header below it, naming the section of the rows it covers.
 - During a thumb drag the bar stays as it was, so big jumps don't show and hide it. The drag reaches the first
-  row, not the empty spacer a hidden bar leaves above it. When the finger lifts the bar slides back in; at the
-  top of the list, the list scrolls back up with it.
+  row, not the empty spacer a hidden bar leaves above it. When the finger lifts the bar slides back in, in
+  `revealMs` (default 250; `topBar: { height: BAR, revealMs: 400 }` to change it); at the top of the list, the
+  list scrolls back up with it.
 - `scrollToSection` and `scrollToOffset` bring a section to just below the bar, where it will be once it has
   followed the scroll: scrolling up shows it, scrolling down hides it.
 - `scrubber.topBar` gives the bar's `height`, `visibleHeight` (how much of it is on screen) and `isFixed` (it
@@ -283,6 +285,8 @@ Optional:
   `list-scrubber`.
 - `metrics`, `timing`: partial overrides of the defaults below.
 - `bubbleStyle`, `bubbleTextStyle`: extra styles, e.g. a shadow or a font.
+- `maxFontSizeMultiplier`: cap on the system text size for the bubble's label, which doesn't grow with it.
+  Default: `1.5`.
 
 ### Types
 
@@ -290,7 +294,7 @@ Every component's props and the hook's options and result are exported: `ListScr
 `PinnedSectionHeaderProps`, `CurrentSectionLabelProps`, `UseListScrubberOptions`, `UseListScrubberResult`,
 plus `ListScrubberSection`, `ListScrubberTopBar`, `ListScrubberColors`, `ListScrubberMetrics` and
 `ListScrubberTiming`. For a component that takes the hook's result with sections:
-`UseListScrubberResult<any, readonly ListScrubberSection[]>`.
+`UseListScrubberResult<readonly ListScrubberSection[]>`.
 
 ### Defaults (`LIST_SCRUBBER_DEFAULTS`)
 
@@ -316,6 +320,10 @@ plus `ListScrubberSection`, `ListScrubberTopBar`, `ListScrubberColors`, `ListScr
 | ------------- | ---- | ---------------------------------------- |
 | `hideAfterMs` | 1500 | Delay before hiding once scrolling stops |
 | `fadeMs`      | 150  | Fade in and out                          |
+
+| `topBar`   | ms  |                                                                       |
+| ---------- | --- | --------------------------------------------------------------------- |
+| `revealMs` | 250 | The top bar sliding back in; set it with `useListScrubber`'s `topBar` |
 
 The touch width is fixed at 44 pt, the minimum touch target.
 
@@ -411,6 +419,10 @@ builds warn when offsets aren't ascending or finite. With SectionList, turn off 
 **"`sections` is a new array with the same contents…"** `sections` is rebuilt on every render, e.g.
 `useListScrubber({ sections: items.map(…) })`. Wrap it in `useMemo`. It works without, but the sections are
 checked and copied to the UI thread again on every render.
+
+**"The `onScroll` passed to useListScrubber is a new function on every render…"** An inline worklet, e.g.
+`useListScrubber({ onScroll: (e) => { 'worklet'; … } })`, rebuilds the list's scroll handler on every render.
+Define it outside the component, or wrap it in `useCallback`.
 
 **The app crashes at startup with a Gesture Handler error.** There are two copies of
 `react-native-gesture-handler`; see [Install](#install).

@@ -166,7 +166,7 @@ export const usePinnedSectionHeaderStyle: typeof RealUsePinnedSectionHeaderStyle
 
 export function useListScrubber<S extends readonly ListScrubberSection[] | undefined = undefined>(
   options: UseListScrubberOptions<S> = {},
-): UseListScrubberResult<any, S> {
+): UseListScrubberResult<S> {
   const { sections } = options;
   const barHeight = Math.max(0, options.topBar?.height ?? 0);
   // Stable identities, like the real hook's; the handlers read the latest options

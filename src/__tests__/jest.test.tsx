@@ -77,6 +77,13 @@ describe('ListScrubber', () => {
     expect(el.props.testID).toBe('list-scrubber-a11y');
   });
 
+  it("takes the real one's other props, e.g. maxFontSizeMultiplier", async () => {
+    await render(
+      <ListScrubber {...props} contentHeight={1000} viewportHeight={100} maxFontSizeMultiplier={1.2} />,
+    );
+    expect(screen.getByRole('adjustable')).toBeTruthy();
+  });
+
   it('without sections, values a percentage; testID prefixes its test ID', async () => {
     await render(
       <ListScrubber
@@ -216,7 +223,7 @@ describe('useListScrubber({ topBar })', () => {
   it('always shows the bar in full; the pinned header sits below it and names the rows there', async () => {
     let list!: ReturnType<typeof useListScrubber>;
     function Screen() {
-      list = useListScrubber({ sections, topBar: { height: 100 } });
+      list = useListScrubber({ sections, topBar: { height: 100, revealMs: 400 } });
       return <PinnedSectionHeader {...list.pinnedHeaderProps} height={32} />;
     }
     await render(<Screen />);

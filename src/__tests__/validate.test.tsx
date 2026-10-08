@@ -1,5 +1,5 @@
 import { colors, setup } from './support';
-import { act, render } from '@testing-library/react-native';
+import { act, render, renderHook } from '@testing-library/react-native';
 import { ListScrubber, PinnedSectionHeader, useListScrubber } from '../index';
 import { resetWarnings, warnIfInvalid } from '../validate';
 
@@ -131,6 +131,45 @@ describe('unmemoized sections', () => {
       const view = await render(header(make()));
       await view.rerender(header(make()));
       await view.rerender(header(make()));
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      (globalThis as unknown as { __DEV__: boolean }).__DEV__ = dev;
+    }
+  });
+});
+
+describe("an onScroll that isn't stable", () => {
+  const unstable = (call: unknown[]) => String(call[0]).includes('`onScroll` passed to useListScrubber');
+  /** Renders the hook with a new `onScroll` from `next()` each time, `times` renders in all */
+  const renderWith = async (next: () => (() => void) | undefined, times: number) => {
+    const { rerender } = await renderHook(() => useListScrubber({ onScroll: next() }));
+    for (let i = 1; i < times; i++) await rerender({});
+  };
+
+  it('warns once when it is a new function on every render', async () => {
+    await renderWith(() => () => {}, 5);
+    expect(warn.mock.calls.filter(unstable)).toHaveLength(1);
+    expect(warn.mock.calls.find(unstable)![0]).toMatch(
+      /^react-native-list-scrubber: .*Define the worklet outside the component, or wrap it in useCallback\.$/,
+    );
+  });
+
+  it('stays quiet for a stable one, none, or a single change', async () => {
+    const stable = () => {};
+    await renderWith(() => stable, 3);
+    await renderWith(() => undefined, 3);
+    const handlers = [stable, () => {}, () => {}];
+    let n = 0;
+    // Changes once, stays, then changes once more: never twice in a row
+    await renderWith(() => handlers[[0, 1, 1, 2][n++]!], 4);
+    expect(warn.mock.calls.filter(unstable)).toHaveLength(0);
+  });
+
+  it('stays quiet in production builds', async () => {
+    const dev = __DEV__;
+    (globalThis as unknown as { __DEV__: boolean }).__DEV__ = false;
+    try {
+      await renderWith(() => () => {}, 3);
       expect(warn).not.toHaveBeenCalled();
     } finally {
       (globalThis as unknown as { __DEV__: boolean }).__DEV__ = dev;

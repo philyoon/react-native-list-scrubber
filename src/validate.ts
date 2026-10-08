@@ -67,7 +67,10 @@ export function resetWarnings(): void {
   warned.clear();
 }
 
-/** Renders in a row with a new but identical `sections` array before it counts as unmemoized */
+/**
+ * Renders in a row with a new but identical `sections` array (or a new `onScroll`) before it counts as
+ * unmemoized
+ */
 const UNMEMOIZED_RENDERS = 2;
 
 /**
@@ -94,6 +97,29 @@ function useWarnIfUnmemoized(sections: readonly ListScrubberSection[] | undefine
 
 function sameSections(a: readonly ListScrubberSection[], b: readonly ListScrubberSection[]): boolean {
   return a.length === b.length && a.every((s, i) => s.offset === b[i]!.offset && s.label === b[i]!.label);
+}
+
+/**
+ * Development only: warns once when `useListScrubber`'s `onScroll` keeps arriving as a new function, e.g. an
+ * inline worklet. Each new one rebuilds the list's scroll handler and re-renders the list. Once alone (a
+ * handler swapped on purpose) is fine.
+ */
+export function useWarnIfUnstable(onScroll: object | undefined): void {
+  const previous = useRef(onScroll);
+  const changes = useRef(0);
+  useEffect(() => {
+    const prev = previous.current;
+    previous.current = onScroll;
+    if (!__DEV__ || warned.has('unstable onScroll')) return;
+    changes.current = prev !== onScroll ? changes.current + 1 : 0;
+    if (changes.current < UNMEMOIZED_RENDERS) return;
+    warned.add('unstable onScroll');
+    console.warn(
+      'react-native-list-scrubber: the `onScroll` passed to useListScrubber is a new function on every ' +
+        "render, so the list's scroll handler is rebuilt each time. Define the worklet outside the component, " +
+        'or wrap it in useCallback.',
+    );
+  });
 }
 
 /** How long the list must be mounted without reporting its size before it counts as miswired */
