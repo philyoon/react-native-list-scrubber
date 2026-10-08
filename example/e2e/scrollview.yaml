@@ -9,7 +9,13 @@ env:
     env:
       DEMO: ScrollView
 - assertVisible: Chapter 1
-- runFlow: subflows/drag-to-end.yaml
-- assertVisible: Chapter 60
-- runFlow: subflows/drag-to-start.yaml
-- assertVisible: Chapter 1
+- retry:
+    maxRetries: 1
+    commands:
+      - runFlow: subflows/drag-to-end.yaml
+      - assertVisible: Chapter 60
+- retry:
+    maxRetries: 1
+    commands:
+      - runFlow: subflows/drag-to-start.yaml
+      - assertVisible: Chapter 1

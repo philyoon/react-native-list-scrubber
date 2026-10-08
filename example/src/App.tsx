@@ -1,6 +1,14 @@
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  StatusBar as NativeStatusBar,
+} from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DEMOS } from './demos';
@@ -41,7 +49,11 @@ function Main() {
   const Demo = DEMOS[demo]!.Component;
   return (
     <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top }}>
+      {/* Drawn behind the status bar on every Android version (it is from Android 15): the e2e flows'
+          screen percentages (src/e2e.ts) then measure the whole screen, not a window that starts below
+          the status bar */}
       <StatusBar style="auto" />
+      <NativeStatusBar translucent backgroundColor="transparent" />
       <Text style={[styles.title, { color: colors.text }]}>List Scrubber</Text>
       <ScrollView
         horizontal
