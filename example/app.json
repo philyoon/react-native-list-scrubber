@@ -6,6 +6,12 @@
     "version": "1.0.0",
     "orientation": "default",
     "userInterfaceStyle": "automatic",
-    "plugins": ["expo-status-bar"]
+    "plugins": ["expo-status-bar"],
+    "ios": {
+      "bundleIdentifier": "com.philyoon.listscrubber.example"
+    },
+    "android": {
+      "package": "com.philyoon.listscrubber.example"
+    }
   }
 }
