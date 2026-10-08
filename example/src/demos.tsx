@@ -110,6 +110,13 @@ function monthSections(entries: Entry[]): ListScrubberSection[] {
     .sections;
 }
 
+/**
+ * For FlatList and SectionList: fill the screen quickly after a jump (a drag, or scrollToSection from the
+ * index). The list scrolls on the UI thread at once; the rows there render on JS, so until then it is blank.
+ * A small window rendered in big batches keeps that short.
+ */
+const FAST_FILL = { windowSize: 5, maxToRenderPerBatch: 24, updateCellsBatchingPeriod: 16 } as const;
+
 // FlatList: fixed rows via getItemLayout, sections from the first row of each letter,
 // and a pinned letter header drawn on the UI thread (PinnedSectionHeader; the list has no headers to push it).
 function FlatListDemo() {
@@ -133,10 +140,7 @@ function FlatListDemo() {
         ListHeaderComponent={<View style={{ height: HEADER }} />}
         renderItem={({ item }) => <ContactRow item={item} colors={colors} />}
         getItemLayout={getItemLayout}
-        // Fill the screen quickly after a jump: a small window, rendered in big batches
-        windowSize={5}
-        maxToRenderPerBatch={24}
-        updateCellsBatchingPeriod={16}
+        {...FAST_FILL}
       />
       <PinnedSectionHeader
         {...scrubber.headerProps}
@@ -177,6 +181,7 @@ function SectionListDemo() {
         )}
         renderItem={({ item }) => <ContactRow item={item} colors={colors} />}
         getItemLayout={getItemLayout}
+        {...FAST_FILL}
       />
       <PinnedSectionHeader
         {...scrubber.headerProps}
@@ -234,6 +239,7 @@ function IndexDemo() {
           )}
           renderItem={({ item }) => <ContactRow item={item} colors={colors} />}
           getItemLayout={getItemLayout}
+          {...FAST_FILL}
         />
         <PinnedSectionHeader
           {...scrubber.headerProps}

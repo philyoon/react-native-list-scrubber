@@ -300,9 +300,12 @@ were also checked by hand on Android, in the app this library came from:
 The scrubber needs to know where things are. Lists that measure rows as they render, such as FlatList without
 `getItemLayout` or variable-height rows, give estimated positions.
 
-During very fast drags a list can show blank rows for a moment while JS renders them. The scrubber itself
-never waits for that. For FlatList, a small `windowSize` with a large `maxToRenderPerBatch` fills the screen
-fastest after a jump.
+After a jump (a fast drag, or `scrollToSection` from a tappable index) a list can show blank rows for a
+moment: the list moves on the UI thread at once, and the rows there are rendered on JS after it. The scrubber
+itself never waits for that, but React Native's lists can't render the destination ahead of the jump. For
+FlatList and SectionList, a small `windowSize` with a large `maxToRenderPerBatch` and a short
+`updateCellsBatchingPeriod` fills the screen fastest (the example uses `5`, `24` and `16`); FlashList and
+Legend List render it faster on their own.
 
 ## Testing your app
 
