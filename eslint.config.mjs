@@ -1,4 +1,5 @@
 import js from '@eslint/js';
+import stylistic from '@stylistic/eslint-plugin';
 import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
@@ -8,9 +9,21 @@ export default tseslint.config(
   tseslint.configs.recommended,
   reactHooks.configs.flat['recommended-latest'],
   {
+    plugins: { '@stylistic': stylistic },
     rules: {
       // Scrollable components and animated refs are typed loosely on purpose
       '@typescript-eslint/no-explicit-any': 'off',
+      // Prettier wraps code at printWidth but leaves comments alone; strings can't be wrapped
+      '@stylistic/max-len': [
+        'error',
+        {
+          code: 110,
+          ignoreStrings: true,
+          ignoreTemplateLiterals: true,
+          ignoreUrls: true,
+          ignoreRegExpLiterals: true,
+        },
+      ],
     },
   },
   {
