@@ -15,15 +15,7 @@
  *   (`listProps.onScroll({ contentOffset: { y: 300 } })`) and check the label.
  * - listLayout, sectionListLayout, sectionIndexAt and LIST_SCRUBBER_DEFAULTS are the real ones.
  */
-import {
-  createElement,
-  isValidElement,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from 'react';
+import { useMemo, useState, useSyncExternalStore } from 'react';
 import { Platform, Text, View, type LayoutChangeEvent } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import type { ListScrubberProps } from './ListScrubber';
@@ -32,6 +24,7 @@ import type {
   PinnedSectionHeaderProps,
   usePinnedSectionHeaderStyle as RealUsePinnedSectionHeaderStyle,
 } from './PinnedSectionHeader';
+import { useListHeader } from './ListHeader';
 import { labelPosition, sectionIndexAt } from './math';
 import type { ListScrubberSection } from './types';
 import { useLatest } from './useLatest';
@@ -236,20 +229,9 @@ export function useListScrubber<S extends readonly ListScrubberSection[] | undef
     const row = layout!.getItemLayout(data, index);
     return { ...row, offset: row.offset + spacerHeight };
   });
-  // The spacer, then your own header, like the real one (which keeps its identity the same way)
-  const header = useRef({ spacerHeight, own: options.ListHeaderComponent });
-  useLayoutEffect(() => {
-    header.current = { spacerHeight, own: options.ListHeaderComponent };
-  });
-  const [ListHeader] = useState(() => () => {
-    const { spacerHeight: height, own } = header.current;
-    return (
-      <>
-        {height > 0 && <View style={{ height }} testID="list-scrubber-spacer" />}
-        {own && (isValidElement(own) ? own : createElement(own))}
-      </>
-    );
-  });
+  // The real one: the spacer, then your own header, following them in the same render. Without its warning
+  // that the spacer is never drawn: tests don't lay views out
+  const ListHeader = useListHeader(spacerHeight, options.ListHeaderComponent, false);
   const hasHeader = spacerHeight > 0 || options.ListHeaderComponent !== undefined;
   const flatListProps = useMemo(
     () => ({

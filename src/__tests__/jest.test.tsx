@@ -1,5 +1,6 @@
 import { act, render, renderHook, screen } from '@testing-library/react-native';
 import * as mock from '../jest';
+import { useState } from 'react';
 import { Platform } from 'react-native';
 
 // The mock must work without these: record any load of them
@@ -246,6 +247,25 @@ describe('useListScrubber', () => {
     });
     r.scrollToSection(1);
     expect(r.scrollY.get()).toBe(64);
+  });
+
+  it('the header follows a new spacer height and header in the same render, like the real one', async () => {
+    let setBar!: (height: number) => void;
+    const Own = () => <mock.CurrentSectionLabel scrollY={at(0)} sections={sections} />;
+    function Screen() {
+      const [bar, set] = useState(0);
+      setBar = set;
+      const { ListHeader } = useListScrubber({
+        topBar: { height: bar },
+        ListHeaderComponent: bar ? Own : undefined,
+      });
+      return <ListHeader />;
+    }
+    await render(<Screen />);
+    expect(screen.queryByTestId('list-scrubber-spacer')).toBeNull();
+    await act(() => setBar(300)); // e.g. the bar measured: no extra render needed
+    expect(screen.getByTestId('list-scrubber-spacer')).toHaveStyle({ height: 300 });
+    expect(screen.getByTestId('list-scrubber-section-label')).toBeTruthy();
   });
 
   it('draws your own list header, without a spacer when nothing is over the list', async () => {
