@@ -40,7 +40,7 @@ const CONTACTS = makeContacts(3000);
 const ENTRIES = makeEntries(4000);
 
 /** useListScrubber given sections: its scrubberProps and pinnedHeaderProps carry them */
-type SectionScrubber = UseListScrubberResult<any, readonly ListScrubberSection[]>;
+type SectionScrubber = UseListScrubberResult<readonly ListScrubberSection[]>;
 
 function Scrubber(props: { scrubber: SectionScrubber }) {
   const colors = useColors();

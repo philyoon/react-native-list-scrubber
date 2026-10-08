@@ -16,10 +16,11 @@ import {
   type SharedValue,
 } from 'react-native-reanimated';
 import { scheduleOnUI } from 'react-native-worklets';
+import { LIST_SCRUBBER_DEFAULTS } from './defaults';
 import { clamp } from './math';
 import type { ListScrubberSection, ListScrubberTopBar } from './types';
 import { useLatest } from './useLatest';
-import { useWarnIfUnmeasured } from './validate';
+import { useWarnIfUnmeasured, useWarnIfUnstable } from './validate';
 
 export interface UseListScrubberOptions<S extends readonly ListScrubberSection[] | undefined = undefined> {
   /**
@@ -32,11 +33,14 @@ export interface UseListScrubberOptions<S extends readonly ListScrubberSection[]
    * comes back on a scroll up. Draw it with `topBarStyle`, and start the list with a spacer as tall as the
    * bar (plus a pinned header, if any). `scrubberProps` and `pinnedHeaderProps` then keep the scrubber and
    * the pinned header below it. During a thumb drag it stays as it was, and it slides back in when
-   * the finger lifts.
+   * the finger lifts, over `revealMs` (default: LIST_SCRUBBER_DEFAULTS.topBar.revealMs).
    */
-  topBar?: { height: number };
+  topBar?: { height: number; revealMs?: number };
   // The list's own handlers, called after the scrubber's (listProps sets these props on the list)
-  /** A worklet (runs on the UI thread). Keep its identity stable, e.g. define it outside the component. */
+  /**
+   * A worklet (runs on the UI thread). Keep its identity stable, e.g. define it outside the component
+   * (development builds warn when it changes on every render).
+   */
   onScroll?: (event: ScrollEvent) => void;
   onLayout?: (event: LayoutChangeEvent) => void;
   onContentSizeChange?: (width: number, height: number) => void;
@@ -65,13 +69,16 @@ export interface UseListScrubberOptions<S extends readonly ListScrubberSection[]
  * `scrollToSection(index)` and `scrollToOffset(y)` move the list from code, e.g. for a tappable A–Z index
  * or a "jump to today" button.
  */
-// `any`: works with any scrollable component
+// `any`: works with any scrollable component. TList comes first: S is inferred from `options`, so TList is
+// the only one to write out
 export function useListScrubber<
   TList extends Component<any, any> = any,
   S extends readonly ListScrubberSection[] | undefined = undefined,
->(options: UseListScrubberOptions<S> = {}): UseListScrubberResult<TList, S> {
+>(options: UseListScrubberOptions<S> = {}): UseListScrubberResult<S, TList> {
   const { onScroll: userOnScroll, sections } = options;
   const barHeight = Math.max(0, options.topBar?.height ?? 0);
+  const revealMs = options.topBar?.revealMs ?? LIST_SCRUBBER_DEFAULTS.topBar.revealMs;
+  useWarnIfUnstable(userOnScroll);
   const listRef = useAnimatedRef<TList>();
   const scrollY = useSharedValue(0);
   // Shared values, not state: the component calling this hook (and its list) doesn't re-render when the
@@ -91,8 +98,8 @@ export function useListScrubber<
   const barPinned = useSharedValue(false);
   useEffect(() => {
     barPinned.set(screenReader);
-    if (screenReader) scheduleOnUI(revealTopBar, barHidden, barRevealing);
-  }, [screenReader, barPinned, barHidden, barRevealing]);
+    if (screenReader) scheduleOnUI(revealTopBar, barHidden, barRevealing, revealMs);
+  }, [screenReader, barPinned, barHidden, barRevealing, revealMs]);
   const onScroll = useAnimatedScrollHandler(
     (e) => {
       const y = e.contentOffset.y;
@@ -118,9 +125,9 @@ export function useListScrubber<
     (dragging, was) => {
       if (!was || dragging || barHeight <= 0) return;
       if (barHidden.get() > 0 && scrollY.get() <= barHidden.get() + 0.5) scrollTo(listRef, 0, 0, true);
-      revealTopBar(barHidden, barRevealing);
+      revealTopBar(barHidden, barRevealing, revealMs);
     },
-    [barHeight],
+    [barHeight, revealMs],
   );
   const barVisible = useDerivedValue(() => barHeight - barHidden.get());
   const topBarStyle = useAnimatedStyle(() => ({ transform: [{ translateY: -barHidden.get() }] }));
@@ -130,10 +137,10 @@ export function useListScrubber<
         ? {
             height: barHeight,
             visibleHeight: barVisible,
-            show: () => scheduleOnUI(revealTopBar, barHidden, barRevealing),
+            show: () => scheduleOnUI(revealTopBar, barHidden, barRevealing, revealMs),
           }
         : undefined,
-    [barHeight, barVisible, barHidden, barRevealing],
+    [barHeight, barVisible, barHidden, barRevealing, revealMs],
   );
   /** What a pinned header below the top bar covers: the rows just below the bar's visible part */
   const pinnedScrollY = useDerivedValue(() => scrollY.get() + barVisible.get());
@@ -255,13 +262,13 @@ function useScreenReaderEnabled(watch: boolean): boolean {
   return watch && enabled;
 }
 
-/** Slides the top bar fully back in */
-function revealTopBar(hidden: SharedValue<number>, revealing: SharedValue<boolean>) {
+/** Slides the top bar fully back in, over `durationMs` */
+function revealTopBar(hidden: SharedValue<number>, revealing: SharedValue<boolean>, durationMs: number) {
   'worklet';
   if (hidden.get() <= 0) return;
   revealing.set(true);
   hidden.set(
-    withTiming(0, { duration: 250, easing: Easing.out(Easing.cubic) }, () => {
+    withTiming(0, { duration: durationMs, easing: Easing.out(Easing.cubic) }, () => {
       revealing.set(false);
     }),
   );
@@ -288,12 +295,12 @@ type ScrubberProps<TList extends Component<any, any>, S> = {
 
 /**
  * What `useListScrubber` returns. `S` is the type of the `sections` passed to it (`undefined` without),
- * e.g. `UseListScrubberResult<any, readonly ListScrubberSection[]>` for a component that takes the hook's
- * result as a prop.
+ * e.g. `UseListScrubberResult<readonly ListScrubberSection[]>` for a component that takes the hook's
+ * result as a prop. `TList` is the list component's type.
  */
 export interface UseListScrubberResult<
-  TList extends Component<any, any> = any,
   S extends readonly ListScrubberSection[] | undefined = undefined,
+  TList extends Component<any, any> = any,
 > {
   listRef: AnimatedRef<TList>;
   /** Scroll offset, updated on the UI thread */

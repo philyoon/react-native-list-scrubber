@@ -412,6 +412,18 @@ describe('while the finger is down', () => {
     expect(screen.getByText('Jan', { includeHiddenElements: true }).props.maxFontSizeMultiplier).toBe(1.5);
   });
 
+  it('takes another cap with maxFontSizeMultiplier', async () => {
+    await setup({ labelAt: () => 'Jan', maxFontSizeMultiplier: 1.2 });
+    await hold(10);
+    expect(screen.getByText('Jan', { includeHiddenElements: true }).props.maxFontSizeMultiplier).toBe(1.2);
+  });
+
+  it('takes another cap with maxFontSizeMultiplier for section labels too', async () => {
+    await setup({ sections: [{ offset: 0, label: 'Zebra' }], maxFontSizeMultiplier: 1.2 });
+    await goIdle();
+    expect(sectionText('list-scrubber-label').field.props.maxFontSizeMultiplier).toBe(1.2);
+  });
+
   it('sizes each section label by its own length', async () => {
     await setup({
       sections: [

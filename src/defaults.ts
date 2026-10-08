@@ -43,6 +43,11 @@ export const LIST_SCRUBBER_DEFAULTS: Readonly<{
   colors: Readonly<ListScrubberColors>;
   metrics: Readonly<ListScrubberMetrics>;
   timing: Readonly<ListScrubberTiming>;
+  /** `useListScrubber`'s top bar. Override with its `topBar` option. */
+  topBar: Readonly<{
+    /** How long the bar takes to slide back in, when the finger lifts from the thumb or on `show()` */
+    revealMs: number;
+  }>;
 }> = Object.freeze({
   // Neutral greys and blue that read on light and dark backgrounds alike (thumb ≥ 3:1 on white and black)
   colors: Object.freeze({
@@ -66,6 +71,7 @@ export const LIST_SCRUBBER_DEFAULTS: Readonly<{
     bubbleShortLabelMaxLength: 2,
   }),
   timing: Object.freeze({ hideAfterMs: 1500, fadeMs: 150 }),
+  topBar: Object.freeze({ revealMs: 250 }),
 });
 
 // Fixed values

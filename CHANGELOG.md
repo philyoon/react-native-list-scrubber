@@ -16,6 +16,16 @@
 - With a screen reader on (iOS and Android), the top bar stays in place, so its contents are never reachable
   off screen. The scrubber's screen-reader steps (and web keyboard keys) bring a section to just below the
   bar, and its value and the bubble's label name the rows below the bar, not the ones it covers.
+- `ListScrubber` takes `maxFontSizeMultiplier` (default 1.5), the cap on the system text size for the bubble's
+  label, like `PinnedSectionHeader` and `CurrentSectionLabel`.
+- Breaking: `UseListScrubberResult`'s type parameters are `<S, TList>`, sections first:
+  `UseListScrubberResult<readonly ListScrubberSection[]>`. Replace `UseListScrubberResult<any, S>` with
+  `UseListScrubberResult<S>`, and `UseListScrubberResult<L, S>` with `UseListScrubberResult<S, L>`.
+- `useListScrubber({ topBar: { height, revealMs } })`: how long the top bar takes to slide back in. The
+  default, 250, is `LIST_SCRUBBER_DEFAULTS.topBar.revealMs`.
+- Development builds warn when `useListScrubber`'s `onScroll` is a new function on every render: it's a
+  worklet, and each new one rebuilds the list's scroll handler. Define it outside the component, or wrap it in
+  `useCallback`.
 
 ## 0.2.0
 
