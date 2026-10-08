@@ -445,7 +445,9 @@ it in the browser instead (Expo web); CI builds that web bundle on every push.
 Android emulator: dragging the thumb to the end and back on each list type, stopping part way in the right
 section, touches passing through the hidden thumb, the screen-reader control, and jumping from the A–Z index;
 a header that slides away; and the same drags in a right-to-left layout, in landscape, and at the largest
-system text size. They run on iPhone SE, iPhone 17 Pro, iPhone 17 Pro Max and a Pixel 8 emulator.
+system text size. They run on iPhone SE, iPhone 17 Pro, iPhone 17 Pro Max and a Pixel 8 emulator. CI
+(`.github/workflows/e2e-native.yml`) runs them, all but the right-to-left ones, on an iPhone Pro simulator and
+a Pixel 7 emulator for every pull request.
 
 From the repo root, with Expo Go installed on the simulator or emulator, start Metro in e2e mode and keep it
 running:

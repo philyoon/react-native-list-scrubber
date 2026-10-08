@@ -18,7 +18,7 @@ env:
       - swipe:
           start: 91%, 95%
           end: 91%, 5%
-          duration: 800 # a thumb drag doesn't fling: no need to go slowly
+          duration: 1500 # it ends at the end of the list: on a slow emulator (CI) a faster drag's last stretch can be lost
 - runFlow:
     when:
       true: ${typeof RTL != 'undefined' && RTL == 1}
@@ -26,5 +26,5 @@ env:
       - swipe:
           start: 9%, 95%
           end: 9%, 5%
-          duration: 800 # a thumb drag doesn't fling: no need to go slowly
+          duration: 1500 # it ends at the end of the list: on a slow emulator (CI) a faster drag's last stretch can be lost
 - waitForAnimationToEnd

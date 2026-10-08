@@ -1,0 +1,136 @@
+name: Native e2e
+# The Maestro flows in example/e2e (all but the right-to-left ones) in Expo Go, on an iOS simulator and an
+# Android emulator: the same runs as `npm run e2e:ios` / `npm run e2e:android` (see the README's End-to-end tests)
+on:
+  pull_request:
+  workflow_dispatch:
+concurrency:
+  group: e2e-native-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  MAESTRO_CLI_NO_ANALYTICS: 1
+  # The first start of Maestro's driver on a fresh simulator or emulator can be slow
+  MAESTRO_DRIVER_STARTUP_TIMEOUT: 240000
+jobs:
+  ios:
+    runs-on: macos-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: example/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      # Setup runs side by side where it can: the simulator boots (about 1.5 min) while dependencies install,
+      # and Metro builds the app while Expo Go is installed
+      - name: Start booting an iPhone Pro simulator
+        run: |
+          udid=$(xcrun simctl list devices available -j | jq -r '
+            [.devices | to_entries[] | select(.key | test("iOS")) | .value[]
+             | select(.name | test("^iPhone [0-9]+ Pro$"))] | last | .udid')
+          echo "Simulator: $udid"
+          xcrun simctl boot "$udid"
+          echo "MAESTRO_DEVICE=$udid" >> "$GITHUB_ENV"
+      - run: npm --prefix example ci
+      - name: Install Maestro
+        run: |
+          curl -fsSL https://get.maestro.mobile.dev | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      # Expo Go (about 200 MB) is kept between runs, under its download URL: a new Expo Go is fetched once
+      - name: Expo Go's download URL
+        id: expo-go
+        run: |
+          url=$(node scripts/expo-go-url.mjs ios)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "key=$(printf %s "$url" | shasum -a 256 | cut -c1-16)" >> "$GITHUB_OUTPUT"
+        working-directory: example
+      - uses: actions/cache@v4
+        id: expo-go-cache
+        with:
+          path: example/ExpoGo.app
+          key: expo-go-ios-${{ steps.expo-go.outputs.key }}
+      - name: Download Expo Go
+        if: steps.expo-go-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir ExpoGo.app
+          curl -fsSL "${{ steps.expo-go.outputs.url }}" | tar -xz -C ExpoGo.app
+        working-directory: example
+      - name: Start Metro in e2e mode, and install Expo Go meanwhile
+        run: |
+          sh scripts/ci-metro.sh ios &
+          metro=$!
+          xcrun simctl bootstatus "$MAESTRO_DEVICE" -b
+          xcrun simctl install "$MAESTRO_DEVICE" ExpoGo.app
+          wait "$metro"
+        working-directory: example
+      - run: npm run e2e:ios
+        working-directory: example
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-ios
+          path: |
+            ~/.maestro/tests
+            example/metro.log
+
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: example/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Enable KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - run: npm --prefix example ci
+      - name: Install Maestro
+        run: |
+          curl -fsSL https://get.maestro.mobile.dev | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Download Expo Go
+        run: |
+          url=$(node scripts/expo-go-url.mjs android)
+          curl -fsSL "$url" -o expo-go.apk
+        working-directory: example
+      - name: Start Metro in e2e mode
+        run: sh scripts/ci-metro.sh android
+        working-directory: example
+      - uses: reactivecircus/android-emulator-runner@v2
+        env:
+          MAESTRO_DEVICE: emulator-5554
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          # Animations stay on, as on a phone: with them off, Reanimated treats the device as reduced-motion
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          working-directory: example
+          # Each line runs in its own shell
+          script: |
+            adb install -r expo-go.apk
+            adb shell pm grant host.exp.exponent android.permission.POST_NOTIFICATIONS
+            npm run e2e:android
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-android
+          path: |
+            ~/.maestro/tests
+            example/metro.log
