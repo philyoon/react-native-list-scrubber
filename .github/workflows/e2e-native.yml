@@ -13,8 +13,20 @@ env:
   MAESTRO_DRIVER_STARTUP_TIMEOUT: 240000
 jobs:
   ios:
+    name: ios (${{ matrix.shard.name }})
     runs-on: macos-latest
     timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      # The flows in three groups that run side by side, of about equal length on CI
+      matrix:
+        shard:
+          - name: lists
+            flows: e2e/lists.yaml e2e/passthrough.yaml
+          - name: drags
+            flows: e2e/collapsible.yaml e2e/flatlist.yaml e2e/middle.yaml
+          - name: more
+            flows: e2e/landscape.yaml e2e/scrollview.yaml e2e/index.yaml e2e/accessibility.yaml e2e/large-text
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -26,8 +38,13 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      # Setup runs side by side where it can: the simulator boots (about 1.5 min) while dependencies install,
-      # and Metro builds the app while Expo Go is installed
+      - run: npm --prefix example ci
+      - name: Install Maestro
+        run: |
+          curl -fsSL https://get.maestro.mobile.dev | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      # The simulator boots (about 1.5 min) while Expo Go is fetched and Metro builds the app. Not during the
+      # dependency install: on the runner the two slowed each other down, npm ci from 20 s to 4 min
       - name: Start booting an iPhone Pro simulator
         run: |
           udid=$(xcrun simctl list devices available -j | jq -r '
@@ -36,11 +53,6 @@ jobs:
           echo "Simulator: $udid"
           xcrun simctl boot "$udid"
           echo "MAESTRO_DEVICE=$udid" >> "$GITHUB_ENV"
-      - run: npm --prefix example ci
-      - name: Install Maestro
-        run: |
-          curl -fsSL https://get.maestro.mobile.dev | bash
-          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
       # Expo Go (about 200 MB) is kept between runs, under its download URL: a new Expo Go is fetched once
       - name: Expo Go's download URL
         id: expo-go
@@ -68,19 +80,31 @@ jobs:
           xcrun simctl install "$MAESTRO_DEVICE" ExpoGo.app
           wait "$metro"
         working-directory: example
-      - run: npm run e2e:ios
+      - run: npm run e2e:ios -- ${{ matrix.shard.flows }}
         working-directory: example
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: e2e-ios
+          name: e2e-ios-${{ matrix.shard.name }}
           path: |
             ~/.maestro/tests
             example/metro.log
 
   android:
+    name: android (${{ matrix.shard.name }})
     runs-on: ubuntu-latest
     timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      # The flows in three groups that run side by side, of about equal length on CI
+      matrix:
+        shard:
+          - name: lists
+            flows: e2e/lists.yaml e2e/passthrough.yaml
+          - name: drags
+            flows: e2e/collapsible.yaml e2e/flatlist.yaml e2e/middle.yaml
+          - name: more
+            flows: e2e/landscape.yaml e2e/scrollview.yaml e2e/index.yaml e2e/accessibility.yaml e2e/large-text
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -110,6 +134,26 @@ jobs:
       - name: Start Metro in e2e mode
         run: sh scripts/ci-metro.sh android
         working-directory: example
+      # The emulator boots from a snapshot kept between runs (the emulator action's recommended setup)
+      - uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-34-google_apis-x86_64-pixel_7
+      - name: Create the emulator and its boot snapshot
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          force-avd-creation: false
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: echo "Created the emulator's boot snapshot"
       - uses: reactivecircus/android-emulator-runner@v2
         env:
           MAESTRO_DEVICE: emulator-5554
@@ -118,19 +162,21 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_7
+          force-avd-creation: false
           # Animations stay on, as on a phone: with them off, Reanimated treats the device as reduced-motion
           disable-animations: false
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-options:
+            -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           working-directory: example
           # Each line runs in its own shell
           script: |
             adb install -r expo-go.apk
             adb shell pm grant host.exp.exponent android.permission.POST_NOTIFICATIONS
-            npm run e2e:android
+            npm run e2e:android -- ${{ matrix.shard.flows }}
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: e2e-android
+          name: e2e-android-${{ matrix.shard.name }}
           path: |
             ~/.maestro/tests
             example/metro.log
