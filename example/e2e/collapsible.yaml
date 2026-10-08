@@ -1,6 +1,6 @@
 # Collapsible: a top bar over the list (useListScrubber's topBar) slides away as it scrolls down and comes back
-# on a scroll up, and when the finger lifts from the thumb. The thumb's track starts below whatever is left of
-# it, and the bar is shown again at the top of the list. (The pinned letter header is hidden from
+# on a scroll up. A thumb drag leaves it as it was, even one that ends at the top of the list (the demo leaves
+# revealOnDragToTop off), and a scroll up brings it back. The thumb's track starts below whatever is left of it. (The pinned letter header is hidden from
 # screen readers, so Maestro can't read it on iOS: the flow checks the scrubber's screen-reader value and the
 # rows instead. The web tests check the pinned header's position.)
 # Expo Go: host.exp.Exponent on iOS; npm run e2e:android sets APP_ID=host.exp.exponent
@@ -95,12 +95,17 @@ env:
     commands:
       - runFlow: subflows/drag-to-end.yaml
       - assertVisible: '.* Zel.*'
-# A drag that ends at the top brings the bar back
+# Back to the first row, then a scroll up to the very top brings the bar back
 - retry:
     maxRetries: 1
     commands:
       - runFlow: subflows/drag-to-start.yaml
       - assertVisible: Ada Abby
+- swipe:
+    start: 50%, 40%
+    end: 50%, 75%
+    duration: 1500
+- waitForAnimationToEnd
 - assertVisible:
     text: 3,000 people
     below: A top bar that slides away as you scroll

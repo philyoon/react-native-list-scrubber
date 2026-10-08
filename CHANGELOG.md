@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Breaking: a thumb drag that ends at the top of the list no longer brings the top bar back by default: the
+  bar stays as the drag left it, as after a drag anywhere else, and a scroll up brings it back. For 0.3.0's
+  behaviour (the list scrolls to the very top and the bar slides in when the finger lifts), pass
+  `topBar: { height, revealOnDragToTop: true }`. The default is in `LIST_SCRUBBER_DEFAULTS.topBar`.
+
 ## 0.3.0
 
 A new, shorter way in: give the hook the list's layout and spread the props named after your list. A top bar
