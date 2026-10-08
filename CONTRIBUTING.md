@@ -1,7 +1,7 @@
 # Contributing
 
 Thanks for helping! Bug reports and pull requests are welcome. For a larger change, open an issue first so we
-can agree on the approach.
+can agree on the approach. For a change to the API, read [API principles](docs/API_PRINCIPLES.md) first.
 
 ## Setup
 
@@ -77,6 +77,7 @@ that runs every check, including the example app and the Maestro flows:
 ## Pull requests
 
 - Keep each pull request to one change.
+- Check new options, props and behaviour against the [API principles](docs/API_PRINCIPLES.md).
 - Add an entry under `## Unreleased` in `CHANGELOG.md` for anything users will notice.
 - Update the README when the API or behaviour changes.
 
