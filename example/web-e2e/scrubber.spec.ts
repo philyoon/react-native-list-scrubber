@@ -165,7 +165,8 @@ test('a collapsible header: the thumb, the bubble and the pinned header follow i
   await expect(header(page)).toHaveValue(b.label);
   await expect(header(page)).toHaveValue((await rowLetter())!);
 
-  // A short scroll up brings the header back; the pinned header moves below it and still names the rows it covers
+  // A short scroll up brings the header back; the pinned header moves below it
+  // and still names the rows it covers
   await page.mouse.move(page.viewportSize()!.width / 2, page.viewportSize()!.height / 2); // over the rows
   await page.mouse.wheel(0, -200);
   await expect.poll(async () => (await box(pinned)).y).toBeGreaterThan(hidden.y + hidden.height + 100);

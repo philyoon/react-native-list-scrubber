@@ -31,7 +31,8 @@ import {
 } from './data';
 import { E2E, E2E_TIMING } from './e2e';
 
-// The web tests (web-e2e/) open the page with ?side=left for the scrubber on the left edge, as an RTL page would
+// The web tests (web-e2e/) open the page with ?side=left for the scrubber on the left edge,
+// as an RTL page would
 const WEB_SIDE =
   Platform.OS === 'web' && new URLSearchParams(globalThis.location?.search).get('side') === 'left'
     ? 'left'
@@ -95,7 +96,10 @@ function EntryRow({ item, colors }: { item: Entry; colors: Colors }) {
   );
 }
 
-/** The current month pinned over the list, so the bubble's month matches something on screen (rows only show the day) */
+/**
+ * The current month pinned over the list, so the bubble's month matches something on screen
+ * (rows only show the day)
+ */
 function MonthHeader(props: { scrubber: SectionScrubber }) {
   const colors = useColors();
   return (
@@ -123,7 +127,8 @@ function monthSections(entries: Entry[]): ListScrubberSection[] {
 const FAST_FILL = { windowSize: 5, maxToRenderPerBatch: 24, updateCellsBatchingPeriod: 16 } as const;
 
 // FlatList: fixed rows via getItemLayout, sections from the first row of each letter,
-// and a pinned letter header drawn on the UI thread (PinnedSectionHeader; the list has no headers to push it).
+// and a pinned letter header drawn on the UI thread
+// (PinnedSectionHeader; the list has no headers to push it).
 function FlatListDemo() {
   const colors = useColors();
   const { sections, getItemLayout } = useMemo(
@@ -163,7 +168,8 @@ const AnimatedSectionList = Animated.createAnimatedComponent(SectionList<Contact
 
 // SectionList with the recommended pinned header: native sticky headers only pin headers that are already
 // rendered, so they lag behind scrubber jumps. PinnedSectionHeader draws it on the UI thread,
-// and the next header pushes it out like iOS Contacts. sectionListLayout counts a header and a footer per section.
+// and the next header pushes it out like iOS Contacts.
+// sectionListLayout counts a header and a footer per section.
 function SectionListDemo() {
   const colors = useColors();
   const data = useMemo(() => groupByLetter(CONTACTS), []);
