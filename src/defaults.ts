@@ -49,6 +49,8 @@ export const LIST_SCRUBBER_DEFAULTS: Readonly<{
     revealMs: number;
     /** Whether a thumb drag that ends at the top of the list brings the bar back when the finger lifts */
     revealOnDragToTop: boolean;
+    /** Whether a touch scroll that leaves the bar partly shown settles it, shown or hidden, when it ends */
+    snap: boolean;
   }>;
 }> = Object.freeze({
   // Neutral greys and blue that read on light and dark backgrounds alike (thumb ≥ 3:1 on white and black)
@@ -73,7 +75,7 @@ export const LIST_SCRUBBER_DEFAULTS: Readonly<{
     bubbleShortLabelMaxLength: 2,
   }),
   timing: Object.freeze({ hideAfterMs: 1500, fadeMs: 150 }),
-  topBar: Object.freeze({ revealMs: 250, revealOnDragToTop: false }),
+  topBar: Object.freeze({ revealMs: 250, revealOnDragToTop: false, snap: true }),
 });
 
 // Fixed values

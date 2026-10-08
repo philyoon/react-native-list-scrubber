@@ -196,6 +196,10 @@ const scrubber = useListScrubber({ layout, topBar: { height: BAR }, pinnedHeader
   list, and the hook places the layout below it.
 - The bar follows the scroll by as much as it moves, up or down, and is always shown at the very top of the
   list. The scrubber and the pinned header stay below its visible part.
+- When a scroll ends with the bar partly shown, it settles: the list scrolls the rest of the way, so the bar
+  ends up shown if less than half of it was hidden, and hidden otherwise (shown, if the list can't scroll far
+  enough down to hide it). Only after a scroll by touch, not a thumb drag or scrolling from code, and not on
+  the web. `topBar: { height: BAR, snap: false }` leaves it where the scroll left it.
 - During a thumb drag the bar stays as it was, so big jumps don't show and hide it. The drag reaches the first
   row, not the empty space a hidden bar leaves above it. After the drag the bar stays as the drag left it, and
   a scroll up brings it back.
@@ -364,6 +368,7 @@ plus `ListScrubberLayout`, `ListScrubberSection`, `ListScrubberTopBar`, `ListScr
 | ------------------- | ------- | -------------------------------------------------------------------- |
 | `revealMs`          | 250     | How long the top bar takes to slide back in (ms)                     |
 | `revealOnDragToTop` | `false` | Whether a thumb drag that ends at the top of the list brings it back |
+| `snap`              | `true`  | Whether a touch scroll that leaves it partly shown settles it        |
 
 Set them with `useListScrubber`'s `topBar`.
 
@@ -491,7 +496,8 @@ Define it outside the component, or wrap it in `useCallback`.
   Chromium: the thumb appears on scroll, dragging scrolls every list type, and the bubble, pinned header and
   screen-reader value follow. The screen-reader control is a Tab stop there: ↓/→ and ↑/← step like a screen
   reader, Page Down/Up move one screen, Home/End go to the ends. With no separate UI thread on web, everything
-  runs on JS. Not tested on mobile browsers.
+  runs on JS. A top bar doesn't snap there: a page doesn't say when a scroll ends. Not tested on mobile
+  browsers.
 - The section bubble is as wide as the widest section label: each label is laid out once, invisibly, then
   unmounted. That happens once the app is idle (or when the thumb shows, if that's sooner), not while the list
   first renders. New labels are measured on their own, so a list that grows a page at a time measures only the

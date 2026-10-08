@@ -10,6 +10,9 @@ import { ListScrubber, type ListScrubberProps } from '../index';
 jest.useFakeTimers({ doNotFake: ['queueMicrotask'] });
 
 export const mockScrollTo = jest.fn();
+type ScrollHandlers = Partial<
+  Record<'onScroll' | 'onBeginDrag' | 'onEndDrag' | 'onMomentumEnd', (e: unknown) => void>
+>;
 export type Reaction = { prepare: () => unknown; react: (cur: unknown, prev: unknown) => void };
 export const mockReactions: Reaction[] = [];
 export const mockTimings: { to: number; duration: number; done?: () => void }[] = [];
@@ -54,11 +57,22 @@ jest.mock('react-native-reanimated', () => {
       return mock.useAnimatedProps(updater, ...rest);
     },
     useAnimatedRef: () => React.useRef(null),
-    // like the real one: the same function between renders
-    useAnimatedScrollHandler: (handler: (e: unknown) => void) => {
+    // like the real one: the same function between renders. It's called as the list's onScroll; the other
+    // handlers (onBeginDrag, onEndDrag, onMomentumEnd) hang off it, for tests to call
+    useAnimatedScrollHandler: (handler: ScrollHandlers | ((e: unknown) => void)) => {
       const latest = React.useRef(handler);
       latest.current = handler;
-      return React.useCallback((e: unknown) => latest.current(e), []);
+      return React.useMemo(() => {
+        const call = (name: keyof ScrollHandlers) => (e: unknown) => {
+          const h = latest.current;
+          return typeof h === 'function' ? name === 'onScroll' && h(e) : h[name]?.(e);
+        };
+        return Object.assign(call('onScroll'), {
+          onBeginDrag: call('onBeginDrag'),
+          onEndDrag: call('onEndDrag'),
+          onMomentumEnd: call('onMomentumEnd'),
+        });
+      }, []);
     },
     withTiming: (to: number, config: { duration: number }, done?: () => void) => {
       mockTimings.push({ to, duration: config.duration, done });

@@ -1,5 +1,5 @@
 import { sectionIndexAt } from '../index';
-import { labelPosition, scrollBelowBar } from '../math';
+import { labelPosition, scrollBelowBar, snapTarget } from '../math';
 
 describe('label helpers', () => {
   it('labelPosition reads the top at the start and the last pixel at the end', () => {
@@ -60,5 +60,24 @@ describe('scrollBelowBar', () => {
 
   it('pull-to-refresh (a negative offset) counts as the top', () => {
     expect(scrollBelowBar(500, -40, bar(0), 1400)).toEqual({ scroll: 500, cover: 0 });
+  });
+});
+
+describe('snapTarget', () => {
+  // A 100 bar; the list scrolls up to 1,400
+  it('shows a bar less than half hidden: scrolling up by what is hidden', () => {
+    expect(snapTarget(100, 40, 240, 1400)).toBe(200);
+    expect(snapTarget(100, 30, 30, 1400)).toBe(0); // near the top: back to the very top
+  });
+  it('hides a bar half hidden or more: scrolling down by what shows', () => {
+    expect(snapTarget(100, 70, 270, 1400)).toBe(300);
+    expect(snapTarget(100, 50, 250, 1400)).toBe(300);
+  });
+  it("shows it instead when the list can't scroll far enough to hide it", () => {
+    expect(snapTarget(100, 70, 1390, 1400)).toBe(1320);
+  });
+  it('leaves a bar shown or hidden in full', () => {
+    expect(snapTarget(100, 0, 500, 1400)).toBeUndefined();
+    expect(snapTarget(100, 100, 500, 1400)).toBeUndefined();
   });
 });
