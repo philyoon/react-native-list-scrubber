@@ -1,6 +1,6 @@
 {
   "name": "react-native-list-scrubber",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Fast scrolling for long React Native lists: a draggable thumb with section labels (A–Z, dates…), on the UI thread with Reanimated 4 (New Architecture), and an adjustable screen-reader control.",
   "keywords": [
     "react-native",
