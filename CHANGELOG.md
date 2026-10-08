@@ -13,6 +13,9 @@
 - Breaking: `ListScrubber`'s `insets` take numbers only again. For a header that slides away, use `topBar`
   instead of a shared-value `insets.top`.
 - `PinnedSectionHeader` takes `top`: its distance from the top of the list, a number or a shared value.
+- With a screen reader on (iOS and Android), the top bar stays in place, so its contents are never reachable
+  off screen. The scrubber's screen-reader steps (and web keyboard keys) bring a section to just below the
+  bar, and its value and the bubble's label name the rows below the bar, not the ones it covers.
 
 ## 0.2.0
 

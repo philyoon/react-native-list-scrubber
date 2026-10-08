@@ -215,7 +215,11 @@ const scrubber = useListScrubber({ sections, topBar: { height: BAR } });
   value), and `show()`, which slides it back in, e.g. when its search field gets focus. To bring a section to
   the top of the list, just below the bar:
   `scrubber.scrollToOffset(section.offset - scrubber.topBar.visibleHeight.get())`.
-- The screen-reader value describes the top of the list, under the bar.
+- With a screen reader on (VoiceOver, TalkBack) the bar stays in place: hidden, its contents would still be
+  within the screen reader's reach, off screen. The scrubber's screen-reader steps bring a section to just
+  below the bar, and its value names the rows there; so does the bubble while dragging. A web page can't tell
+  whether a screen reader is on, so there the bar keeps sliding: call `scrubber.topBar.show()` when something
+  in it gets focus.
 
 The example app's Collapsible demo is this, complete.
 

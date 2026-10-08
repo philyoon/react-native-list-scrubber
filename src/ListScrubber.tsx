@@ -227,6 +227,7 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
     labels,
     labelAt,
     formatPercent: formatAccessibilityPercent,
+    cover: () => track.get().top,
   });
 
   // Stable JS callbacks for the worklets to schedule: they read the latest props when they run.
@@ -241,7 +242,8 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
     onDragEnd?.();
   });
   const onDragOffset = useLatest((offset: number) => {
-    const next = labelAt?.(labelPosition(offset, contentHeight, viewportHeight), offset);
+    // The top bar stays put during a drag (useListScrubber), so this is the cover the drag began with
+    const next = labelAt?.(labelPosition(offset, contentHeight, viewportHeight, track.get().top), offset);
     if (next != null) setLabel(next);
   });
   const onSection = useLatest((index: number) => {
@@ -297,7 +299,7 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
     e.preventDefault(); // the page itself mustn't scroll too
     if (action === 'next' || action === 'previous') a11y.step(action === 'next' ? 1 : -1);
     else if (action === 'pageDown' || action === 'pageUp') a11y.page(action === 'pageDown' ? 1 : -1);
-    else a11y.jumpTo(action === 'start' ? 0 : maxScroll);
+    else a11y.jumpTo(action === 'start' ? 0 : contentHeight); // past the end: clamps to the end
   };
 
   return (

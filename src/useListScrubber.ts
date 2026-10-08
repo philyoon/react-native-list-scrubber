@@ -1,5 +1,5 @@
-import { useMemo, useRef, type Component } from 'react';
-import type { LayoutChangeEvent, ViewStyle } from 'react-native';
+import { useEffect, useMemo, useRef, useState, type Component } from 'react';
+import { AccessibilityInfo, Platform, type LayoutChangeEvent, type ViewStyle } from 'react-native';
 import {
   Easing,
   scrollTo,
@@ -83,13 +83,22 @@ export function useListScrubber<
   const barHidden = useSharedValue(0);
   /** The top bar is sliding back in after a drag */
   const barRevealing = useSharedValue(false);
+  // With a screen reader on, the bar stays in place: hidden, its title and search field would still be in the
+  // screen reader's reach, off screen. Not on the web, where a page can't tell (React Native Web always says
+  // yes): there the app shows the bar when something in it gets focus
+  const screenReader = useScreenReaderEnabled(barHeight > 0 && Platform.OS !== 'web');
+  const barPinned = useSharedValue(false);
+  useEffect(() => {
+    barPinned.set(screenReader);
+    if (screenReader) scheduleOnUI(revealTopBar, barHidden, barRevealing);
+  }, [screenReader, barPinned, barHidden, barRevealing]);
   const onScroll = useAnimatedScrollHandler(
     (e) => {
       const y = e.contentOffset.y;
       // The top bar follows the scroll by as much as it moves, up or down, within its height, and shows at the
       // very top. Pull-to-refresh and iOS's bounce (negative offsets) don't move it. During a drag it stays as it
       // was (big jumps would show and hide it); while it slides back in, the drag's last scroll mustn't stop it
-      if (barHeight > 0 && !isDragging.get() && !barRevealing.get()) {
+      if (barHeight > 0 && !barPinned.get() && !isDragging.get() && !barRevealing.get()) {
         const now = Math.max(0, y);
         const delta = now - Math.max(0, scrollY.get());
         barHidden.set(clamp(barHidden.get() + delta, 0, Math.min(barHeight, now)));
@@ -223,6 +232,22 @@ function scrollToClamped(
   'worklet';
   const maxScroll = Math.max(0, contentHeight.get() - viewportHeight.get());
   scrollTo(listRef, 0, clamp(offset, 0, maxScroll), animated);
+}
+
+/** Whether a screen reader (VoiceOver, TalkBack) is on, followed as it changes; false while `watch` is false */
+function useScreenReaderEnabled(watch: boolean): boolean {
+  const [enabled, setEnabled] = useState(false);
+  useEffect(() => {
+    if (!watch) return;
+    let current = true;
+    AccessibilityInfo.isScreenReaderEnabled().then((on) => current && setEnabled(on));
+    const subscription = AccessibilityInfo.addEventListener('screenReaderChanged', setEnabled);
+    return () => {
+      current = false;
+      subscription.remove();
+    };
+  }, [watch]);
+  return watch && enabled;
 }
 
 /** Slides the top bar fully back in */
