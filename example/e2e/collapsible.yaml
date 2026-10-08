@@ -61,12 +61,9 @@ env:
     duration: 1500
 - waitForAnimationToEnd
 - runFlow: subflows/drag-to-end.yaml
+# Rows of the last section, as the other flows check: on iPhones with a home indicator the drag's touch can
+# end in the strip at the bottom of the screen a little before the end of the list
 - assertVisible: '.* Zel.*'
-- extendedWaitUntil:
-    visible:
-      id: list-scrubber-a11y
-      text: '(.*\W)?Z'
-    timeout: 10000
 # Back to the top: the header is shown again
 - runFlow: subflows/drag-to-start.yaml
 - assertVisible: 3,000 people

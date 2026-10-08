@@ -16,7 +16,15 @@ env:
     when:
       visible: Open
     commands:
-      - tapOn: Open
+      # On a slow machine (CI) the first tap can land while the prompt is still animating in, and iOS drops
+      # it: tap until the prompt is gone
+      - repeat:
+          while:
+            visible: 'Open in .*Expo Go.*'
+          times: 3
+          commands:
+            - waitForAnimationToEnd
+            - tapOn: Open
       - extendedWaitUntil:
           visible: 'List Scrubber|Continue'
           timeout: 60000
