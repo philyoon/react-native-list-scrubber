@@ -24,7 +24,9 @@ export function sectionIndexAt(starts: readonly number[], y: number): number {
   return Math.max(0, lo);
 }
 
-/** Index of the first of `values` that passes `test`, which flips from false to true once (`length` if none). */
+/**
+ * Index of the first of `values` that passes `test`, which flips from false to true once (`length` if none).
+ */
 export function firstIndexWhere(values: readonly number[], test: (value: number) => boolean): number {
   let lo = 0;
   let hi = values.length;

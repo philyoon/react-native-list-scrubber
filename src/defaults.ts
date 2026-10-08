@@ -71,7 +71,10 @@ export const LIST_SCRUBBER_DEFAULTS: Readonly<{
 // Fixed values
 /** Width of the thumb's touch area, wider than the thumb itself: the 44pt minimum touch target */
 export const TOUCH_WIDTH = 44;
-/** Screen-reader step without `accessibilitySteps`, as a share of the viewport; the previous screen's last row stays visible */
+/**
+ * Screen-reader step without `accessibilitySteps`, as a share of the viewport;
+ * the previous screen's last row stays visible
+ */
 export const A11Y_PAGE = 0.9;
 /**
  * Labels follow the system text size up to this multiple (React Native's `maxFontSizeMultiplier`):
@@ -84,7 +87,7 @@ export const VISIBLE_MIN = 0.01;
 /** Distance (pt) treated as "already at this step", so rounding can't keep the reader in place */
 export const STEP_SLACK = 1;
 /**
- * Fills the parent, like StyleSheet.absoluteFill, spelled out: that's an opaque registered style in older React
- * Native types (0.78), so it can't be spread there, and absoluteFillObject is gone from newer ones.
+ * Fills the parent, like StyleSheet.absoluteFill, spelled out: that's an opaque registered style in older
+ * React Native types (0.78), so it can't be spread there, and absoluteFillObject is gone from newer ones.
  */
 export const FILL = { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 } as const;

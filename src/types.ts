@@ -1,6 +1,9 @@
 /** A labelled section start, e.g. `{ offset: 0, label: 'A' }`. */
 export interface ListScrubberSection {
-  /** Where the section starts in the list's content (pt): its header's top, or its first row's. Offsets ascend. */
+  /**
+   * Where the section starts in the list's content (pt): its header's top, or its first row's.
+   * Offsets ascend.
+   */
   offset: number;
   label: string;
 }

@@ -1,6 +1,6 @@
-// Prints the CHANGELOG.md section for a version (the lines under `## <version>`, up to the next `## `), for the
-// GitHub Release the Release workflow creates. Fails if there's no such section or it's empty, so a version
-// can't be released without notes.
+// Prints the CHANGELOG.md section for a version (the lines under `## <version>`, up to the next `## `), for
+// the GitHub Release the Release workflow creates. Fails if there's no such section or it's empty, so a
+// version can't be released without notes.
 //   node scripts/release-notes.mjs 0.1.1
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';

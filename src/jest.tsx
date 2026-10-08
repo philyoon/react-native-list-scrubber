@@ -5,14 +5,14 @@
  *
  * It needs no Reanimated, Worklets or Gesture Handler mocks: it imports none of them.
  * - ListScrubber renders its screen-reader control (`<testID>-a11y`, role "adjustable", its label and value)
- *   and nothing else. Its value is the section at the scroll position (or `labelAt`'s label, or a percentage),
- *   like the real one's.
+ *   and nothing else. Its value is the section at the scroll position (or `labelAt`'s label, or a
+ *   percentage), like the real one's.
  * - PinnedSectionHeader and CurrentSectionLabel show the section at the scroll position, like the real ones.
  * - useListScrubber returns the same shape as the real hook. Its shared values are plain objects with
- *   get/set; listProps' handlers record the list's size and scroll offset and call your own; scrollToSection /
- *   scrollToOffset set `scrollY` to where the real hook would scroll. The components above re-render when
- *   these values change, so a test can scroll (`listProps.onScroll({ contentOffset: { y: 300 } })`) and check
- *   the label.
+ *   get/set; listProps' handlers record the list's size and scroll offset and call your own;
+ *   scrollToSection / scrollToOffset set `scrollY` to where the real hook would scroll. The components above
+ *   re-render when these values change, so a test can scroll
+ *   (`listProps.onScroll({ contentOffset: { y: 300 } })`) and check the label.
  * - listLayout, sectionListLayout, sectionIndexAt and LIST_SCRUBBER_DEFAULTS are the real ones.
  */
 import { useMemo, useState, useSyncExternalStore } from 'react';
@@ -58,7 +58,9 @@ function sharedValue<T>(initial: T): SharedValue<T> {
 
 const read = (v: number | SharedValue<number>) => (typeof v === 'number' ? v : v.get());
 
-/** A number, or a shared value read on each change: the mock's own update; any other read as it is at render */
+/**
+ * A number, or a shared value read on each change: the mock's own update; any other read as it is at render
+ */
 function useValue(v: number | SharedValue<number>): number {
   return useSyncExternalStore(
     (onChange) => {

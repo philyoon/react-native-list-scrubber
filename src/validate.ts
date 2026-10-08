@@ -6,8 +6,8 @@ const checked = new WeakSet<object>();
 
 /**
  * Development only: warns when `values` (section offsets or screen-reader steps) aren't finite and
- * ascending, or when one of `sections` has an empty label. They're looked up by binary search, so out of order they
- * silently pick the wrong one; an empty label leaves screen readers nothing to read.
+ * ascending, or when one of `sections` has an empty label. They're looked up by binary search, so out of
+ * order they silently pick the wrong one; an empty label leaves screen readers nothing to read.
  * `source` is the caller's array: each one is checked once.
  */
 export function warnIfInvalid(
@@ -101,8 +101,8 @@ export const UNMEASURED_AFTER_MS = 3000;
 const CHECK_EVERY_MS = 1000;
 
 /**
- * The hook's size shared values that a ListScrubber reads. Its measuring handlers matter only for those: an app
- * can pass the scrubber its own sizes as numbers, and then the hook's handlers needn't run at all.
+ * The hook's size shared values that a ListScrubber reads. Its measuring handlers matter only for those: an
+ * app can pass the scrubber its own sizes as numbers, and then the hook's handlers needn't run at all.
  */
 const usedSizes = new WeakSet<object>();
 
@@ -118,10 +118,10 @@ export function useMarkSizesUsed(contentHeight: number | object, viewportHeight:
 /**
  * Development only: warns once when the list has been mounted for a while but a handler in `listProps` never
  * ran while a ListScrubber reads the size it measures, so the scrubber never learns the list's size and stays
- * hidden without an error. It's the most common wiring mistake: a prop after `{...listProps}` replacing one of
- * its own, or the props not spread on the list at all. The wait starts when `listRef` is attached, so a list
- * rendered after its data loads doesn't count; an empty list still reports its size (0), so it doesn't either.
- * A scrubber given its own sizes as numbers doesn't need the handlers, so it doesn't count.
+ * hidden without an error. It's the most common wiring mistake: a prop after `{...listProps}` replacing one
+ * of its own, or the props not spread on the list at all. The wait starts when `listRef` is attached, so a
+ * list rendered after its data loads doesn't count; an empty list still reports its size (0), so it doesn't
+ * either. A scrubber given its own sizes as numbers doesn't need the handlers, so it doesn't count.
  */
 export function useWarnIfUnmeasured(
   listRef: { current: unknown },

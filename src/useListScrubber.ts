@@ -18,8 +18,8 @@ import { useWarnIfUnmeasured } from './validate';
 
 export interface UseListScrubberOptions<S extends readonly ListScrubberSection[] | undefined = undefined> {
   /**
-   * The list's labelled sections (ascending offsets). Given here, `scrubberProps` and `headerProps` carry them,
-   * so the scrubber and a pinned header always read the same ones.
+   * The list's labelled sections (ascending offsets). Given here, `scrubberProps` and `headerProps` carry
+   * them, so the scrubber and a pinned header always read the same ones.
    */
   sections?: S;
   // The list's own handlers, called after the scrubber's (listProps sets these props on the list)

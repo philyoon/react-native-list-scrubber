@@ -7,8 +7,8 @@ import { sharedZero } from './support';
 
 // Counts real renders of the section label. It no longer draws every label, but a render still recomputes
 // its UI-thread worklets and sizing copies, so it should happen only when something it draws changes.
-// Wraps the actual component's inner function in a new memo, so it counts what the actual memo would let through.
-// The counter lives in the mocked module: the factory runs when ./support first imports the library.
+// Wraps the actual component's inner function in a new memo, so it counts what the actual memo would let
+// through. The counter lives in the mocked module: the factory runs when ./support first imports the library.
 jest.mock('../SectionText', () => {
   const React = require('react');
   const actual = jest.requireActual('../SectionText').SectionText;
