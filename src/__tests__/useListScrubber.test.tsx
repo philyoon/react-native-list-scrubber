@@ -1,5 +1,6 @@
 import { mockReactions, mockScrollTo, mockTimings } from './support';
 import { act, renderHook } from '@testing-library/react-native';
+import { AccessibilityInfo, Platform } from 'react-native';
 import { ListScrubber, useListScrubber } from '../index';
 
 describe('useListScrubber', () => {
@@ -324,5 +325,80 @@ describe('useListScrubber({ topBar })', () => {
     const timings = mockTimings.length;
     await lift(result as Hook);
     expect(mockTimings).toHaveLength(timings);
+  });
+});
+
+describe('useListScrubber({ topBar }) with a screen reader', () => {
+  let changed: ((on: boolean) => void) | undefined;
+  const remove = jest.fn();
+  let enabled: jest.SpyInstance;
+  beforeEach(() => {
+    enabled = jest.spyOn(AccessibilityInfo, 'isScreenReaderEnabled').mockResolvedValue(false);
+    enabled.mockClear();
+    jest.spyOn(AccessibilityInfo, 'addEventListener').mockImplementation(((_: string, handler: never) => {
+      changed = handler;
+      return { remove };
+    }) as never);
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  async function withBar() {
+    const hook = await renderHook(() => useListScrubber({ topBar: { height: 100 } }));
+    await act(async () => {}); // the screen reader's state arrives
+    const scroll = (y: number) =>
+      (hook.result.current.onScroll as unknown as (e: unknown) => void)({ contentOffset: { y } });
+    const visible = async () => {
+      await hook.rerender({});
+      return hook.result.current.topBar!.visibleHeight.get();
+    };
+    return { ...hook, scroll, visible };
+  }
+  const uiFrame = () => act(() => jest.advanceTimersByTime(20));
+
+  it('keeps the bar in place: hidden, its contents would be in the screen reader’s reach, off screen', async () => {
+    enabled.mockResolvedValue(true);
+    const { scroll, visible } = await withBar();
+    await uiFrame();
+    scroll(300);
+    expect(await visible()).toBe(100);
+  });
+
+  it('turned on while the bar is hidden, brings it back; turned off, the bar slides again', async () => {
+    const { scroll, visible } = await withBar();
+    scroll(300);
+    expect(await visible()).toBe(0);
+    await act(async () => changed!(true));
+    await uiFrame();
+    expect(await visible()).toBe(100);
+    await act(async () => mockTimings.at(-1)!.done!()); // slid back in
+    scroll(600);
+    expect(await visible()).toBe(100);
+    await act(async () => changed!(false));
+    scroll(900);
+    expect(await visible()).toBe(0);
+  });
+
+  it('stops listening when unmounted, and ignores an answer that comes after', async () => {
+    let answer!: (on: boolean) => void;
+    enabled.mockReturnValue(new Promise<boolean>((resolve) => (answer = resolve)));
+    const { unmount } = await renderHook(() => useListScrubber({ topBar: { height: 100 } }));
+    await unmount();
+    expect(remove).toHaveBeenCalled();
+    await act(async () => answer(true)); // no update on an unmounted component
+  });
+
+  it("doesn't ask on the web, where a page can't tell", async () => {
+    const os = jest.replaceProperty(Platform, 'OS', 'web');
+    try {
+      await renderHook(() => useListScrubber({ topBar: { height: 100 } }));
+      expect(enabled).not.toHaveBeenCalled();
+    } finally {
+      os.restore();
+    }
+  });
+
+  it("doesn't ask without a bar", async () => {
+    await renderHook(() => useListScrubber());
+    expect(enabled).not.toHaveBeenCalled();
   });
 });

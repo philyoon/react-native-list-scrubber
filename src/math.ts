@@ -1,13 +1,19 @@
 /**
  * The content offset a label should describe at scroll position `offset`.
- * It slides from the top of the viewport (at the start) to its bottom (at the end), so the last
- * section is reachable even when it's shorter than a screen.
+ * It slides from the top of the list's visible part (at the start) to its bottom (at the end), so the last
+ * section is reachable even when it's shorter than a screen. `cover` is how much of the list's top is covered
+ * (a top bar's visible part): the label describes the rows below it.
  */
-export function labelPosition(offset: number, contentHeight: number, viewportHeight: number): number {
+export function labelPosition(
+  offset: number,
+  contentHeight: number,
+  viewportHeight: number,
+  cover = 0,
+): number {
   'worklet';
   const maxScroll = Math.max(1, contentHeight - viewportHeight);
   const t = Math.min(1, Math.max(0, offset / maxScroll));
-  return Math.min(contentHeight - 1, offset + t * viewportHeight);
+  return Math.min(contentHeight - 1, offset + cover + t * (viewportHeight - cover));
 }
 
 /** Index of the section that contains `y`, given ascending section start offsets. */

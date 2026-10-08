@@ -86,9 +86,12 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
   accessibilityLabel,
   formatAccessibilityPercent = (percent) => `${percent}%`,
   enabled = true,
+  topBar,
   testID = 'list-scrubber',
 }: ListScrubberProps<S>) {
   const y = useValue(scrollY);
+  /** The top bar's visible part: the value describes the rows below it */
+  const cover = useValue(topBar?.visibleHeight ?? 0);
   const contentHeight = useValue(contentHeightProp);
   const viewportHeight = useValue(viewportHeightProp);
   const maxScroll = contentHeight - viewportHeight;
@@ -99,10 +102,10 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
       ? sections[
           sectionIndexAt(
             sections.map((s) => s.offset),
-            y,
+            y + cover,
           )
         ]?.label
-      : labelAt?.(labelPosition(y, contentHeight, viewportHeight), y)) ??
+      : labelAt?.(labelPosition(y, contentHeight, viewportHeight, cover), y)) ??
     formatAccessibilityPercent(Math.round((y / maxScroll) * 100));
   return (
     <View

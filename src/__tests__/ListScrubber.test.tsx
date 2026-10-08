@@ -666,6 +666,27 @@ describe('API options', () => {
       expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 10, false);
     });
 
+    it("labels describe the rows below the bar's visible part", async () => {
+      // B starts at 25. The drag begins at offset 0, its label reading 20 below it (A); at the top of the track,
+      // offset 10, the label reads the rows below the 20 visible points: B, where without the bar it'd still be A
+      const onSectionChange = jest.fn();
+      await setup({
+        sections: [
+          { offset: 0, label: 'A' },
+          { offset: 25, label: 'B' },
+        ],
+        topBar: topBar(),
+        onSectionChange,
+      });
+      await drag(-100);
+      await act(async () => {});
+      expect(onSectionChange).toHaveBeenCalledWith(1, { offset: 25, label: 'B' });
+      const labelAt = jest.fn(() => 'x');
+      await setup({ labelAt, topBar: { height: 20, visibleHeight: shared(20) } });
+      await drag(16); // half of 32: offset 450
+      expect(labelAt).toHaveBeenLastCalledWith(450 + 20 + 40, 450); // halfway down the 80 uncovered
+    });
+
     it('below number insets, which place the rail', async () => {
       // rail 100 − 10 = 90, the track 20 into it: travel 90 − 20 − 48 = 22
       await setup({ insets: { top: 10 }, topBar: topBar() });
