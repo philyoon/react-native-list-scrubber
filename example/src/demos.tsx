@@ -10,6 +10,7 @@ import Animated, {
   useDerivedValue,
   useSharedValue,
   withTiming,
+  Easing,
 } from 'react-native-reanimated';
 import {
   ListScrubber,
@@ -331,8 +332,9 @@ function CollapsibleDemo() {
   useAnimatedReaction(
     () => Math.max(0, scrollY.get()), // pull-to-refresh and iOS bounce don't move it
     (y, prev) => {
-      // Hidden while the thumb is dragged (big jumps would show and hide it); always shown at the very top
-      if (isDragging.get()) hidden.set(Math.min(BAR, y));
+      // Frozen while the thumb is dragged, like the thumb's own track (big jumps would show and hide it), even at
+      // the top of the list: it comes back when the finger lifts (below). Otherwise always shown at the very top
+      if (isDragging.get()) return;
       // The drag's last scroll can arrive as the header slides back: it mustn't stop the slide
       else if (revealing.get()) return;
       else if (prev !== null) hidden.set(Math.min(Math.max(hidden.get() + y - prev, 0), BAR, y));
@@ -344,7 +346,9 @@ function CollapsibleDemo() {
     (dragging, was) => {
       if (!was || dragging) return;
       revealing.set(true);
-      hidden.set(withTiming(0, { duration: 200 }, () => revealing.set(false)));
+      hidden.set(
+        withTiming(0, { duration: 250, easing: Easing.out(Easing.cubic) }, () => revealing.set(false)),
+      );
     },
   );
   /** The header's visible height: the space it covers at the top of the list */
