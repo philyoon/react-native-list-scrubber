@@ -154,21 +154,24 @@ test('a collapsible header: the thumb, the bubble and the pinned header follow i
   expect(thumb.y - 24).toBeGreaterThanOrEqual(shown.y + shown.height - 1);
   await expect(header(page)).toHaveValue((await rowLetter())!);
 
-  // A drag hides the header, and the bubble, the pinned header and the rows agree
+  // A drag hides the header, and the bubble and the pinned header agree
   await grab(page, thumb, thumb.y + 300);
   const b = await bubble(page);
-  await page.mouse.up();
   const hidden = await box(bar);
-  expect(hidden.y + hidden.height).toBeLessThanOrEqual(
-    (await box(page.getByTestId('list-scrubber-a11y'))).y + 1,
-  );
+  const top = (await box(page.getByTestId('list-scrubber-a11y'))).y;
+  expect(hidden.y + hidden.height).toBeLessThanOrEqual(top + 1);
   await expect(header(page)).toHaveValue(b.label);
+  // Lifting the finger brings the header back; the pinned header moves below it and names the rows it covers
+  await page.mouse.up();
+  await expect.poll(async () => (await box(pinned)).y).toBeGreaterThan(top + 100);
   await expect(header(page)).toHaveValue((await rowLetter())!);
 
-  // A short scroll up brings the header back; the pinned header moves below it and still names the rows it covers
+  // A scroll down hides it again, and a short scroll up brings it back
   await page.mouse.move(page.viewportSize()!.width / 2, page.viewportSize()!.height / 2); // over the rows
+  await page.mouse.wheel(0, 400);
+  await expect.poll(async () => (await box(pinned)).y).toBeLessThanOrEqual(top + 1);
   await page.mouse.wheel(0, -200);
-  await expect.poll(async () => (await box(pinned)).y).toBeGreaterThan(hidden.y + hidden.height + 100);
+  await expect.poll(async () => (await box(pinned)).y).toBeGreaterThan(top + 100);
   await expect(header(page)).toHaveValue((await rowLetter())!);
 
   // The last section is still reachable

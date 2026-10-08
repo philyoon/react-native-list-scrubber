@@ -1,8 +1,8 @@
-# Collapsible: a header over the list slides away as it scrolls down and comes back on a scroll up. The
-# thumb's track starts below whatever is left of it (an animated insets.top), and the header is shown again at
-# the top of the list. (The pinned letter header is hidden from screen readers, so Maestro can't read it on
-# iOS: the flow checks the scrubber's screen-reader value and the rows instead. The web tests check the pinned
-# header's position.)
+# Collapsible: a header over the list slides away as it scrolls down and comes back on a scroll up, and when
+# the finger lifts from the thumb. The thumb's track starts below whatever is left of it (an animated
+# insets.top), and the header is shown again at the top of the list. (The pinned letter header is hidden from
+# screen readers, so Maestro can't read it on iOS: the flow checks the scrubber's screen-reader value and the
+# rows instead. The web tests check the pinned header's position.)
 # Expo Go: host.exp.Exponent on iOS; npm run e2e:android sets APP_ID=host.exp.exponent
 appId: ${APP_ID}
 env:
@@ -41,7 +41,15 @@ env:
 - copyTextFrom:
     id: list-scrubber-a11y
 - assertVisible: '.* ${maestro.copiedText.slice(-1)}.*'
-# A scroll up brings the header back
+# The header comes back when the finger lifts from the thumb
+- assertVisible: 3,000 people
+# A scroll down hides it again, and a scroll up brings it back
+- swipe:
+    start: 50%, 70%
+    end: 50%, 40%
+    duration: 1500
+- waitForAnimationToEnd
+- assertNotVisible: 3,000 people
 - swipe:
     start: 50%, 45%
     end: 50%, 75%

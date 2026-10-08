@@ -9,6 +9,7 @@ import Animated, {
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
+  withTiming,
 } from 'react-native-reanimated';
 import {
   ListScrubber,
@@ -325,12 +326,25 @@ function CollapsibleDemo() {
   const { scrollY, isDragging } = scrubber;
   /** How much of the header is hidden: 0 to BAR */
   const hidden = useSharedValue(0);
+  /** The header is sliding back in after a drag */
+  const revealing = useSharedValue(false);
   useAnimatedReaction(
     () => Math.max(0, scrollY.get()), // pull-to-refresh and iOS bounce don't move it
     (y, prev) => {
       // Hidden while the thumb is dragged (big jumps would show and hide it); always shown at the very top
       if (isDragging.get()) hidden.set(Math.min(BAR, y));
+      // The drag's last scroll can arrive as the header slides back: it mustn't stop the slide
+      else if (revealing.get()) return;
       else if (prev !== null) hidden.set(Math.min(Math.max(hidden.get() + y - prev, 0), BAR, y));
+    },
+  );
+  // Back when the finger lifts, as other apps' headers come back once you're done scrolling
+  useAnimatedReaction(
+    () => isDragging.get(),
+    (dragging, was) => {
+      if (!was || dragging) return;
+      revealing.set(true);
+      hidden.set(withTiming(0, { duration: 200 }, () => revealing.set(false)));
     },
   );
   /** The header's visible height: the space it covers at the top of the list */
