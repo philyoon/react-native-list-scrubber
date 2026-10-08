@@ -17,12 +17,18 @@ env:
 # Scroll well past the header (120pt): it slides away, and the thumb's track starts at the top of the list
 # again, where the drags below grab it (points: see src/e2e.ts). Half the screen, not just the header's height:
 # on a slow emulator (CI) a swipe can scroll less than its length, and with some of the header still showing
-# the thumb sits lower than the drags reach for
-- swipe:
-    start: 50%, 75%
-    end: 50%, 25%
-    duration: 1500 # slow: no fling
-- waitForAnimationToEnd
+# the thumb sits lower than the drags reach for. Again while the first row still shows: GitHub's iOS simulator
+# sometimes drops this first swipe after a launch
+- repeat:
+    while:
+      visible: Ada Abby
+    times: 3
+    commands:
+      - swipe:
+          start: 50%, 75%
+          end: 50%, 25%
+          duration: 1500 # slow: no fling
+      - waitForAnimationToEnd
 # Part way down: the screen-reader value names a section in the middle, and its rows are on screen
 - swipe:
     start: 50%, 60%
@@ -57,11 +63,16 @@ env:
     file: subflows/open.yaml
     env:
       DEMO: Collapsible
-- swipe:
-    start: 50%, 75%
-    end: 50%, 25%
-    duration: 1500
-- waitForAnimationToEnd
+- repeat:
+    while:
+      visible: Ada Abby
+    times: 3
+    commands:
+      - swipe:
+          start: 50%, 75%
+          end: 50%, 25%
+          duration: 1500
+      - waitForAnimationToEnd
 - runFlow: subflows/drag-to-end.yaml
 # Rows of the last section, as the other flows check: on iPhones with a home indicator the drag's touch can
 # end in the strip at the bottom of the screen a little before the end of the list
