@@ -1,12 +1,12 @@
 name: Native e2e
 # The Maestro flows in example/e2e (all but the right-to-left ones, and landscape on iOS) on an iOS simulator and
 # an Android emulator, in the example built as a release app of its own (scripts/e2e-build.sh): no Metro, no Expo
-# Go. Each platform builds the app once; groups of flows then run side by side on it
-# (two on iOS, three on Android).
-# Caches: npm, the native builds (CocoaPods and Xcode's build folder, Gradle), Maestro, and the emulator's boot
-# snapshot. A change in JavaScript only rebuilds the app's bundle. The build caches (about 1.4 GB each) are saved
-# by main's runs only, so pull requests don't fill the repository's 10 GB of cache and evict the others; a cache
-# key can't be overwritten, so each save's key ends in its run ID, and a run restores the newest match.
+# Go. iOS builds the app and runs every flow in one job; Android builds it once, then three groups of flows run
+# side by side on it.
+# Caches: npm, CocoaPods' downloads, Gradle, Maestro, and the emulator's boot snapshot. The Gradle cache (about
+# 1.4 GB) is saved by main's runs only, so pull requests don't fill the repository's 10 GB of cache and evict the
+# others; a cache key can't be overwritten, so each save's key ends in its run ID, and a run restores the newest
+# match.
 on:
   pull_request:
   # On main too: a pull request can only use caches saved by its own runs or by main's, so main's runs keep them
@@ -28,71 +28,12 @@ env:
   # fails both times. Every run's Maestro output stays in ~/.maestro/tests for the artifact.
   E2E_RETRIES: 1
 jobs:
-  ios-build:
-    runs-on: macos-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: example/package-lock.json
-      - run: npm --prefix example ci
-      # The native build, under its native inputs: with them unchanged, Xcode rebuilds little more than the bundle
-      # Under Xcode's version too: a build folder from another Xcode is no use. (ios/ and its Podfile.lock come from
-      # expo prebuild, from these two files.)
-      - run: echo "XCODE=$(xcodebuild -version | head -1 | tr -d ' ')" >> "$GITHUB_ENV"
-      - uses: actions/cache/restore@v4
-        with:
-          path: &ios-cache |
-            example/ios/Pods
-            example/ios/build
-            ~/Library/Caches/CocoaPods
-          key: ios-build-${{ env.XCODE }}-${{ hashFiles('example/package-lock.json', 'example/app.json') }}-
-          restore-keys: |
-            ios-build-${{ env.XCODE }}-${{ hashFiles('example/package-lock.json', 'example/app.json') }}-
-            ios-build-${{ env.XCODE }}-
-      - run: NO_INSTALL=1 sh scripts/e2e-build.sh ios
-        working-directory: example
-      - uses: actions/cache/save@v4
-        if: github.event_name == 'push'
-        with:
-          path: *ios-cache
-          key:
-            ios-build-${{ env.XCODE }}-${{ hashFiles('example/package-lock.json', 'example/app.json') }}-${{
-            github.run_id }}
-      # A tarball keeps the app's file modes, which an artifact's zip loses
-      - run:
-          tar -czf ListScrubber.app.tgz -C ios/build/Build/Products/Release-iphonesimulator ListScrubber.app
-        working-directory: example
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ios-app
-          path: example/ListScrubber.app.tgz
-          retention-days: 3
-
+  # iOS in one job: it builds the app, then runs every flow on it. macOS runners are scarce (GitHub runs at most 5
+  # at a time per account), and separate test jobs waited minutes for one, then spent about 6 min each on setup.
+  # The simulator boots while the app builds.
   ios:
-    name: ios (${{ matrix.shard.name }})
-    needs: ios-build
     runs-on: macos-latest
-    timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      # The flows in two groups that run side by side, of about equal length on CI (about 3 min of flows each,
-      # after about 6 min of setup). Two, not three as on Android: GitHub runs at most 5 macOS jobs at a time per
-      # account, and with three a second run at the same time (a pull request's and main's) waited for runners.
-      # Not landscape.yaml on iOS: after a rotation, GitHub's macOS simulator lost Maestro's touches in the
-      # lower part of the screen, in that flow and the ones after it (they pass locally on the same simulator
-      # model). It runs on Android here, and on iOS locally (npm run e2e:ios).
-      matrix:
-        shard:
-          - name: lists
-            flows: e2e/lists.yaml e2e/passthrough.yaml e2e/collapsible.yaml
-          - name: more
-            flows:
-              e2e/flatlist.yaml e2e/middle.yaml e2e/scrollview.yaml e2e/index.yaml e2e/accessibility.yaml
-              e2e/large-text
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
       - name: Start booting an iPhone Pro simulator
@@ -103,6 +44,12 @@ jobs:
           echo "Simulator: $udid"
           xcrun simctl boot "$udid"
           echo "MAESTRO_DEVICE=$udid" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: example/package-lock.json
+      - run: npm --prefix example ci
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -116,22 +63,31 @@ jobs:
         if: steps.maestro-cache.outputs.cache-hit != 'true'
         run: curl -fsSL https://get.maestro.mobile.dev | bash
       - run: echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
-      - uses: actions/download-artifact@v4
+      # CocoaPods' downloads only. Not Xcode's build folder: expo prebuild recreates ios/, and npm ci gives every
+      # native source in node_modules a new timestamp, so Xcode rebuilt everything from a restored one anyway
+      - uses: actions/cache@v4
         with:
-          name: ios-app
-          path: example
+          path: ~/Library/Caches/CocoaPods
+          key: cocoapods-${{ hashFiles('example/package-lock.json', 'example/app.json') }}
+          restore-keys: cocoapods-
+      - run: NO_INSTALL=1 sh scripts/e2e-build.sh ios
+        working-directory: example
       - name: Install the app
         run: |
-          tar -xzf ListScrubber.app.tgz
           xcrun simctl bootstatus "$MAESTRO_DEVICE" -b
-          xcrun simctl install "$MAESTRO_DEVICE" ListScrubber.app
+          xcrun simctl install "$MAESTRO_DEVICE" ios/build/Build/Products/Release-iphonesimulator/ListScrubber.app
         working-directory: example
-      - run: sh scripts/e2e.sh ios ${{ matrix.shard.flows }}
+      # Not landscape.yaml on iOS: after a rotation, GitHub's macOS simulator lost Maestro's touches in the lower
+      # part of the screen, in that flow and the ones after it (they pass locally on the same simulator model). It
+      # runs on Android here, and on iOS locally (npm run e2e:ios).
+      - run:
+          sh scripts/e2e.sh ios e2e/lists.yaml e2e/passthrough.yaml e2e/collapsible.yaml e2e/flatlist.yaml
+          e2e/middle.yaml e2e/scrollview.yaml e2e/index.yaml e2e/accessibility.yaml e2e/large-text
         working-directory: example
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: e2e-ios-${{ matrix.shard.name }}
+          name: e2e-ios
           path: ~/.maestro/tests
 
   android-build:
