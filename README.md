@@ -454,6 +454,9 @@ npm --prefix example exec -- playwright install chromium   # once
 npm run example web:e2e                                     # builds for web, then runs the tests
 ```
 
+With Google Chrome installed, `PLAYWRIGHT_CHANNEL=chrome npm run example web:e2e` uses it instead, with no
+download; CI does this.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, the checks CI runs, the example app and end-to-end tests.

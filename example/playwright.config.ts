@@ -10,6 +10,9 @@ export default defineConfig({
     baseURL: 'http://localhost:8090',
     // A phone-sized window, like the native e2e
     ...devices['Desktop Chrome'],
+    // PLAYWRIGHT_CHANNEL=chrome uses an installed Google Chrome instead of Playwright's own Chromium (CI does:
+    // its runners have Chrome, so there's nothing to download)
+    channel: process.env.PLAYWRIGHT_CHANNEL,
     viewport: { width: 400, height: 860 },
     trace: 'retain-on-failure',
   },
