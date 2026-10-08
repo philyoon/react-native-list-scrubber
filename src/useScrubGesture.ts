@@ -91,51 +91,65 @@ export function useScrubGesture({
   }, [deliverOffset]);
 
   const pan = useMemo(
-    () =>
-      Gesture.Pan()
-        .withTestId(testID)
-        .enabled(enabled && maxTravel > 0 && maxScroll > 0)
-        .minDistance(0)
-        .onBegin(() => {
-          const { travel } = track.get();
-          dragTrack.set(track.get());
-          dragging.set(true);
-          startTop.set(clamp((scrollY.get() / maxScroll) * travel, 0, travel));
-          dragTop.set(startTop.get());
-          if (offsets.length) {
-            const y = labelPosition(clamp(scrollY.get(), 0, maxScroll), contentHeight, viewportHeight);
-            sectionIdx.set(sectionIndexAt(offsets, y));
+    () => {
+      /** Moves the thumb and scrolls the list to where the finger is: translationY from where the drag started */
+      const move = (translationY: number) => {
+        'worklet';
+        const { travel } = dragTrack.get();
+        if (travel <= 0) return; // animated insets cover the whole rail: nowhere to drag
+        const top = clamp(startTop.get() + translationY, 0, travel);
+        dragTop.set(top);
+        const offset = (top / travel) * maxScroll;
+        scrollTo(listRef, 0, offset, false);
+        if (offsets.length) {
+          const idx = sectionIndexAt(offsets, labelPosition(offset, contentHeight, viewportHeight));
+          // Only real moves count: the section the drag started in is not a change.
+          if (idx !== sectionIdx.get() && onSection) scheduleOnRN(onSection, idx);
+          sectionIdx.set(idx);
+        } else if (onDragOffset) {
+          latestOffset.set(offset);
+          if (offsetInFlight.get()) offsetWaiting.set(true);
+          else {
+            offsetInFlight.set(true);
+            scheduleOnRN(deliverOffset, offset);
           }
-          offsetWaiting.set(false);
-          opacity.set(withTiming(1, { duration: fadeMs }));
-          scheduleOnRN(onBegin);
-        })
-        .onUpdate((e) => {
-          const { travel } = dragTrack.get();
-          if (travel <= 0) return; // animated insets cover the whole rail: nowhere to drag
-          const top = clamp(startTop.get() + e.translationY, 0, travel);
-          dragTop.set(top);
-          const offset = (top / travel) * maxScroll;
-          scrollTo(listRef, 0, offset, false);
-          if (offsets.length) {
-            const idx = sectionIndexAt(offsets, labelPosition(offset, contentHeight, viewportHeight));
-            // Only real moves count: the section the drag started in is not a change.
-            if (idx !== sectionIdx.get() && onSection) scheduleOnRN(onSection, idx);
-            sectionIdx.set(idx);
-          } else if (onDragOffset) {
-            latestOffset.set(offset);
-            if (offsetInFlight.get()) offsetWaiting.set(true);
-            else {
-              offsetInFlight.set(true);
-              scheduleOnRN(deliverOffset, offset);
+        }
+      };
+      return (
+        Gesture.Pan()
+          .withTestId(testID)
+          .enabled(enabled && maxTravel > 0 && maxScroll > 0)
+          .minDistance(0)
+          .onBegin(() => {
+            const { travel } = track.get();
+            dragTrack.set(track.get());
+            dragging.set(true);
+            startTop.set(clamp((scrollY.get() / maxScroll) * travel, 0, travel));
+            dragTop.set(startTop.get());
+            if (offsets.length) {
+              const y = labelPosition(clamp(scrollY.get(), 0, maxScroll), contentHeight, viewportHeight);
+              sectionIdx.set(sectionIndexAt(offsets, y));
             }
-          }
-        })
-        .onFinalize(() => {
-          dragging.set(false);
-          opacity.set(withDelay(hideAfterMs, withTiming(0, { duration: fadeMs })));
-          scheduleOnRN(onEnd);
-        }),
+            offsetWaiting.set(false);
+            opacity.set(withTiming(1, { duration: fadeMs }));
+            scheduleOnRN(onBegin);
+          })
+          .onUpdate((e) => {
+            move(e.translationY);
+          })
+          // Again with the finger's final position: the last stretch of a drag can come only with the finger
+          // lifting, with no move event for it (seen with injected touches on a slow emulator, where a drag to
+          // the end of the list stopped a few percent short)
+          .onEnd((e) => {
+            move(e.translationY);
+          })
+          .onFinalize(() => {
+            dragging.set(false);
+            opacity.set(withDelay(hideAfterMs, withTiming(0, { duration: fadeMs })));
+            scheduleOnRN(onEnd);
+          })
+      );
+    },
     // Shared values and refs are stable; the rest is what the worklets read.
     [
       listRef,
