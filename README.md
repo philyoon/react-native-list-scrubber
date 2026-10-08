@@ -17,8 +17,8 @@ labels beside your finger.
   current section pinned above the list, and the next one pushes it out, like iOS Contacts.
 - **A top bar that slides away.** One option, `topBar`, gives the list a title or search bar that hides as you
   scroll down and comes back on a scroll up. The scrubber, the pinned header and the bar move as one: the bar
-  stays put while you drag the thumb, the drag never uncovers the space it leaves, and a drag to the top
-  brings it back when you let go. See [A top bar that slides away](#a-top-bar-that-slides-away).
+  stays put while you drag the thumb, and the drag never uncovers the space it leaves. See
+  [A top bar that slides away](#a-top-bar-that-slides-away).
 - **Accessible by default.** An adjustable "Scroll position" control is always present: VoiceOver and TalkBack
   users swipe up or down to step from section to section and hear its label. Labels follow the system text
   size up to 1.5×.
@@ -197,10 +197,11 @@ const scrubber = useListScrubber({ layout, topBar: { height: BAR }, pinnedHeader
 - The bar follows the scroll by as much as it moves, up or down, and is always shown at the very top of the
   list. The scrubber and the pinned header stay below its visible part.
 - During a thumb drag the bar stays as it was, so big jumps don't show and hide it. The drag reaches the first
-  row, not the empty space a hidden bar leaves above it. When a drag to the top ends, the list scrolls back to
-  the very top and the bar slides in with it, in `revealMs` (default 250;
-  `topBar: { height: BAR, revealMs: 400 }` to change it). Anywhere else it stays as the drag left it, and a
-  scroll up brings it back.
+  row, not the empty space a hidden bar leaves above it. After the drag the bar stays as the drag left it, and
+  a scroll up brings it back.
+- To bring it back when a drag ends at the top, pass `topBar: { height: BAR, revealOnDragToTop: true }`: when
+  the finger lifts, the list scrolls back to the very top and the bar slides in with it, in `revealMs`
+  (default 250).
 - `scrubber.topBar` gives the bar's `height`, `visibleHeight` (how much of it is on screen) and `isFixed` (it
   stays in place), as shared values, and `show()`, which slides it back in.
 - With a screen reader on (VoiceOver, TalkBack) the bar stays in place: hidden, its contents would still be
@@ -359,9 +360,12 @@ plus `ListScrubberLayout`, `ListScrubberSection`, `ListScrubberTopBar`, `ListScr
 | `hideAfterMs` | 1500 | Delay before hiding once scrolling stops |
 | `fadeMs`      | 150  | Fade in and out                          |
 
-| `topBar`   | ms  |                                                                       |
-| ---------- | --- | --------------------------------------------------------------------- |
-| `revealMs` | 250 | The top bar sliding back in; set it with `useListScrubber`'s `topBar` |
+| `topBar`            |         |                                                                      |
+| ------------------- | ------- | -------------------------------------------------------------------- |
+| `revealMs`          | 250     | How long the top bar takes to slide back in (ms)                     |
+| `revealOnDragToTop` | `false` | Whether a thumb drag that ends at the top of the list brings it back |
+
+Set them with `useListScrubber`'s `topBar`.
 
 The touch width is fixed at 44 pt, the minimum touch target.
 

@@ -28,11 +28,12 @@ interface BaseOptions {
    * A bar over the top of the list (a title, a search field…) that slides away as the list scrolls down and
    * comes back on a scroll up. Draw it inside a view that spreads `topBarProps`. The list's spread draws the
    * space it needs at the top, and `scrubberProps` and `pinnedHeaderProps` keep the scrubber and the pinned
-   * header below it. During a thumb drag it stays as it was; a drag that ends at the top of the list
-   * brings it back when the finger lifts, sliding in over `revealMs` (default:
+   * header below it. During a thumb drag it stays as it was, and after it a scroll up brings it back. With
+   * `revealOnDragToTop`, a drag that ends at the top of the list brings it back when the finger lifts, and
+   * the list scrolls to the very top with it. It slides in over `revealMs` (default:
    * LIST_SCRUBBER_DEFAULTS.topBar.revealMs).
    */
-  topBar?: { height: number; revealMs?: number };
+  topBar?: { height: number; revealMs?: number; revealOnDragToTop?: boolean };
   /**
    * A PinnedSectionHeader `height` tall: `pinnedHeaderProps` carry its height and placement. Over a list with
    * section headers of its own (a SectionList's, as `sectionListLayout` gives) it sits over them, and the
@@ -128,6 +129,8 @@ export function useListScrubber<
     [given, spacerHeight, hasLayout],
   );
   const revealMs = options.topBar?.revealMs ?? LIST_SCRUBBER_DEFAULTS.topBar.revealMs;
+  const revealOnDragToTop =
+    options.topBar?.revealOnDragToTop ?? LIST_SCRUBBER_DEFAULTS.topBar.revealOnDragToTop;
   useWarnIfUnstable(userOnScroll);
   const listRef = useAnimatedRef<TList>();
   const scrollY = useSharedValue(0);
@@ -167,18 +170,19 @@ export function useListScrubber<
     },
     [userOnScroll, barHeight],
   );
-  // A drag that ended at the top of the thumb's track is at the first row, below the space the hidden bar
-  // left: when the finger lifts, the list scrolls back to the very top and the bar slides in with it.
-  // Anywhere else the bar stays as the drag left it, as after any scroll down: a scroll up brings it back
+  // With revealOnDragToTop: a drag that ended at the top of the thumb's track is at the first row, below
+  // the space the hidden bar left; when the finger lifts, the list scrolls back to the very top and the bar
+  // slides in with it. Otherwise, and anywhere else, the bar stays as the drag left it, as after any scroll
+  // down: a scroll up brings it back
   useAnimatedReaction(
     () => isDragging.get(),
     (dragging, was) => {
-      if (!was || dragging || barHeight <= 0) return;
+      if (!revealOnDragToTop || !was || dragging || barHeight <= 0) return;
       if (barHidden.get() <= 0 || scrollY.get() > barHidden.get() + 0.5) return;
       scrollTo(listRef, 0, 0, true);
       revealTopBar(barHidden, barRevealing, revealMs);
     },
-    [barHeight, revealMs],
+    [barHeight, revealMs, revealOnDragToTop],
   );
   const barVisible = useDerivedValue(() => barHeight - barHidden.get());
   const topBarStyle = useAnimatedStyle(() => ({ transform: [{ translateY: -barHidden.get() }] }));

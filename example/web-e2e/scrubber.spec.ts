@@ -182,9 +182,9 @@ test('a collapsible header: the thumb, the bubble and the pinned header follow i
   await expect.poll(async () => (await box(pinned)).y).toBeGreaterThan(top + 100);
   await expect(header(page)).toHaveValue((await rowLetter())!);
 
-  // Hidden again, then dragged back to the top: it stays hidden while the finger is down, and the drag stops
-  // at the first row, not the blank space the hidden bar leaves above it. When the finger lifts the bar
-  // slides in, and the list goes back to the very top with it
+  // Hidden again, then dragged back to the top: it stays hidden, and the drag stops at the first row, not the
+  // blank space the hidden bar leaves above it. It stays hidden when the finger lifts (the demo leaves
+  // revealOnDragToTop off), and a scroll up brings it back with the list's very top
   await page.mouse.move(rows.x, rows.y);
   await page.mouse.wheel(0, 400);
   await expect.poll(async () => (await box(pinned)).y).toBeLessThanOrEqual(top + 1);
@@ -197,6 +197,10 @@ test('a collapsible header: the thumb, the bubble and the pinned header follow i
   expect(first.y).toBeGreaterThanOrEqual(p.y + p.height - 1); // the first row, right below the pinned header
   expect(first.y).toBeLessThan(p.y + p.height + 32); // its text, centred in the 64pt row
   await page.mouse.up();
+  await page.waitForTimeout(400); // longer than the bar would take to slide in
+  expect((await box(pinned)).y).toBeLessThanOrEqual(top + 1);
+  await page.mouse.move(rows.x, rows.y);
+  await page.mouse.wheel(0, -400);
   await expect.poll(async () => (await box(bar)).y).toBeCloseTo(top, 0);
   await expect(page.getByText('3,000 people')).toBeInViewport();
   // The list back at the very top: the first row below the bar and the pinned header, not hidden under them
@@ -215,7 +219,7 @@ test('a collapsible header: the thumb, the bubble and the pinned header follow i
   await page.mouse.up();
   await expect(header(page)).toHaveValue('Z');
 
-  // Hidden, dragged to the end and back to the top: it stays hidden at the end, and slides in at the top
+  // Hidden, dragged to the end and back to the top: it stays hidden at both, until a scroll up
   await page.mouse.move(rows.x, rows.y);
   await page.mouse.wheel(0, -2000);
   await page.mouse.wheel(0, 400);
@@ -228,8 +232,12 @@ test('a collapsible header: the thumb, the bubble and the pinned header follow i
   const end = await showThumb(page);
   await grab(page, end, 0);
   await page.mouse.up();
-  await expect.poll(async () => (await box(bar)).y).toBeCloseTo(top, 0);
   await expect(header(page)).toHaveValue('A');
+  await page.waitForTimeout(400);
+  expect((await box(pinned)).y).toBeLessThanOrEqual(top + 1);
+  await page.mouse.move(rows.x, rows.y);
+  await page.mouse.wheel(0, -400);
+  await expect.poll(async () => (await box(bar)).y).toBeCloseTo(top, 0);
 
   // Hidden, it comes back when something in it gets focus (on the web a page can't tell a screen reader's on)
   await page.mouse.move(rows.x, rows.y);

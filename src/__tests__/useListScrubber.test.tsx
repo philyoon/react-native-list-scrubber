@@ -217,8 +217,9 @@ describe('scrolling from code', () => {
 
 describe('useListScrubber({ topBar })', () => {
   type Hook = { current: ReturnType<typeof useListScrubber> };
-  async function withBar(height = 100, revealMs?: number) {
-    const hook = await renderHook(() => useListScrubber({ topBar: { height, revealMs } }));
+  type BarOptions = { revealMs?: number; revealOnDragToTop?: boolean };
+  async function withBar(height = 100, bar: BarOptions = {}) {
+    const hook = await renderHook(() => useListScrubber({ topBar: { height, ...bar } }));
     const scroll = (y: number) =>
       (hook.result.current.listProps.onScroll as unknown as (e: unknown) => void)({ contentOffset: { y } });
     /** What shows of the bar (a derived value: the mock computes it on render) */
@@ -254,7 +255,11 @@ describe('useListScrubber({ topBar })', () => {
   });
 
   it('stays as it is during a drag, and after one that ends anywhere but the top', async () => {
-    const { result, scroll, visible } = await withBar();
+    const { result, scroll, visible } = await withBar(100, { revealOnDragToTop: true });
+    // Shown in full when the drag starts: nothing to bring back
+    result.current.isDragging.set(true);
+    await lift(result);
+    expect(mockScrollTo).not.toHaveBeenCalled();
     scroll(300);
     result.current.isDragging.set(true);
     scroll(2000);
@@ -269,8 +274,23 @@ describe('useListScrubber({ topBar })', () => {
     expect(await visible()).toBe(50);
   });
 
-  it('a drag that ends at the first row scrolls back to the top, and the bar slides in', async () => {
+  it('by default, a drag that ends at the first row leaves it hidden too: a scroll up brings it back', async () => {
+    expect(LIST_SCRUBBER_DEFAULTS.topBar.revealOnDragToTop).toBe(false);
     const { result, scroll, visible } = await withBar();
+    scroll(300); // hidden: the thumb's track starts at offset 100, the first row
+    result.current.isDragging.set(true);
+    scroll(100);
+    const timings = mockTimings.length;
+    await lift(result);
+    expect(mockTimings).toHaveLength(timings);
+    expect(mockScrollTo).not.toHaveBeenCalled();
+    expect(await visible()).toBe(0);
+    scroll(40);
+    expect(await visible()).toBe(60);
+  });
+
+  it('with revealOnDragToTop, a drag that ends at the first row scrolls back to the top, and the bar slides in', async () => {
+    const { result, scroll, visible } = await withBar(100, { revealOnDragToTop: true });
     scroll(300); // hidden: the thumb's track starts at offset 100, the first row
     result.current.isDragging.set(true);
     scroll(100);
@@ -303,7 +323,7 @@ describe('useListScrubber({ topBar })', () => {
 
   it('slides back in over `revealMs`', async () => {
     expect(LIST_SCRUBBER_DEFAULTS.topBar.revealMs).toBe(250);
-    const { result, scroll } = await withBar(100, 400);
+    const { result, scroll } = await withBar(100, { revealMs: 400, revealOnDragToTop: true });
     scroll(300);
     result.current.isDragging.set(true);
     scroll(100); // the top of the thumb's track
@@ -354,8 +374,8 @@ describe('useListScrubber({ topBar })', () => {
   });
 
   describe('scrolling from code', () => {
-    async function measured() {
-      const bar = await withBar();
+    async function measured(options: BarOptions = {}) {
+      const bar = await withBar(100, options);
       await act(() => {
         bar.result.current.listProps.onLayout({ nativeEvent: { layout: { height: 600 } } } as never);
         bar.result.current.listProps.onContentSizeChange(390, 2000); // scrolls up to 1,400
@@ -385,7 +405,7 @@ describe('useListScrubber({ topBar })', () => {
     });
 
     it('while the bar slides back in, it ends up in full whichever way the list goes', async () => {
-      const { result, scroll } = await measured();
+      const { result, scroll } = await measured({ revealOnDragToTop: true });
       scroll(800); // hidden
       result.current.isDragging.set(true);
       scroll(100); // dragged to the top: the bar slides back in when the finger lifts
