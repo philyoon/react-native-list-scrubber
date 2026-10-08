@@ -23,8 +23,8 @@ const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
  * A native text field doesn't resize when its text changes outside React, so with `sizeToLabels` every
  * distinct label is laid out once, invisibly, and the field takes the widest: no label is ever clipped.
  * The copies are unmounted once measured. New labels are measured on their own (the width only grows);
- * all of them again if the style or system text size changes. New labels are measured once the app is idle (so not while the list first renders), or as soon as
- * `measureNow` is set, whichever comes first.
+ * all of them again if the style or system text size changes. New labels are measured once the app is idle
+ * (so not while the list first renders), or as soon as `measureNow` is set, whichever comes first.
  */
 export const SectionText = memo(function SectionText({
   index,
@@ -191,7 +191,9 @@ function batchKey(batch: readonly string[]): number {
   return key;
 }
 
-/** Runs `fn` once the JS thread is idle; returns a cancel function. Safari (web) has no requestIdleCallback. */
+/**
+ * Runs `fn` once the JS thread is idle; returns a cancel function. Safari (web) has no requestIdleCallback.
+ */
 function whenIdle(fn: () => void): () => void {
   const { requestIdleCallback, cancelIdleCallback } = globalThis as unknown as IdleCallbacks;
   if (typeof requestIdleCallback === 'function') {

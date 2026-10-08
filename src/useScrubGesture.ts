@@ -13,9 +13,9 @@ import { useLatest } from './useLatest';
 import { clamp, labelPosition, sectionIndexAt } from './math';
 
 /**
- * Where the thumb's track starts in the rail (pt: below the visible part of a top bar), how far the thumb can travel
- * along it, and the first scroll offset it covers (`start`: past the space a hidden top bar leaves at the top of
- * the list)
+ * Where the thumb's track starts in the rail (pt: below the visible part of a top bar), how far the thumb can
+ * travel along it, and the first scroll offset it covers (`start`: past the space a hidden top bar leaves at
+ * the top of the list)
  */
 export interface Track {
   top: number;
@@ -24,10 +24,10 @@ export interface Track {
 }
 
 /**
- * The drag: maps the distance the thumb can move (the track's `travel`) onto the list's scroll range and scrolls
- * it, all on the UI thread. With section `offsets` it also picks the section under the finger (`sectionIdx`).
- * A drag keeps the track it started with (`dragTrack`), so the thumb stays under the finger even if a top bar
- * moves meanwhile.
+ * The drag: maps the distance the thumb can move (the track's `travel`) onto the list's scroll range and
+ * scrolls it, all on the UI thread. With section `offsets` it also picks the section under the finger
+ * (`sectionIdx`). A drag keeps the track it started with (`dragTrack`), so the thumb stays under the finger
+ * even if a top bar moves meanwhile.
  * The JS callbacks must be stable (useLatest): the gesture is rebuilt only when its numbers change.
  */
 export function useScrubGesture({
@@ -97,17 +97,20 @@ export function useScrubGesture({
 
   const pan = useMemo(
     () => {
-      /** Moves the thumb and scrolls the list to where the finger is: translationY from where the drag started */
+      /**
+       * Moves the thumb and scrolls the list to where the finger is: translationY from where the drag started
+       */
       const move = (translationY: number) => {
         'worklet';
-        const { travel, start } = dragTrack.get();
+        // `top`: the top bar's visible part when the drag began, which the labels describe the rows below
+        const { travel, start, top: cover } = dragTrack.get();
         if (travel <= 0) return; // a top bar covers the whole rail: nowhere to drag
         const top = clamp(startTop.get() + translationY, 0, travel);
         dragTop.set(top);
         const offset = start + (top / travel) * (maxScroll - start);
         scrollTo(listRef, 0, offset, false);
         if (offsets.length) {
-          const idx = sectionIndexAt(offsets, labelPosition(offset, contentHeight, viewportHeight));
+          const idx = sectionIndexAt(offsets, labelPosition(offset, contentHeight, viewportHeight, cover));
           // Only real moves count: the section the drag started in is not a change.
           if (idx !== sectionIdx.get() && onSection) scheduleOnRN(onSection, idx);
           sectionIdx.set(idx);
@@ -126,14 +129,19 @@ export function useScrubGesture({
           .enabled(enabled && maxTravel > 0 && maxScroll > 0)
           .minDistance(0)
           .onBegin(() => {
-            const { travel, start } = track.get();
+            const { travel, start, top: cover } = track.get();
             dragTrack.set(track.get());
             dragging.set(true);
             const range = maxScroll - start;
             startTop.set(range > 0 ? clamp(((scrollY.get() - start) / range) * travel, 0, travel) : 0);
             dragTop.set(startTop.get());
             if (offsets.length) {
-              const y = labelPosition(clamp(scrollY.get(), 0, maxScroll), contentHeight, viewportHeight);
+              const y = labelPosition(
+                clamp(scrollY.get(), 0, maxScroll),
+                contentHeight,
+                viewportHeight,
+                cover,
+              );
               sectionIdx.set(sectionIndexAt(offsets, y));
             }
             offsetWaiting.set(false);
@@ -144,8 +152,8 @@ export function useScrubGesture({
             move(e.translationY);
           })
           // Again with the finger's final position: the last stretch of a drag can come only with the finger
-          // lifting, with no move event for it (seen with injected touches on a slow emulator, where a drag to
-          // the end of the list stopped a few percent short)
+          // lifting, with no move event for it (seen with injected touches on a slow emulator, where a drag
+          // to the end of the list stopped a few percent short)
           .onEnd((e) => {
             move(e.translationY);
           })

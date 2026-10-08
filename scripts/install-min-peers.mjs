@@ -1,7 +1,7 @@
-// Installs the lowest version each peer dependency range allows (">=x.y.z" → x.y.z), without saving, so CI can
-// check the library against the oldest versions it claims to support. Reads the ranges from package.json, so
-// raising a minimum there changes what's tested. React's companions (react-test-renderer, @types/react) follow
-// React's version so npm can resolve the tree.
+// Installs the lowest version each peer dependency range allows (">=x.y.z" → x.y.z), without saving, so CI
+// can check the library against the oldest versions it claims to support. Reads the ranges from package.json,
+// so raising a minimum there changes what's tested. React's companions (react-test-renderer, @types/react)
+// follow React's version so npm can resolve the tree.
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';

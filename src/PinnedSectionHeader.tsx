@@ -23,8 +23,8 @@ export interface PinnedSectionHeaderProps {
   /** The next section's header pushes this one out (default true) */
   push?: boolean;
   /**
-   * Distance from the top of the list (default 0), e.g. below a top bar: `useListScrubber`'s `pinnedHeaderProps`
-   * pass the visible height of its `topBar`, and a `scrollY` that names the rows below it
+   * Distance from the top of the list (default 0), e.g. below a top bar: `useListScrubber`'s
+   * `pinnedHeaderProps` pass the visible height of its `topBar`, and a `scrollY` that names the rows below it
    */
   top?: number | SharedValue<number>;
   /** The header box, e.g. background and padding */
@@ -89,8 +89,8 @@ export interface CurrentSectionLabelProps {
 
 /**
  * The label of the section at the top of the list, drawn on the UI thread: PinnedSectionHeader's label,
- * for building a custom pinned header. Native sticky headers (SectionList) only pin headers of rows already rendered,
- * so they show the wrong section while the scrubber jumps; this one follows the scroll position
+ * for building a custom pinned header. Native sticky headers (SectionList) only pin headers of rows already
+ * rendered, so they show the wrong section while the scrubber jumps; this one follows the scroll position
  * directly. Hidden from screen readers (the list's own headers are read instead).
  * One native text field, whatever the number of sections.
  */
@@ -104,8 +104,9 @@ export function CurrentSectionLabel({
 }: CurrentSectionLabelProps) {
   const offsets = useSectionOffsets(sections);
   const labels = useMemo(() => sections.map((s) => s.label), [sections]);
-  // Compared by value: the label re-renders only when its style changes, and an inline `style={{…}}` (or a PinnedSectionHeader
-  // `textStyle`) is a new object on each render, which would re-render all of them every time the app renders
+  // Compared by value: the label re-renders only when its style changes, and an inline `style={{…}}` (or a
+  // PinnedSectionHeader `textStyle`) is a new object on each render, which would re-render all of them every
+  // time the app renders
   const styleKey = JSON.stringify(StyleSheet.flatten(style) ?? {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const flat: TextStyle = useMemo(() => StyleSheet.flatten(style) ?? {}, [styleKey]);

@@ -43,7 +43,10 @@ interface ListScrubberBaseProps<S extends ListScrubberSection> {
   viewportHeight: number | SharedValue<number>;
   /** Colour overrides (defaults: LIST_SCRUBBER_DEFAULTS.colors) */
   colors?: Partial<ListScrubberColors>;
-  /** Screen-reader step targets (ascending offsets); defaults to the section offsets, else one screen. Dragging doesn't snap to them. */
+  /**
+   * Screen-reader step targets (ascending offsets); defaults to the section offsets, else one screen.
+   * Dragging doesn't snap to them.
+   */
   accessibilitySteps?: readonly number[];
   /** Screen-reader name (e.g. "Scroll position") */
   accessibilityLabel: string;
@@ -54,9 +57,10 @@ interface ListScrubberBaseProps<S extends ListScrubberSection> {
   /** Drag ended (finger lifted or gesture cancelled) */
   onDragEnd?: () => void;
   /**
-   * Which edge of the list the thumb sits on, as laid out left to right (default 'right'). On iOS and Android,
-   * React Native mirrors left/right in RTL layouts by default, so the scrubber moves to the left edge by itself:
-   * don't flip this for RTL there. On web, left/right aren't mirrored: pass 'left' for an RTL page.
+   * Which edge of the list the thumb sits on, as laid out left to right (default 'right'). On iOS and
+   * Android, React Native mirrors left/right in RTL layouts by default, so the scrubber moves to the left
+   * edge by itself: don't flip this for RTL there. On web, left/right aren't mirrored: pass 'left' for an
+   * RTL page.
    */
   side?: 'left' | 'right';
   /** Moves the scrubber (the thumb and its touch area) in from that edge; negative to sit outside the list */
@@ -65,8 +69,8 @@ interface ListScrubberBaseProps<S extends ListScrubberSection> {
   insets?: { top?: number; bottom?: number };
   /**
    * A bar over the top of the list that slides away as it scrolls (`useListScrubber`'s `topBar`, which
-   * `scrubberProps` passes): the thumb's track starts below its visible part, and reaches the top of the list's
-   * rows rather than the space a hidden bar leaves above them. A drag keeps the track it started with.
+   * `scrubberProps` passes): the thumb's track starts below its visible part, and reaches the top of the
+   * list's rows rather than the space a hidden bar leaves above them. A drag keeps the track it started with.
    */
   topBar?: ListScrubberTopBar;
   /**
@@ -83,7 +87,10 @@ interface ListScrubberBaseProps<S extends ListScrubberSection> {
   /** Extra style for the bubble box (e.g. a shadow) */
   bubbleStyle?: StyleProp<ViewStyle>;
   bubbleTextStyle?: StyleProp<TextStyle>;
-  /** Prefix of the test IDs: `<testID>` (the drag gesture), `-thumb`, `-a11y`, `-label` (default 'list-scrubber') */
+  /**
+   * Prefix of the test IDs: `<testID>` (the drag gesture), `-thumb`, `-a11y`, `-label`
+   * (default 'list-scrubber')
+   */
   testID?: string;
   /**
    * With `sections`: the finger moved into another section while dragging (e.g. a haptic tick per letter).
@@ -96,7 +103,10 @@ interface ListScrubberBaseProps<S extends ListScrubberSection> {
 
 /** Labels from sections: picked and drawn on the UI thread, so they never lag. Preferred. */
 interface ListScrubberSectionProps<S extends ListScrubberSection> {
-  /** Labelled sections (ascending offsets). The bubble shows the section under the finger, and screen readers step section by section. */
+  /**
+   * Labelled sections (ascending offsets). The bubble shows the section under the finger, and screen readers
+   * step section by section.
+   */
   sections: readonly S[];
   labelAt?: never;
 }
@@ -127,8 +137,8 @@ const defaultFormatPercent = (percent: number) => `${percent}%`;
  * - While dragging, a bubble shows where the finger is. With `sections` the label is picked and drawn
  *   on the UI thread (a native text field updated from the gesture), so it never lags behind the list.
  *   `labelAt` is the JS fallback for arbitrary labels: it can lag a frame or two while JS is busy.
- * - Screen readers get an adjustable control: swipe up/down to move one step (accessibilitySteps, or one screen),
- *   announced as the label or a percentage.
+ * - Screen readers get an adjustable control: swipe up/down to move one step (accessibilitySteps, or one
+ *   screen), announced as the label or a percentage.
  */
 export function ListScrubber<S extends ListScrubberSection = ListScrubberSection>({
   scrollY,
@@ -202,8 +212,9 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
   const maxTravel = Math.max(0, railHeight - m.thumbLength);
   const maxScroll = Math.max(0, contentHeight - viewportHeight);
   /**
-   * The thumb's track now (UI thread, so a top bar moves it without a render): below the visible part of the top bar,
-   * and from the offset where the rows come out from under it: the space a hidden bar leaves above them is skipped
+   * The thumb's track now (UI thread, so a top bar moves it without a render): below the visible part of the
+   * top bar, and from the offset where the rows come out from under it: the space a hidden bar leaves
+   * above them is skipped
    */
   const track = useDerivedValue(() => {
     const shown = topBar ? clamp(topBar.visibleHeight.get(), 0, railHeight) : 0;
@@ -227,6 +238,7 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
     labels,
     labelAt,
     formatPercent: formatAccessibilityPercent,
+    cover: () => track.get().top,
   });
 
   // Stable JS callbacks for the worklets to schedule: they read the latest props when they run.
@@ -241,7 +253,8 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
     onDragEnd?.();
   });
   const onDragOffset = useLatest((offset: number) => {
-    const next = labelAt?.(labelPosition(offset, contentHeight, viewportHeight), offset);
+    // The top bar stays put during a drag (useListScrubber), so this is the cover the drag began with
+    const next = labelAt?.(labelPosition(offset, contentHeight, viewportHeight, track.get().top), offset);
     if (next != null) setLabel(next);
   });
   const onSection = useLatest((index: number) => {
@@ -297,12 +310,13 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
     e.preventDefault(); // the page itself mustn't scroll too
     if (action === 'next' || action === 'previous') a11y.step(action === 'next' ? 1 : -1);
     else if (action === 'pageDown' || action === 'pageUp') a11y.page(action === 'pageDown' ? 1 : -1);
-    else a11y.jumpTo(action === 'start' ? 0 : maxScroll);
+    else a11y.jumpTo(action === 'start' ? 0 : contentHeight); // past the end: clamps to the end
   };
 
   return (
     <View style={[styles.rail, { top: railTop, bottom: railBottom, [side]: edgeOffset, width: TOUCH_WIDTH }]}>
-      {/* Screen readers: an adjustable control that is always present; the thumb itself is drag-only, so it's hidden */}
+      {/* Screen readers: an adjustable control that is always present; the thumb itself is drag-only, so it's
+          hidden */}
       <View
         accessible
         accessibilityRole="adjustable"
@@ -382,7 +396,9 @@ const A11Y_ACTIONS = [{ name: 'increment' }, { name: 'decrement' }];
 /** Only the declared actions step; anything else (e.g. `activate`) is ignored */
 const A11Y_STEP: Record<string, 1 | -1> = { increment: 1, decrement: -1 };
 
-/** Web: a Tab stop driven by the keyboard (React Native Web forwards these to the DOM; native ignores them) */
+/**
+ * Web: a Tab stop driven by the keyboard (React Native Web forwards these to the DOM; native ignores them)
+ */
 function webKeyboardProps(onKeyDown: (e: never) => void): object {
   return { tabIndex: 0, 'aria-orientation': 'vertical', onKeyDown };
 }

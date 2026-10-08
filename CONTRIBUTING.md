@@ -1,7 +1,7 @@
 # Contributing
 
 Thanks for helping! Bug reports and pull requests are welcome. For a larger change, open an issue first so we
-can agree on the approach.
+can agree on the approach. For a change to the API, read [API principles](docs/API_PRINCIPLES.md) first.
 
 ## Setup
 
@@ -18,10 +18,13 @@ CI runs these on every pull request. Run them before you push:
 ```sh
 npm run format:check   # Prettier (npm run format to fix)
 npm run typecheck
-npm run lint
+npm run lint           # ESLint, and lines over 110 columns: Prettier doesn't wrap comments
 npm test -- --coverage # must stay at 100% statements, branches, functions and lines
 npm run smoke:package  # packs the package and checks it as users get it
 ```
+
+A commit that only reformats goes on its own, and its hash in `.git-blame-ignore-revs`, so `git blame` skips
+it (GitHub reads that file; locally, `git config blame.ignoreRevsFile .git-blame-ignore-revs`).
 
 CI also checks the oldest versions the peer dependency ranges allow: `node scripts/install-min-peers.mjs`
 installs them (without saving), then `node scripts/check-reanimated-compat.mjs` confirms Reanimated supports
@@ -77,6 +80,7 @@ that runs every check, including the example app and the Maestro flows:
 ## Pull requests
 
 - Keep each pull request to one change.
+- Check new options, props and behaviour against the [API principles](docs/API_PRINCIPLES.md).
 - Add an entry under `## Unreleased` in `CHANGELOG.md` for anything users will notice.
 - Update the README when the API or behaviour changes.
 

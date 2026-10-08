@@ -28,6 +28,39 @@ describe('screen readers', () => {
   });
 });
 
+describe('with a top bar', () => {
+  const shared = (n: number) => {
+    const v = sharedZero();
+    v.set(n);
+    return v;
+  };
+
+  it('steps land below the bar, and the value names the rows there', async () => {
+    // A 20pt bar fully shown: section M starts at 500, so its first row should be 20 below
+    // the top of the list
+    await setup({
+      sections: [
+        { offset: 0, label: 'A' },
+        { offset: 500, label: 'M' },
+      ],
+      topBar: { height: 20, visibleHeight: shared(20) },
+    });
+    const el = screen.getByRole('adjustable', { name: 'Scroll position' });
+    await fireEvent(el, 'accessibilityAction', { nativeEvent: { actionName: 'increment' } });
+    await act(() => jest.advanceTimersByTime(20));
+    expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 480, false);
+    expect(el.props['aria-valuetext']).toBe('M');
+  });
+
+  it('paging moves by the uncovered part of the list', async () => {
+    await setup({ topBar: { height: 20, visibleHeight: shared(20) } });
+    const el = screen.getByRole('adjustable', { name: 'Scroll position' });
+    await fireEvent(el, 'accessibilityAction', { nativeEvent: { actionName: 'increment' } });
+    await act(() => jest.advanceTimersByTime(20));
+    expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 72, false); // 0.9 × (100 − 20)
+  });
+});
+
 describe('screen reader edges', () => {
   it('ignores actions other than increment and decrement', async () => {
     const scrollY = sharedZero();
