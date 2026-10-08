@@ -206,13 +206,14 @@ const scrubber = useListScrubber({ sections, topBar: { height: BAR } });
 
 - The bar follows the scroll by as much as it moves, up or down, and is always shown at the very top of the
   list.
-- `scrubberProps` keeps the thumb's track below what shows of the bar, and `pinnedHeaderProps` keeps the
+- `scrubberProps` keeps the thumb's track below the visible part of the bar, and `pinnedHeaderProps` keeps the
   pinned header below it, naming the section of the rows it covers.
 - During a thumb drag the bar stays as it was, so big jumps don't show and hide it. The drag reaches the first
   row, not the empty spacer a hidden bar leaves above it. When the finger lifts the bar slides back in; at the
   top of the list, the list scrolls back up with it.
-- `scrubber.topBar` has its `height`, what shows of it now (`visibleHeight`, a shared value), and `show()`,
-  which slides it back in, e.g. when its search field is focused. To scroll a section in below the bar:
+- `scrubber.topBar` gives the bar's `height`, `visibleHeight` (how much of it is on screen, as a shared
+  value), and `show()`, which slides it back in, e.g. when its search field gets focus. To bring a section to
+  the top of the list, just below the bar:
   `scrubber.scrollToOffset(section.offset - scrubber.topBar.visibleHeight.get())`.
 - The screen-reader value describes the top of the list, under the bar.
 

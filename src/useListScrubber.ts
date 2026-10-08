@@ -123,7 +123,7 @@ export function useListScrubber<
         : undefined,
     [barHeight, barVisible, barHidden, barRevealing],
   );
-  /** What a pinned header below the top bar covers: the rows just below what shows of the bar */
+  /** What a pinned header below the top bar covers: the rows just below the bar's visible part */
   const pinnedScrollY = useDerivedValue(() => scrollY.get() + barVisible.get());
   // Stable identities: the list and the scrubber get the same props on every render.
   // Which of the list's handlers have run, for the development warning below
@@ -276,9 +276,9 @@ export interface UseListScrubberResult<
   /** True while the scrubber's thumb is dragged, set on the UI thread: read it from worklets */
   isDragging: SharedValue<boolean>;
   /**
-   * With the `topBar` option: its height, what shows of it now (`visibleHeight`, e.g. to scroll a section in
-   * below it with `scrollToOffset(offset - visibleHeight.get())`), and `show()`, which slides it back in (e.g.
-   * when its search field is focused)
+   * With the `topBar` option: the bar's height, `visibleHeight` (how much of it is on screen, e.g. to bring a
+   * section to just below it with `scrollToOffset(offset - visibleHeight.get())`), and `show()`, which slides it
+   * back in (e.g. when its search field gets focus)
    */
   topBar: (ListScrubberTopBar & { show: () => void }) | undefined;
   /**

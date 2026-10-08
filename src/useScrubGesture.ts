@@ -13,7 +13,7 @@ import { useLatest } from './useLatest';
 import { clamp, labelPosition, sectionIndexAt } from './math';
 
 /**
- * Where the thumb's track starts in the rail (pt: below what shows of a top bar), how far the thumb can travel
+ * Where the thumb's track starts in the rail (pt: below the visible part of a top bar), how far the thumb can travel
  * along it, and the first scroll offset it covers (`start`: past the space a hidden top bar leaves at the top of
  * the list)
  */

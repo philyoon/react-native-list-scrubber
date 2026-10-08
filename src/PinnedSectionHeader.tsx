@@ -24,7 +24,7 @@ export interface PinnedSectionHeaderProps {
   push?: boolean;
   /**
    * Distance from the top of the list (default 0), e.g. below a top bar: `useListScrubber`'s `pinnedHeaderProps`
-   * pass what shows of its `topBar`, and a `scrollY` that names the rows below it
+   * pass the visible height of its `topBar`, and a `scrollY` that names the rows below it
    */
   top?: number | SharedValue<number>;
   /** The header box, e.g. background and padding */
