@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import type { ListScrubberSection } from './types';
 
 /** Arrays already checked: each is scanned once, however many components read it */
@@ -48,7 +48,6 @@ function findProblem(
  * thread whenever its identity changes.
  */
 export function useSectionOffsets(sections: readonly ListScrubberSection[] | undefined): readonly number[] {
-  useWarnIfUnmemoized(sections);
   return useMemo(() => {
     if (!sections) return NO_OFFSETS;
     const values = sections.map((s) => s.offset);
@@ -62,23 +61,40 @@ const NO_OFFSETS: readonly number[] = [];
 /** Mistakes already reported: each is warned about once, however many components make it */
 const warned = new Set<string>();
 
+/** Warns once, under `key`, however many times the mistake is made */
+export function warnOnce(key: string, message: string): void {
+  if (warned.has(key)) return;
+  warned.add(key);
+  console.warn(message);
+}
+
 /** Test only: lets each test see the once-only warnings again */
 export function resetWarnings(): void {
   warned.clear();
 }
 
 /**
- * Renders in a row with a new but identical `sections` array (or a new `onScroll`) before it counts as
+ * Renders in a row with a new `onScroll`, or new sections with the same contents, before it counts as
  * unmemoized
  */
 const UNMEMOIZED_RENDERS = 2;
 
 /**
- * Development only: warns once when `sections` keeps arriving as a new array with the same contents,
- * e.g. `sections={items.map(…)}` without useMemo. Nothing breaks, but every new array is re-validated and
- * copied to the UI thread again, on every render. Once alone (a refetch with the same data) is fine.
+ * `sections` with a stable identity: a new array with the same sections (each one's fields the same) is the
+ * previous one, so the list and the UI thread see a change only when there is one (worklets copy what they
+ * capture to the UI thread whenever its identity changes). Development builds still warn when it keeps
+ * happening: whatever builds the sections runs again on every render, e.g. `listLayout(…)` without useMemo.
  */
-function useWarnIfUnmemoized(sections: readonly ListScrubberSection[] | undefined): void {
+export function useStableSections<T extends readonly object[] | undefined>(sections: T): T {
+  useWarnIfUnmemoized(sections);
+  const [kept, setKept] = useState(sections);
+  if (kept === sections || (kept && sections && sameSections(kept, sections))) return kept;
+  setKept(sections);
+  return sections;
+}
+
+/** Development only: warns once when the sections keep arriving as a new array with the same contents */
+function useWarnIfUnmemoized(sections: readonly object[] | undefined): void {
   const previous = useRef(sections);
   const repeats = useRef(0);
   useEffect(() => {
@@ -89,14 +105,19 @@ function useWarnIfUnmemoized(sections: readonly ListScrubberSection[] | undefine
     if (repeats.current < UNMEMOIZED_RENDERS) return;
     warned.add('unmemoized');
     console.warn(
-      'react-native-list-scrubber: `sections` is a new array with the same contents as on the last render. ' +
-        'Wrap it in useMemo: each new array is checked and copied to the UI thread again.',
+      'react-native-list-scrubber: the sections (`layout` or `sections`) are a new array with the same ' +
+        'contents on every render. Wrap what builds them in useMemo: it runs again each time.',
     );
   });
 }
 
-function sameSections(a: readonly ListScrubberSection[], b: readonly ListScrubberSection[]): boolean {
-  return a.length === b.length && a.every((s, i) => s.offset === b[i]!.offset && s.label === b[i]!.label);
+function sameSections(a: readonly object[], b: readonly object[]): boolean {
+  return a.length === b.length && a.every((s, i) => shallowEqual(s, b[i]!));
+}
+
+function shallowEqual(a: object, b: object): boolean {
+  const keys = Object.keys(a) as (keyof typeof a)[];
+  return keys.length === Object.keys(b).length && keys.every((k) => a[k] === b[k]);
 }
 
 /**

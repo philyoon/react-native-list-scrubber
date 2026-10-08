@@ -8,8 +8,9 @@ import { firstIndexWhere, labelPosition, scrollBelowBar, sectionIndexAt, type Ba
  * The screen-reader (and web keyboard) side: `step(±1)` scrolls to the next or previous of `steps`
  * (or one screen), `page(±1)` one screen, `jumpTo` brings a content offset to the top of the list's visible
  * part, and `value` describes the position as a section label, a `labelAt` label or a percentage. `sync`
- * re-reads the position after manual scrolling. `bar` is a top bar over the list, if any: steps land below
- * its visible part, where it will be once it has followed the scroll, and the value describes the rows there.
+ * re-reads the position after manual scrolling. `bar` is a top bar over the list, if any, and `still` what
+ * covers the list's top below it for good: steps land below both, where the bar will be once it has followed
+ * the scroll, and the value describes the rows there.
  */
 export function useA11yStepper({
   listRef,
@@ -22,6 +23,7 @@ export function useA11yStepper({
   labels,
   labelAt,
   formatPercent,
+  still,
   bar,
 }: {
   listRef: AnimatedRef<any>;
@@ -35,6 +37,8 @@ export function useA11yStepper({
   labels: readonly string[];
   labelAt: ((position: number, scrollOffset: number) => string | null) | undefined;
   formatPercent: (percent: number) => string;
+  /** How much of the list's top is covered for good, below a top bar (e.g. a pinned header) */
+  still: number;
   /** A top bar over the list now (0 tall without one) */
   bar: () => BarState;
 }) {
@@ -51,17 +55,17 @@ export function useA11yStepper({
     [labels, offsets, labelAt, offset, covered, formatPercent, maxScroll, contentHeight, viewportHeight],
   );
 
-  /** How much of the list's top the bar covers now */
+  /** How much of the list's top is covered now */
   const cover = () => {
     const { height, hidden } = bar();
-    return height - hidden;
+    return height - hidden + still;
   };
 
   /** Scroll so content offset `to` is at the top of the list's visible part (clamped), and describe it */
   const jumpTo = (to: number) => {
-    const { scroll, cover: covered } = scrollBelowBar(to, scrollY.get(), bar(), maxScroll);
+    const { scroll, cover: shown } = scrollBelowBar(to - still, scrollY.get(), bar(), maxScroll);
     scheduleOnUI(scrollTo, listRef, 0, scroll, false);
-    setPosition({ offset: scroll, covered });
+    setPosition({ offset: scroll, covered: shown + still });
   };
 
   /** One screen back or forward; the previous screen's last row stays visible */

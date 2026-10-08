@@ -3,8 +3,11 @@
 # Callers retry the drag along with their check of where it ended: GitHub's iOS simulator now and then
 # drops a gesture.
 # Expo Go: host.exp.Exponent on iOS; npm run e2e:android sets APP_ID=host.exp.exponent
-# RTL: 1 for a right-to-left layout, with the thumb at the left edge (x 9%, not 91%). Not given a default
-# below: a subflow's own env wins over the caller's.
+# RTL: 1 for a right-to-left layout, with the thumb at the left edge (x 9%, not 91%).
+# TOP: where the thumb's track starts, as a percentage of the screen's height: 28 (the default), 31 below a
+# pinned header that takes its own space (FlatList, FlashList, Legend List), or 39 for that in landscape. Each
+# is a step of its own below: Maestro doesn't take expressions in a swipe's points.
+# Neither is given a default below: a subflow's own env wins over the caller's.
 appId: ${APP_ID}
 env:
   APP_ID: host.exp.Exponent
@@ -15,7 +18,7 @@ env:
     duration: 800 # slow: no fling still moving the list when the thumb is grabbed
 - runFlow:
     when:
-      true: ${!(typeof RTL != 'undefined' && RTL == 1)}
+      true: ${!(typeof RTL != 'undefined' && RTL == 1) && (typeof TOP == 'undefined' || TOP == 28)}
     commands:
       - swipe:
           start: 91%, 28%
@@ -23,10 +26,34 @@ env:
           duration: 1500 # it ends at the end of the list: on a slow emulator (CI) a faster drag's last stretch can be lost
 - runFlow:
     when:
-      true: ${typeof RTL != 'undefined' && RTL == 1}
+      true: ${!(typeof RTL != 'undefined' && RTL == 1) && (typeof TOP != 'undefined' && TOP == 31)}
+    commands:
+      - swipe:
+          start: 91%, 31%
+          end: 91%, 99%
+          duration: 1500 # it ends at the end of the list: on a slow emulator (CI) a faster drag's last stretch can be lost
+- runFlow:
+    when:
+      true: ${!(typeof RTL != 'undefined' && RTL == 1) && (typeof TOP != 'undefined' && TOP == 39)}
+    commands:
+      - swipe:
+          start: 91%, 39%
+          end: 91%, 99%
+          duration: 1500 # it ends at the end of the list: on a slow emulator (CI) a faster drag's last stretch can be lost
+- runFlow:
+    when:
+      true: ${(typeof RTL != 'undefined' && RTL == 1) && (typeof TOP == 'undefined' || TOP == 28)}
     commands:
       - swipe:
           start: 9%, 28%
+          end: 9%, 99%
+          duration: 1500 # it ends at the end of the list: on a slow emulator (CI) a faster drag's last stretch can be lost
+- runFlow:
+    when:
+      true: ${(typeof RTL != 'undefined' && RTL == 1) && (typeof TOP != 'undefined' && TOP == 31)}
+    commands:
+      - swipe:
+          start: 9%, 31%
           end: 9%, 99%
           duration: 1500 # it ends at the end of the list: on a slow emulator (CI) a faster drag's last stretch can be lost
 - waitForAnimationToEnd

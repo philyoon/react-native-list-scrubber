@@ -35,7 +35,7 @@ env:
     end: 50%, 56%
     duration: 800
 - swipe:
-    start: 91%, 28%
+    start: 91%, 31%
     end: 91%, 45%
     duration: 800
 - waitForAnimationToEnd

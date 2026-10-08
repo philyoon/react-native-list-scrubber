@@ -1,46 +1,42 @@
-import type { ListScrubberSection } from './types';
-
-/** What `getItemLayout` returns for one row (FlatList and SectionList take the same shape) */
-interface ItemLayout {
-  length: number;
-  offset: number;
-  index: number;
-}
+import type { ListScrubberLayout, ListScrubberSection } from './types';
 
 /**
  * Sections for a flat list (FlatList, FlashList, Legend List, or a ScrollView of fixed blocks), from the
- * rows' heights: a new section starts wherever `label` changes from one row to the next. `getItemLayout`
- * comes from the same numbers, so the list and the scrubber can't disagree.
+ * rows' heights: a new section starts wherever `sectionLabel` changes from one row to the next.
+ * `getItemLayout` comes from the same numbers, so the list and the scrubber can't disagree. Give the result
+ * to `useListScrubber`, whose `flatListProps` then carry `getItemLayout`:
  *
- *   const { sections, getItemLayout } = useMemo(
- *     () => listLayout(contacts, { label: (c) => c.name[0]!, itemHeight: ROW }),
+ *   const layout = useMemo(
+ *     () => listLayout(contacts, { sectionLabel: (c) => c.name[0]!, itemHeight: ROW }),
  *     [contacts],
  *   );
+ *   const scrubber = useListScrubber({ layout });
  *
- * `itemHeight` includes any separator below the row. `listHeaderHeight` is the ListHeaderComponent's height.
- * The first section starts at 0, so it also covers the list header above it.
+ * `itemHeight` includes any separator below the row. `listHeaderHeight` is your own list header's height
+ * (not the space for a top bar or a pinned header: `useListScrubber` adds that). The first section starts at
+ * 0, so it also covers the list header above it.
  */
 export function listLayout<T>(
   items: readonly T[],
   {
-    label,
+    sectionLabel,
     itemHeight,
     listHeaderHeight = 0,
   }: {
-    /** The row's section label, e.g. its first letter or its month */
-    label: (item: T, index: number) => string;
+    /** The label of the row's section, e.g. its first letter or its month */
+    sectionLabel: (item: T, index: number) => string;
     /** One height for every row, or each row's own */
     itemHeight: number | ((item: T, index: number) => number);
     listHeaderHeight?: number;
   },
-): { sections: ListScrubberSection[]; getItemLayout: (data: unknown, index: number) => ItemLayout } {
+): ListScrubberLayout {
   const sections: ListScrubberSection[] = [];
   // Fixed heights need no table: getItemLayout is arithmetic
   const offsets: number[] = [];
   const lengths: number[] = [];
   let y = listHeaderHeight;
   items.forEach((item, i) => {
-    const name = label(item, i);
+    const name = sectionLabel(item, i);
     if (sections.at(-1)?.label !== name) sections.push({ offset: sections.length ? y : 0, label: name });
     const length = typeof itemHeight === 'number' ? itemHeight : itemHeight(item, i);
     if (typeof itemHeight !== 'number') {
@@ -57,7 +53,7 @@ export function listLayout<T>(
           index,
         })
       : (_: unknown, index: number) => ({ length: lengths[index]!, offset: offsets[index]!, index });
-  return { sections, getItemLayout };
+  return { sections, getItemLayout, sectionHeaders: false };
 }
 
 /**
@@ -65,32 +61,34 @@ export function listLayout<T>(
  * header. `getItemLayout` follows SectionList's own indexing: each section counts a header, its rows and a
  * footer (0 tall without `renderSectionFooter`).
  *
- *   const { sections, getItemLayout } = useMemo(
+ *   const layout = useMemo(
  *     () => sectionListLayout(data, { itemHeight: ROW, sectionHeaderHeight: HEADER }),
  *     [data],
  *   );
+ *   const scrubber = useListScrubber({ layout });
  *
- * `label` defaults to the section's `title`. `itemHeight` includes any separator below the row.
- * The first section starts at 0, so it also covers a list header above it.
+ * `sectionLabel` defaults to the section's `title`. `itemHeight` includes any separator below the row.
+ * `listHeaderHeight` is your own list header's height, as for listLayout. The first section starts at 0, so
+ * it also covers a list header above it.
  */
 export function sectionListLayout<S extends { data: readonly unknown[]; title?: unknown }>(
   listSections: readonly S[],
   {
-    label = defaultLabel,
+    sectionLabel = defaultLabel,
     itemHeight,
     sectionHeaderHeight = 0,
     sectionFooterHeight = 0,
     listHeaderHeight = 0,
   }: {
     /** The section's label (default: its `title`) */
-    label?: (section: S, index: number) => string;
+    sectionLabel?: (section: S, index: number) => string;
     /** One height for every row, or each row's own (`index` is within its section) */
     itemHeight: number | ((item: S['data'][number], index: number, section: S) => number);
     sectionHeaderHeight?: number;
     sectionFooterHeight?: number;
     listHeaderHeight?: number;
   },
-): { sections: ListScrubberSection[]; getItemLayout: (data: unknown, index: number) => ItemLayout } {
+): ListScrubberLayout {
   const sections: ListScrubberSection[] = [];
   const offsets: number[] = [];
   const lengths: number[] = [];
@@ -101,7 +99,7 @@ export function sectionListLayout<S extends { data: readonly unknown[]; title?: 
     y += length;
   };
   listSections.forEach((section, s) => {
-    sections.push({ offset: s ? y : 0, label: label(section, s) });
+    sections.push({ offset: s ? y : 0, label: sectionLabel(section, s) });
     add(sectionHeaderHeight);
     section.data.forEach((item, i) =>
       add(typeof itemHeight === 'number' ? itemHeight : itemHeight(item, i, section)),
@@ -113,7 +111,7 @@ export function sectionListLayout<S extends { data: readonly unknown[]; title?: 
     offset: offsets[index]!,
     index,
   });
-  return { sections, getItemLayout };
+  return { sections, getItemLayout, sectionHeaders: sectionHeaderHeight > 0 };
 }
 
 /** A section's `title` when it's a string; otherwise empty, which development builds warn about */

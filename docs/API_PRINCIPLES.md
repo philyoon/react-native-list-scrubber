@@ -17,18 +17,32 @@ apps want: the right place, size, colours, timing and accessibility.
 - The defaults are public (`LIST_SCRUBBER_DEFAULTS`), and grouped options take partial overrides (`metrics`,
   `timing`): changing one value never means restating the others.
 
-## 2. Spreads carry the wiring
+## 2. Easy things easy, hard things possible
 
-The hook owns the state. The parts get it through spreads (`listProps`, `scrubberProps`, the pinned header's
+The common case takes the fewest concepts, and each step adds one thing to the last: a thumb, then section
+labels, then a pinned header, then a top bar.
+
+- Don't make the easy path harder to serve a rare case. A rare case gets its own helper or a lower-level
+  piece, not more options on the core functions.
+- Hard cases stay possible, and documented: sections built by hand, wiring by hand, the pieces the spreads are
+  made of.
+- The README follows the same order: it starts with the easiest case and adds one step per section.
+
+## 3. Spreads carry the wiring
+
+The hook owns the state. The parts get it through spreads (the list's, `scrubberProps`, the pinned header's
 props), which carry every value they need to agree on. Apps don't copy values from one component to another.
 
 - A new value that two parts must share goes into the spreads, not into the docs as a step for apps.
-- The pieces the spreads are made of (`listRef`, `scrollY`, the height shared values) are public too, for
-  wiring by hand. That's the escape hatch, not the main path.
+- A spread holds only props its target documents, so nothing depends on a component ignoring a prop. Where
+  lists document different props, each gets its own spread (`flatListProps`, `flashListProps`…), and
+  `listProps` holds what every scrollable component takes.
+- The pieces the spreads are made of (the list's ref, the height shared values) are public too, in the
+  spreads, for wiring by hand. That's the hard path (principle 2), not the main one.
 - App handlers are passed to the hook and called after the library's (`onScroll`, `onLayout`,
   `onContentSizeChange`), so a spread never has to be taken apart to add one.
 
-## 3. One fact, one place
+## 4. One fact, one place
 
 No two inputs that must agree. If they can disagree, one day they will.
 
@@ -37,20 +51,20 @@ No two inputs that must agree. If they can disagree, one day they will.
 - Derive instead of asking: a range, an offset or a size the library can work out from what it has isn't an
   option.
 
-## 4. One coordinate system
+## 5. One coordinate system
 
 Every offset is in points from the top of the list's content: `sections[].offset`, `scrollToOffset`,
 `listLayout`'s offsets. Never from the top of the screen or of what's visible. Where something covers the
 list, like a top bar, the library works out what lies below it; that's never a second kind of offset for apps
 to convert.
 
-## 5. Complexity lives in the library
+## 6. Complexity lives in the library
 
 The example app and the README's snippets show the API, not workarounds. If a demo needs a calculation, a
 shared value or an effect to look right, that's a feature the library is missing: move it into the library and
 leave the demo a few lines long.
 
-## 6. Name what people see
+## 7. Name what people see
 
 Names describe what's on screen and what it's measured from, not how it's built.
 
@@ -58,6 +72,8 @@ Names describe what's on screen and what it's measured from, not how it's built.
   thumb), `insets` (from the list's top and bottom).
 - Where React Native has a name for something, use it: `onLayout`, `testID`, `accessibilityLabel`,
   `maxFontSizeMultiplier`, `style` and `textStyle`.
+- Spreads are named after what they're spread on, in the words the docs use for it: `flatListProps`,
+  `scrubberProps`, `pinnedHeaderProps`, `topBarProps`.
 - Suffixes: `*Props` is an object to spread, `*Style` a style, `on*` a callback, `*Ms` a duration in
   milliseconds. Distances, sizes and offsets are in points and carry no suffix.
 - Booleans: `is*` is for state the library sets and you read (`isDragging`). Options you set are plain words,
@@ -70,7 +86,7 @@ Names describe what's on screen and what it's measured from, not how it's built.
   `UPPER_SNAKE_CASE` (`LIST_SCRUBBER_DEFAULTS`).
 - The same thing has the same name everywhere: in the props, the hook's result, the types and the docs.
 
-## 7. Types follow your data
+## 8. Types follow your data
 
 - Your data keeps its type through the API: extra fields on a section (`{ offset, label, id }`) reach
   `onSectionChange` typed.
@@ -78,13 +94,13 @@ Names describe what's on screen and what it's measured from, not how it's built.
   `labelAt`).
 - Type a new API so that misusing it doesn't compile.
 
-## 8. The finger never waits for JS
+## 9. The finger never waits for JS
 
 Anything that follows a touch or a scroll runs on the UI thread: the drag, the list scroll and the bubble
 label. Values that change while scrolling are shared values, so measuring the list doesn't re-render the app's
 component. A callback that runs on the UI thread is a worklet, and the docs say so.
 
-## 9. Accessible by default
+## 10. Accessible by default
 
 Accessibility isn't an option to turn on.
 
@@ -96,13 +112,13 @@ Accessibility isn't an option to turn on.
   override it.
 - A new visual feature answers: what does a screen reader user get, and what does a keyboard user get?
 
-## 10. Behave like the platform
+## 11. Behave like the platform
 
 When in doubt, do what the platform's own apps do: a pinned header pushed out by the next one, like iOS
 Contacts; a thumb drawn where a native scroll indicator is; an indicator that fades when scrolling stops.
 Where iOS and Android differ, follow each.
 
-## 11. Small scope
+## 12. Small scope
 
 This is a scrubber that works with any list. It isn't a list, and it isn't an A–Z index.
 
@@ -113,23 +129,23 @@ This is a scrubber that works with any list. It isn't a list, and it isn't an A�
   `PinnedSectionHeader` and `CurrentSectionLabel`), not more props on the scrubber.
 - Say what isn't supported (see the README's Limits) rather than half-supporting it.
 
-## 12. No runtime dependencies
+## 13. No runtime dependencies
 
 Only peer dependencies: the React Native platform the app already has. CI checks the lowest versions the peer
 ranges allow. Adding a dependency or raising a minimum needs a reason in the pull request.
 
-## 13. Warn in development, stay quiet in production
+## 14. Warn in development, stay quiet in production
 
 Bad input (sections out of order, an empty label, sections rebuilt on every render) gets a warning in
 development builds, behind `__DEV__`. Production never throws: it does the best it can with what it's given.
 
-## 14. Testable from the app
+## 15. Testable from the app
 
 Apps can test their screens without the library's native parts: `react-native-list-scrubber/jest` is a mock
 with the same shapes as the real thing, and the test IDs (`testID` and its suffixes) stay stable. A change to
 the API changes the mock and the test IDs in the same pull request.
 
-## 15. Change boldly before 1.0
+## 16. Change boldly before 1.0
 
 Until 1.0, a simpler API beats a compatible one. A breaking change is fine when it makes the API simpler or
 removes a way to get it wrong.
@@ -138,7 +154,7 @@ removes a way to get it wrong.
 - Don't keep a deprecated alias around.
 - Docs-only changes don't bump the version.
 
-## 16. Prove it
+## 17. Prove it
 
 - A test for a fix fails on the old code.
 - Coverage stays at 100%, on the newest and the oldest peer versions CI checks.

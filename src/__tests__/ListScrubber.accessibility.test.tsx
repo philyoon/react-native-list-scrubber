@@ -94,6 +94,23 @@ describe('with a top bar', () => {
   });
 });
 
+describe('with a top inset (e.g. a pinned header taking its own space)', () => {
+  it('steps land below it, and the value names the rows there', async () => {
+    await setup({
+      sections: [
+        { offset: 0, label: 'A' },
+        { offset: 500, label: 'M' },
+      ],
+      insets: { top: 32 },
+    });
+    const el = screen.getByRole('adjustable', { name: 'Scroll position' });
+    await fireEvent(el, 'accessibilityAction', { nativeEvent: { actionName: 'increment' } });
+    await act(() => jest.advanceTimersByTime(20));
+    expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 468, false);
+    expect(el.props['aria-valuetext']).toBe('M');
+  });
+});
+
 describe('screen reader edges', () => {
   it('ignores actions other than increment and decrement', async () => {
     const scrollY = sharedZero();

@@ -34,6 +34,7 @@ const sections = [
   { offset: 500, label: 'M' },
 ];
 const layout = (height: number) => ({ nativeEvent: { layout: { height } } }) as never;
+const layoutEvent = layout;
 /** A scroll position the components only read */
 const at = (y: number) => ({ get: () => y }) as never;
 /** A screen with the hook, its scrubber and a pinned header, measured: 1000 tall in a 100 tall window */
@@ -166,7 +167,8 @@ describe('useListScrubber', () => {
   it("records the list's size and scroll, then calls the list's own handlers", async () => {
     const own = { onScroll: jest.fn(), onLayout: jest.fn(), onContentSizeChange: jest.fn() };
     const { result } = await renderHook(() => useListScrubber(own));
-    const { listProps, scrollY, contentHeight, viewportHeight } = result.current;
+    const { listProps, scrollY, scrubberProps } = result.current;
+    const { contentHeight, viewportHeight } = scrubberProps;
     await act(() => {
       listProps.onLayout(layout(600));
       listProps.onContentSizeChange(390, 2000);
@@ -209,6 +211,58 @@ describe('useListScrubber', () => {
     expect(result.current.listProps).toBe(first.listProps);
     expect(result.current.scrubberProps).toBe(first.scrubberProps);
     expect(result.current.scrollToSection).toBe(first.scrollToSection);
+    expect('getItemLayout' in first.listProps).toBe(false);
+  });
+
+  it('takes a layout and places it like the real hook', async () => {
+    const layout = mock.listLayout(['Ada', 'Ben'], { sectionLabel: (n) => n[0]!, itemHeight: 64 });
+    const { result } = await renderHook(() =>
+      useListScrubber({
+        layout,
+        topBar: { height: 100 },
+        pinnedHeader: { height: 32 },
+        ListHeaderComponent: <mock.CurrentSectionLabel scrollY={at(600)} sections={sections} />,
+      }),
+    );
+    const r = result.current;
+    expect(r.spacerHeight).toBe(132);
+    expect(r.scrubberProps.sections).toEqual([
+      { offset: 0, label: 'A' },
+      { offset: 196, label: 'B' },
+    ]);
+    expect(r.scrubberProps.insets).toEqual({ top: 32 });
+    expect(r.pinnedHeaderProps).toMatchObject({ height: 32, push: false });
+    expect(r.flatListProps.getItemLayout!(null, 1)).toEqual({ length: 64, offset: 196, index: 1 });
+    expect(r.flashListProps.ListHeaderComponent).toBe(r.ListHeader);
+    expect(r.scrollViewProps).toBe(r.listProps);
+    const { ListHeader } = r;
+    await render(<ListHeader />);
+    expect(screen.getByTestId('list-scrubber-spacer')).toHaveStyle({ height: 132 });
+    expect(screen.getByTestId('list-scrubber-section-label')).toHaveTextContent('M');
+    // Scrolling from code lands below the bar and the pinned header, which always show in full here
+    await act(() => {
+      r.listProps.onLayout(layoutEvent(600));
+      r.listProps.onContentSizeChange(390, 2000);
+    });
+    r.scrollToSection(1);
+    expect(r.scrollY.get()).toBe(64);
+  });
+
+  it('draws your own list header, without a spacer when nothing is over the list', async () => {
+    const { result } = await renderHook(() =>
+      useListScrubber({
+        ListHeaderComponent: () => <mock.CurrentSectionLabel scrollY={at(0)} sections={sections} />,
+      }),
+    );
+    const { ListHeader, flatListProps, sectionListProps, legendListProps } = result.current;
+    expect([flatListProps, sectionListProps, legendListProps].map((p) => p.ListHeaderComponent)).toEqual([
+      ListHeader,
+      ListHeader,
+      ListHeader,
+    ]);
+    await render(<ListHeader />);
+    expect(screen.queryByTestId('list-scrubber-spacer')).toBeNull();
+    expect(screen.getByTestId('list-scrubber-section-label')).toHaveTextContent('A');
   });
 
   it('shared values take a value or an updater, and expose `value`', async () => {

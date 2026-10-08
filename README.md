@@ -47,49 +47,48 @@ crashes at startup.
 
 ## Usage
 
+Each step adds one thing to the last: a thumb, then section labels, then a pinned header, then a top bar.
+
+### A thumb
+
 ```tsx
-import { useMemo } from 'react';
 import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
-import { ListScrubber, listLayout, useListScrubber } from 'react-native-list-scrubber';
-
-const ROW = 64;
+import { ListScrubber, useListScrubber } from 'react-native-list-scrubber';
 
 function Contacts({ contacts }: { contacts: Contact[] }) {
-  // One section per first letter, and the matching getItemLayout
-  const { sections, getItemLayout } = useMemo(
-    () => listLayout(contacts, { label: (c) => c.name[0]!.toUpperCase(), itemHeight: ROW }),
-    [contacts],
-  );
-  const scrubber = useListScrubber({ sections });
-
+  const scrubber = useListScrubber();
   return (
     <View style={{ flex: 1 }}>
-      <Animated.FlatList
-        {...scrubber.listProps}
-        data={contacts}
-        renderItem={renderContact}
-        getItemLayout={getItemLayout}
-      />
+      <Animated.FlatList {...scrubber.flatListProps} data={contacts} renderItem={renderContact} />
       <ListScrubber {...scrubber.scrubberProps} accessibilityLabel="Scroll position" />
     </View>
   );
 }
 ```
 
-`listProps` holds `ref`, `onScroll`, `scrollEventThrottle`, `onLayout`, `onContentSizeChange` and hides the
-native indicator. If your list needs its own handlers, pass them to the hook and they're called after the
-scrubber's:
+The bubble and screen readers show where you are as a percentage ("40%"). The list must be an **Animated**
+component, so the scroll handler runs on the UI thread. Spread the props named after your list: each holds
+only props that list documents.
+
+| List        | Use                                                    | Spread             |
+| ----------- | ------------------------------------------------------ | ------------------ |
+| FlatList    | `Animated.FlatList`                                    | `flatListProps`    |
+| SectionList | `Animated.createAnimatedComponent(SectionList)`        | `sectionListProps` |
+| FlashList   | `Animated.createAnimatedComponent(FlashList)`          | `flashListProps`   |
+| Legend List | `AnimatedLegendList` from `@legendapp/list/reanimated` | `legendListProps`  |
+| ScrollView  | `Animated.ScrollView`                                  | `scrollViewProps`  |
+
+They all carry `listProps`: `ref`, `onScroll`, `scrollEventThrottle`, `onLayout`, `onContentSizeChange`, and
+the native indicator hidden. Spread `listProps` itself on any other scrollable component. If your list needs
+its own handlers, pass them to the hook and they're called after the scrubber's:
 
 ```tsx
 const scrubber = useListScrubber({ onLayout, onContentSizeChange, onScroll: myScrollWorklet });
 ```
 
 `onScroll` there is a worklet (it runs on the UI thread); keep its identity stable (development builds warn
-when it's a new function on every render). The hook also returns the pieces `listProps` and `scrubberProps`
-are made of (`listRef`, `scrollY`, `onScroll`, and the `contentHeight`, `viewportHeight` and `isDragging`
-shared values) for wiring them by hand; all of these are public API. `isDragging` is true while the thumb is
-dragged, for worklets of your own.
+when it's a new function on every render).
 
 Colours, sizes and timings have neutral defaults; override any of them (see [Props](#props)). You pass the
 text and haptics.
@@ -106,117 +105,101 @@ Measuring the list doesn't re-render your component: the heights are shared valu
 re-renders when they change. This matters for lists whose content size changes often while scrolling
 (FlashList, Legend List, infinite lists).
 
-The list must be an **Animated** component, so the scroll handler runs on the UI thread:
+### Section labels
 
-| List                  | Use                                                    |
-| --------------------- | ------------------------------------------------------ |
-| FlatList / ScrollView | `Animated.FlatList`, `Animated.ScrollView`             |
-| SectionList           | `Animated.createAnimatedComponent(SectionList)`        |
-| Legend List           | `AnimatedLegendList` from `@legendapp/list/reanimated` |
-| FlashList             | `Animated.createAnimatedComponent(FlashList)`          |
-
-### Computing sections
-
-Each section's `offset` is where it starts in the list's content, in points. When you know the rows' heights,
-two helpers compute the sections and the list's `getItemLayout` from the same numbers, so they can't disagree:
-
-- `listLayout(items, { label, itemHeight, listHeaderHeight? })` for flat lists (FlatList, FlashList, Legend
-  List, or a ScrollView of fixed blocks). A new section starts wherever `label(item, index)` changes from one
-  row to the next.
-- `sectionListLayout(sections, { itemHeight, sectionHeaderHeight?, sectionFooterHeight?, listHeaderHeight?, label? })`
-  for SectionList: one scrubber section per list section, labelled with its `title` by default. Its
-  `getItemLayout` follows SectionList's indexing (a header, the rows and a footer per section).
+Give the hook the list's layout: where each section starts, from the rows' heights.
 
 ```tsx
-const { sections, getItemLayout } = useMemo(
+const layout = useMemo(
+  () => listLayout(contacts, { sectionLabel: (c) => c.name[0]!.toUpperCase(), itemHeight: ROW }),
+  [contacts],
+);
+const scrubber = useListScrubber({ layout });
+
+<Animated.FlatList {...scrubber.flatListProps} data={contacts} renderItem={renderContact} />
+<ListScrubber {...scrubber.scrubberProps} accessibilityLabel="Scroll position" />
+```
+
+The bubble shows the section under your finger, and screen readers step from section to section.
+`flatListProps` carry the layout's `getItemLayout`, so the list and the scrubber can't disagree. For a
+SectionList, only the layout function and the spread change:
+
+```tsx
+const layout = useMemo(
   () => sectionListLayout(data, { itemHeight: ROW, sectionHeaderHeight: HEADER }),
   [data],
 );
+const scrubber = useListScrubber({ layout });
+
+<AnimatedSectionList {...scrubber.sectionListProps} sections={data} renderItem={…} renderSectionHeader={…} />
 ```
 
-`itemHeight` is one number for every row, or a function for each row's own height. Include any item separator
-in it. The first section starts at 0, so it also covers a list header above it. Lists that measure rows
-themselves (FlashList, Legend List) ignore `getItemLayout`; use just `sections`. For rows of unknown height,
-build `{ offset, label }[]` yourself.
+- `listLayout(items, { sectionLabel, itemHeight, listHeaderHeight? })` is for flat lists (FlatList, FlashList,
+  Legend List, or a ScrollView of fixed blocks). A new section starts wherever `sectionLabel(item, index)`
+  changes from one row to the next.
+- `sectionListLayout(sections, { itemHeight, sectionHeaderHeight?, sectionFooterHeight?, listHeaderHeight?, sectionLabel? })`
+  is for SectionList: one scrubber section per list section, labelled with its `title` by default. Its
+  `getItemLayout` follows SectionList's indexing (a header, the rows and a footer per section).
+- `itemHeight` is one number for every row, or a function for each row's own height. Include any item
+  separator in it. `listHeaderHeight` is the height of your own list header, if any.
+- Wrap the layout in `useMemo`: it walks every row. Rebuilt on every render it still works, but development
+  builds warn.
+- FlashList and Legend List measure rows themselves: their spreads leave `getItemLayout` out. For rows whose
+  heights you don't know ahead of time, build the sections yourself (see
+  [Wiring it yourself](#wiring-it-yourself)).
 
 ### Pinned header
 
-Put section headers in the list (with section `offset`s pointing at them), and pin a copy on top, next to the
-list:
+The current section's label, pinned over the top of the list. Give its height to the hook, and draw it next to
+the list:
 
 ```tsx
-<PinnedSectionHeader
-  {...scrubber.pinnedHeaderProps}
-  height={HEADER_HEIGHT}
-  style={styles.header}
-  textStyle={styles.headerText}
-/>
+const scrubber = useListScrubber({ layout, pinnedHeader: { height: HEADER } });
+
+<Animated.FlatList {...scrubber.flatListProps} … />
+<PinnedSectionHeader {...scrubber.pinnedHeaderProps} style={styles.header} textStyle={styles.headerText} />
+<ListScrubber {...scrubber.scrubberProps} accessibilityLabel="Scroll position" />
 ```
 
-`pinnedHeaderProps` carries `scrollY` and the `sections` given to `useListScrubber`, so the header and the
-scrubber always read the same sections (and, with a [top bar](#a-top-bar-that-slides-away), the header's `top`
-below it). (Both components also take `scrollY` and `sections` directly, for wiring by hand.)
-
-- It shows the current section's label, drawn on the UI thread: it changes in the same frame as the list, even
-  during scrubber jumps. It's one native text field whose text is set on the UI thread, so its cost doesn't
-  grow with the number of sections.
-- As the next section's header reaches it, it's pushed up and out, like iOS Contacts. If the list has no
-  section headers of its own, pass `push={false}`.
-- Give the scrubber `insets={{ top: HEADER_HEIGHT }}` to keep the thumb out from under it.
+- Over a SectionList it sits on the list's own section headers, and as the next one reaches it, it's pushed up
+  and out, like iOS Contacts. Turn off the list's `stickySectionHeadersEnabled`: native sticky headers only
+  pin headers that are already rendered, so they lag behind scrubber jumps.
+- Over a flat list, which has no section headers of its own, it takes its own space at the top: the list's
+  spread draws it, the scrubber stays below it, and it names the rows just below it.
+- It changes in the same frame as the list, even during scrubber jumps: it's one native text field whose text
+  is set on the UI thread, so its cost doesn't grow with the number of sections.
 - `testID` names the header (default `list-scrubber-pinned-header`) and its label (`<testID>-label`).
 - The label follows the system text size up to `maxFontSizeMultiplier` (default 1.5), since the header's
   height is fixed. Raise it if your header is tall enough for larger text.
 - For a custom pinned header, build it from `CurrentSectionLabel` (the label alone; its line height comes from
   the style's `lineHeight` or 1.3 × `fontSize`, scaled with the system text size, or from `height` as is) and
   `usePinnedSectionHeaderStyle(scrollY, sections, height)` (the push, as an animated style).
-- With SectionList, turn off `stickySectionHeadersEnabled`: its native sticky headers only pin headers that
-  are already rendered, so they lag behind scrubber jumps.
-
-### Scrolling from code
-
-The hook also moves the list, for a tappable A–Z index or a "jump to today" button:
-
-```tsx
-scrubber.scrollToSection(index); // the start of sections[index] (the hook's sections)
-scrubber.scrollToOffset(y, { animated: true }); // a content offset, clamped to the list's range
-```
-
-Both scroll on the UI thread without animating by default: a long animated scroll shows blank rows until it
-settles. The screen-reader value follows on its own. To jump by label, find the index first, e.g.
-`sections.findIndex((s) => s.label === 'M')`.
 
 ### A top bar that slides away
 
 A bar over the top of the list (a title, a search field…) can slide away as the list scrolls down and come
-back on a scroll up, like Android's collapsing app bars. Give its height to the hook, draw it inside a view
-that spreads `topBarProps`, and start the list with a spacer as tall as the bar (and a pinned header, if any)
-so row offsets never change:
+back on a scroll up, like Android's collapsing app bars. Give its height to the hook, and draw it inside a
+view that spreads `topBarProps`:
 
 ```tsx
-const { sections, getItemLayout } = useMemo(
-  () => listLayout(contacts, { label, itemHeight: ROW, listHeaderHeight: BAR + HEADER }),
-  [contacts],
-);
-const scrubber = useListScrubber({ sections, topBar: { height: BAR } });
+const scrubber = useListScrubber({ layout, topBar: { height: BAR }, pinnedHeader: { height: HEADER } });
 
-<Animated.FlatList {...scrubber.listProps} ListHeaderComponent={<View style={{ height: BAR + HEADER }} />} … />
-<PinnedSectionHeader {...scrubber.pinnedHeaderProps} height={HEADER} />
+<Animated.FlatList {...scrubber.flatListProps} … />
+<PinnedSectionHeader {...scrubber.pinnedHeaderProps} />
 <Animated.View {...scrubber.topBarProps}>
   <View style={{ flex: 1, backgroundColor }}>{/* title, search… */}</View>
 </Animated.View>
 <ListScrubber {...scrubber.scrubberProps} accessibilityLabel="Scroll position" />
 ```
 
+- The list's spread draws the space the bar (and a pinned header over a flat list) needs at the top of the
+  list, and the hook places the layout below it.
 - The bar follows the scroll by as much as it moves, up or down, and is always shown at the very top of the
-  list.
-- `scrubberProps` keeps the thumb's track below the visible part of the bar, and `pinnedHeaderProps` keeps the
-  pinned header below it, naming the section of the rows it covers.
+  list. The scrubber and the pinned header stay below its visible part.
 - During a thumb drag the bar stays as it was, so big jumps don't show and hide it. The drag reaches the first
-  row, not the empty spacer a hidden bar leaves above it. When the finger lifts the bar slides back in, in
+  row, not the empty space a hidden bar leaves above it. When the finger lifts the bar slides back in, in
   `revealMs` (default 250; `topBar: { height: BAR, revealMs: 400 }` to change it); at the top of the list, the
   list scrolls back up with it.
-- `scrollToSection` and `scrollToOffset` bring a section to just below the bar, where it will be once it has
-  followed the scroll: scrolling up shows it, scrolling down hides it.
 - `scrubber.topBar` gives the bar's `height`, `visibleHeight` (how much of it is on screen) and `isFixed` (it
   stays in place), as shared values, and `show()`, which slides it back in.
 - With a screen reader on (VoiceOver, TalkBack) the bar stays in place: hidden, its contents would still be
@@ -226,6 +209,58 @@ const scrubber = useListScrubber({ sections, topBar: { height: BAR } });
   something in it gets focus, e.g. tabbing to its search field.
 
 The example app's Collapsible demo is this, complete.
+
+#### Your own list header, a ScrollView, pull to refresh
+
+With a top bar or a pinned header over a flat list, the list's spread sets its `ListHeaderComponent`. Give
+your own to the hook instead, and it's drawn below their space (its height goes to the layout's
+`listHeaderHeight`):
+
+```tsx
+useListScrubber({ layout, topBar: { height: BAR }, ListHeaderComponent: <ProfileCard /> });
+```
+
+A ScrollView has no `ListHeaderComponent`: put `<scrubber.ListHeader />` first in it. Development builds warn
+when that space isn't drawn. To bring a `RefreshControl`'s spinner below the bar on Android, pass it
+`progressViewOffset={scrubber.spacerHeight}`; iOS has no equivalent, so there it shows under the bar.
+
+### Scrolling from code
+
+The hook also moves the list, for a tappable A–Z index:
+
+```tsx
+{
+  layout.sections.map((section, i) => (
+    <Pressable key={section.label} onPress={() => scrubber.scrollToSection(i)}>
+      …
+    </Pressable>
+  ));
+}
+```
+
+`scrollToSection(index)` brings a section to the top of the list, below a top bar (where it will be once it
+has followed the scroll: scrolling up shows it, scrolling down hides it) and a pinned header. It scrolls on
+the UI thread without animating by default (`{ animated: true }` to animate): a long animated scroll shows
+blank rows until it settles. The screen-reader value follows on its own.
+
+### Wiring it yourself
+
+Each piece is public, for what the steps above don't cover:
+
+- **Sections built by hand**, e.g. for rows whose heights you only know once they're laid out:
+  `useListScrubber({ sections })`, with `sections` an ascending `{ offset, label }[]`. Offsets here are the
+  list's own coordinates, the same as its `scrollToOffset` and its scroll events: they include anything the
+  list draws at its top (the space for a top bar or pinned header, `scrubber.spacerHeight`, then your own
+  header). With a pinned header, say whether the list has section headers of its own:
+  `pinnedHeader: { height, push }` (`push` defaults to true).
+- **`scrollToOffset(y)`** scrolls to one of those coordinates, below a top bar and pinned header, clamped to
+  the list's range.
+- **`scrollY` and `isDragging`**, shared values for worklets of your own: the scroll offset, and whether the
+  thumb is being dragged.
+- **The pieces the spreads are made of**, in the spreads themselves: the list's ref and scroll handler in
+  `listProps.ref` and `listProps.onScroll`, and its measured heights in `scrubberProps.contentHeight` and
+  `scrubberProps.viewportHeight`. `ListScrubber` and `PinnedSectionHeader` also take `scrollY` and `sections`
+  directly.
 
 ### Labels that aren't sections
 
@@ -257,10 +292,10 @@ Required:
 Optional:
 
 - `colors`: any of `thumb`, `thumbActive`, `bubble`, `bubbleText`. Defaults below.
-- `sections`: `{ offset, label }[]` (see [Computing sections](#computing-sections)). `offset` is where the
-  section starts in the list's content, in points (its header's top, or its first row's), ascending
-  (development builds warn if they aren't, or if an offset isn't a finite number or a label is empty). Drives
-  the bubble and the screen-reader steps.
+- `sections`: `{ offset, label }[]` (see [Section labels](#section-labels)). `offset` is where the section
+  starts in the list's content, in points (its header's top, or its first row's), ascending (development
+  builds warn if they aren't, or if an offset isn't a finite number or a label is empty). Drives the bubble
+  and the screen-reader steps.
 - `labelAt(position, scrollOffset)`: a JS-thread label when there are no `sections`. The types accept one or
   the other.
 - `accessibilitySteps`: screen-reader step targets. Default: the section offsets, else one screen. Dragging
@@ -276,6 +311,8 @@ Optional:
   drawn `metrics.thumbEdgeGap` (3pt) from the edge, in the margin most lists leave beside their rows, and its
   44pt touch area reaches into the list, so it usually needs no offset.
 - `insets`: `{ top, bottom }` space the thumb stays out of, e.g. under a pinned header or above a toolbar.
+  What's under the top one counts as covered: screen-reader steps land below it and labels describe the rows
+  there. `scrubberProps` sets it for a pinned header that takes its own space.
 - `topBar`: a bar over the top of the list that slides away (`scrubberProps` passes the hook's; see
   [A top bar that slides away](#a-top-bar-that-slides-away)).
 - `isDragging`: a shared value the scrubber sets while its thumb is dragged (`scrubberProps` passes the
@@ -292,8 +329,8 @@ Optional:
 
 Every component's props and the hook's options and result are exported: `ListScrubberProps`,
 `PinnedSectionHeaderProps`, `CurrentSectionLabelProps`, `UseListScrubberOptions`, `UseListScrubberResult`,
-plus `ListScrubberSection`, `ListScrubberTopBar`, `ListScrubberColors`, `ListScrubberMetrics` and
-`ListScrubberTiming`. For a component that takes the hook's result with sections:
+plus `ListScrubberLayout`, `ListScrubberSection`, `ListScrubberTopBar`, `ListScrubberColors`,
+`ListScrubberMetrics` and `ListScrubberTiming`. For a component that takes the hook's result with sections:
 `UseListScrubberResult<readonly ListScrubberSection[]>`.
 
 ### Defaults (`LIST_SCRUBBER_DEFAULTS`)
@@ -383,10 +420,11 @@ The mock loads none of those libraries and has every export, with the same types
   `<testID>-a11y`. Like the real one, it draws nothing until the content is taller than the list.
 - `PinnedSectionHeader` and `CurrentSectionLabel` show the section at the scroll position, with the real test
   IDs.
-- `useListScrubber` returns the same shape. Its shared values are plain objects with `get`/`set`. The list
-  handlers record sizes and the scroll offset and call your own, and `scrollToSection` / `scrollToOffset` set
-  `scrollY` to where the real hook would scroll. The components above re-render when these change, so a test
-  can fire the list's `scroll` event (or call `scrollToSection`) and check the label.
+- `useListScrubber` returns the same shape, and places a layout the same way. Its shared values are plain
+  objects with `get`/`set`. The list handlers record sizes and the scroll offset and call your own, and
+  `scrollToSection` / `scrollToOffset` set `scrollY` to where the real hook would scroll. Its top bar always
+  shows in full and stays in place. The components above re-render when these change, so a test can fire the
+  list's `scroll` event (or call `scrollToSection`) and check the label.
 - `listLayout`, `sectionListLayout`, `sectionIndexAt` and `LIST_SCRUBBER_DEFAULTS` are the real ones.
 
 The package ships ES modules. If Jest reports `Cannot use import statement outside a module`, add
@@ -399,11 +437,11 @@ hidden thumb lets touches through to the list, so it can only be grabbed once sh
 
 - The list isn't an Animated component (`Animated.FlatList`, `Animated.createAnimatedComponent(…)`; see
   [Usage](#usage)), so the scroll handler never runs.
-- A prop after `{...scrubber.listProps}` replaces one of its own. Pass `onScroll`, `onLayout` and
-  `onContentSizeChange` to `useListScrubber` instead, and use `scrubber.listRef` rather than your own `ref`.
-  Development builds warn when the list's `onLayout` or `onContentSizeChange` from `listProps` never ran a few
-  seconds after it mounted (unless the scrubber is given that size itself, as `contentHeight` or
-  `viewportHeight`).
+- A prop after the list's spread (`{...scrubber.flatListProps}`…) replaces one of its own. Pass `onScroll`,
+  `onLayout`, `onContentSizeChange` and `ListHeaderComponent` to `useListScrubber` instead, and use
+  `scrubber.listProps.ref` rather than your own `ref`. Development builds warn when the list's `onLayout` or
+  `onContentSizeChange` from `listProps` never ran a few seconds after it mounted (unless the scrubber is
+  given that size itself, as `contentHeight` or `viewportHeight`).
 - The content isn't taller than the list: there's nothing to scrub, so nothing is drawn.
 - `enabled` is `false`, or the list and the scrubber aren't in the same container (the scrubber is positioned
   over its parent).
@@ -413,12 +451,18 @@ the thumb does, the list's `ref` was replaced (see above).
 
 **The bubble or the pinned header shows the wrong section.** The `offset`s don't match where the sections
 really are. Item separators must be counted in the row heights, and offsets include the list header. Build
-them with [`listLayout` / `sectionListLayout`](#computing-sections) when the heights are known; development
-builds warn when offsets aren't ascending or finite. With SectionList, turn off `stickySectionHeadersEnabled`.
+them with [`listLayout` / `sectionListLayout`](#section-labels) when the heights are known; development builds
+warn when offsets aren't ascending or finite. With SectionList, turn off `stickySectionHeadersEnabled`.
 
-**"`sections` is a new array with the same contents…"** `sections` is rebuilt on every render, e.g.
-`useListScrubber({ sections: items.map(…) })`. Wrap it in `useMemo`. It works without, but the sections are
-checked and copied to the UI thread again on every render.
+**"The sections (`layout` or `sections`) are a new array with the same contents on every render…"** The layout
+or the sections are rebuilt on every render, e.g. `useListScrubber({ layout: listLayout(…) })`. Wrap them in
+`useMemo`. It works without (the scrubber treats the same contents as no change), but whatever builds them
+walks every row again on each render.
+
+**"The list's spacer for its top bar or pinned header isn't drawn…"** The space at the top of the list for a
+top bar, or a pinned header over a flat list, never appeared, so they cover its first rows. Spread the props
+named after your list, give your own `ListHeaderComponent` to `useListScrubber` rather than the list, and in a
+ScrollView put `<scrubber.ListHeader />` first.
 
 **"The `onScroll` passed to useListScrubber is a new function on every render…"** An inline worklet, e.g.
 `useListScrubber({ onScroll: (e) => { 'worklet'; … } })`, rebuilds the list's scroll handler on every render.

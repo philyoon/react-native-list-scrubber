@@ -92,49 +92,49 @@ describe('components', () => {
   });
 });
 
-describe('unmemoized sections', () => {
-  const make = () => [
-    { offset: 0, label: 'A' },
+describe('sections rebuilt on every render', () => {
+  const make = (extra: object = {}) => [
+    { offset: 0, label: 'A', ...extra },
     { offset: 500, label: 'M' },
   ];
-  const header = (sections: { offset: number; label: string }[]) => (
-    <PinnedSectionHeader scrollY={{ get: () => 0 } as never} sections={sections} height={36} />
-  );
-  const unmemoized = (call: unknown[]) => String(call[0]).includes('Wrap it in useMemo');
 
-  it('warn once when a new array has the same contents, however many components see it', async () => {
+  it('keep their identity while they are the same, without a warning', async () => {
+    let sections = make();
+    const { result, rerender } = await renderHook(() => useListScrubber({ sections }));
+    const first = result.current.scrubberProps.sections;
+    sections = make();
+    await rerender({});
+    expect(result.current.scrubberProps.sections).toBe(first);
+    expect(result.current.pinnedHeaderProps.sections).toBe(first);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('change when a section does, an extra field of its own included', async () => {
+    let sections = make();
+    const { result, rerender } = await renderHook(() => useListScrubber({ sections }));
+    const first = result.current.scrubberProps.sections;
+    sections = make({ id: 7 });
+    await rerender({});
+    const second = result.current.scrubberProps.sections;
+    expect(second).not.toBe(first);
+    expect(second[0]).toEqual({ offset: 0, label: 'A', id: 7 });
+    sections = [...make({ id: 7 }), { offset: 900, label: 'Z' }];
+    await rerender({});
+    expect(result.current.scrubberProps.sections).toHaveLength(3);
+  });
+
+  it('the components wired by hand keep their identity too', async () => {
+    const header = (sections: { offset: number; label: string }[]) => (
+      <PinnedSectionHeader scrollY={{ get: () => 0 } as never} sections={sections} height={36} />
+    );
     const view = await render(header(make()));
+    const text = () =>
+      view.getByTestId('list-scrubber-pinned-header-label-text', { includeHiddenElements: true });
+    const labels = text().props;
     await view.rerender(header(make()));
-    await view.rerender(header(make()));
-    expect(warn.mock.calls.filter(unmemoized)).toHaveLength(1);
-  });
-
-  it('stay quiet for a single identical rebuild (e.g. a refetch with the same data)', async () => {
-    const view = await render(header(make()));
-    await view.rerender(header(make()));
+    expect(text().props).toBe(labels); // the label wasn't re-rendered with new labels
     await view.rerender(header([...make(), { offset: 900, label: 'Z' }]));
-    expect(warn.mock.calls.filter(unmemoized)).toHaveLength(0);
-  });
-
-  it('stay quiet for a memoized array, or new contents', async () => {
-    const sections = make();
-    const view = await render(header(sections));
-    await view.rerender(header(sections));
-    await view.rerender(header([...make(), { offset: 900, label: 'Z' }]));
-    expect(warn.mock.calls.filter(unmemoized)).toHaveLength(0);
-  });
-
-  it('stay quiet in production builds', async () => {
-    const dev = __DEV__;
-    (globalThis as unknown as { __DEV__: boolean }).__DEV__ = false;
-    try {
-      const view = await render(header(make()));
-      await view.rerender(header(make()));
-      await view.rerender(header(make()));
-      expect(warn).not.toHaveBeenCalled();
-    } finally {
-      (globalThis as unknown as { __DEV__: boolean }).__DEV__ = dev;
-    }
+    expect(text().props).not.toBe(labels);
   });
 });
 
@@ -189,7 +189,7 @@ describe('a list that never reports its size', () => {
       ) : null;
     }
     const view = await render(<Screen />);
-    const attach = () => ((list.listRef as unknown as { current: object | null }).current = {});
+    const attach = () => ((list.listProps.ref as unknown as { current: object | null }).current = {});
     const wait = (ms: number) => act(() => jest.advanceTimersByTime(ms));
     return { ...view, list, attach, wait };
   };

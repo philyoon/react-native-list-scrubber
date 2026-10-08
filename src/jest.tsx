@@ -15,7 +15,15 @@
  *   (`listProps.onScroll({ contentOffset: { y: 300 } })`) and check the label.
  * - listLayout, sectionListLayout, sectionIndexAt and LIST_SCRUBBER_DEFAULTS are the real ones.
  */
-import { useMemo, useState, useSyncExternalStore } from 'react';
+import {
+  createElement,
+  isValidElement,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { Platform, Text, View, type LayoutChangeEvent } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import type { ListScrubberProps } from './ListScrubber';
@@ -89,11 +97,12 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
   formatAccessibilityPercent = (percent) => `${percent}%`,
   enabled = true,
   topBar,
+  insets,
   testID = 'list-scrubber',
 }: ListScrubberProps<S>) {
   const y = useValue(scrollY);
-  /** The top bar's visible part: the value describes the rows below it */
-  const cover = useValue(topBar?.visibleHeight ?? 0);
+  /** The top bar's visible part and the top inset (a pinned header): the value describes the rows below */
+  const cover = useValue(topBar?.visibleHeight ?? 0) + (insets?.top ?? 0);
   const contentHeight = useValue(contentHeightProp);
   const viewportHeight = useValue(viewportHeightProp);
   const maxScroll = contentHeight - viewportHeight;
@@ -167,8 +176,22 @@ export const usePinnedSectionHeaderStyle: typeof RealUsePinnedSectionHeaderStyle
 export function useListScrubber<S extends readonly ListScrubberSection[] | undefined = undefined>(
   options: UseListScrubberOptions<S> = {},
 ): UseListScrubberResult<S> {
-  const { sections } = options;
+  const { layout, pinnedHeader } = options;
   const barHeight = Math.max(0, options.topBar?.height ?? 0);
+  // Placed like the real hook's: a pinned header over a list without section headers of its own takes space
+  const ownHeaders = pinnedHeader?.push ?? layout?.sectionHeaders ?? true;
+  const pinnedHeight = pinnedHeader && Math.max(0, pinnedHeader.height);
+  const pinnedSpace = pinnedHeight !== undefined && !ownHeaders ? pinnedHeight : 0;
+  const spacerHeight = barHeight + pinnedSpace;
+  const hasLayout = layout !== undefined;
+  const given = layout ? layout.sections : options.sections;
+  const sections = useMemo(
+    () =>
+      hasLayout && spacerHeight > 0 && given
+        ? (given.map((s, i) => (i === 0 ? s : { ...s, offset: s.offset + spacerHeight })) as unknown as S)
+        : given,
+    [given, spacerHeight, hasLayout],
+  );
   // Stable identities, like the real hook's; the handlers read the latest options
   const [values] = useState(() => ({
     listRef: { current: null } as never, // like an animated ref before the list mounts
@@ -192,7 +215,7 @@ export function useListScrubber<S extends readonly ListScrubberSection[] | undef
   });
   const scrollToOffset = useLatest((offset: number) => {
     const maxScroll = Math.max(0, contentHeight.get() - viewportHeight.get());
-    scrollY.set(Math.min(maxScroll, Math.max(0, offset - barHeight)));
+    scrollY.set(Math.min(maxScroll, Math.max(0, offset - barHeight - pinnedSpace)));
   });
   const scrollToSection = useLatest((index: number) => {
     const section = sections?.[index];
@@ -208,6 +231,37 @@ export function useListScrubber<S extends readonly ListScrubberSection[] | undef
       onLayout,
     }),
     [values, onScroll, onContentSizeChange, onLayout],
+  );
+  const getItemLayout = useLatest((data: unknown, index: number) => {
+    const row = layout!.getItemLayout(data, index);
+    return { ...row, offset: row.offset + spacerHeight };
+  });
+  // The spacer, then your own header, like the real one (which keeps its identity the same way)
+  const header = useRef({ spacerHeight, own: options.ListHeaderComponent });
+  useLayoutEffect(() => {
+    header.current = { spacerHeight, own: options.ListHeaderComponent };
+  });
+  const [ListHeader] = useState(() => () => {
+    const { spacerHeight: height, own } = header.current;
+    return (
+      <>
+        {height > 0 && <View style={{ height }} testID="list-scrubber-spacer" />}
+        {own && (isValidElement(own) ? own : createElement(own))}
+      </>
+    );
+  });
+  const hasHeader = spacerHeight > 0 || options.ListHeaderComponent !== undefined;
+  const flatListProps = useMemo(
+    () => ({
+      ...listProps,
+      ...(hasLayout && { getItemLayout }),
+      ...(hasHeader && { ListHeaderComponent: ListHeader }),
+    }),
+    [listProps, hasLayout, getItemLayout, hasHeader, ListHeader],
+  );
+  const headerListProps = useMemo(
+    () => ({ ...listProps, ...(hasHeader && { ListHeaderComponent: ListHeader }) }),
+    [listProps, hasHeader, ListHeader],
   );
   // The mock's top bar always shows in full and stays in place: the pinned header sits below it and names
   // the rows there, and scrollToOffset brings an offset to just below it
@@ -228,23 +282,37 @@ export function useListScrubber<S extends readonly ListScrubberSection[] | undef
     [barHeight, topBar],
   );
   const scrubberProps = useMemo(
-    () => ({ ...values, ...(topBar && { topBar }), ...(sections && { sections }) }) as never,
-    [values, topBar, sections],
+    () =>
+      ({
+        ...values,
+        ...(topBar && { topBar }),
+        ...(pinnedSpace > 0 && { insets: { top: pinnedSpace } }),
+        ...(sections && { sections }),
+      }) as never,
+    [values, topBar, pinnedSpace, sections],
   );
   const pinnedHeaderProps = useMemo(
     () => ({
-      scrollY: topBar ? offsetBy(scrollY, barHeight) : scrollY,
+      scrollY: spacerHeight > 0 ? offsetBy(scrollY, spacerHeight) : scrollY,
       sections: sections ?? NO_SECTIONS,
       ...(topBar && { top: topBar.visibleHeight }),
+      ...(pinnedHeight !== undefined && { height: pinnedHeight, push: ownHeaders }),
     }),
-    [scrollY, topBar, barHeight, sections],
+    [scrollY, topBar, spacerHeight, sections, pinnedHeight, ownHeaders],
   );
   return {
-    ...values,
-    onScroll: onScroll as never,
+    scrollY: values.scrollY,
+    isDragging: values.isDragging,
     topBar,
     topBarProps,
     listProps,
+    flatListProps,
+    sectionListProps: flatListProps,
+    flashListProps: headerListProps,
+    legendListProps: headerListProps,
+    scrollViewProps: listProps,
+    ListHeader,
+    spacerHeight,
     scrubberProps,
     pinnedHeaderProps,
     scrollToSection,

@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+- `useListScrubber({ layout })` takes a `listLayout` / `sectionListLayout` result, and the hook returns a
+  spread for each list (`flatListProps`, `sectionListProps`, `flashListProps`, `legendListProps`,
+  `scrollViewProps`), each with only props that list documents: FlatList's and SectionList's carry the
+  layout's `getItemLayout`, so it's no longer passed separately. `listProps` is unchanged, for any other
+  scrollable component. See the README's "Usage", now in steps.
+- Breaking: `useListScrubber`'s result no longer has `listRef`, `onScroll`, `contentHeight` and
+  `viewportHeight`: they're in the spreads already. Read `listProps.ref`, `listProps.onScroll`,
+  `scrubberProps.contentHeight` and `scrubberProps.viewportHeight` instead. `scrollY` and `isDragging` stay.
+- Breaking: `listLayout` and `sectionListLayout` take `sectionLabel`, not `label`: the label of the row's (or
+  the section's) section. They also return `sectionHeaders`: whether the list draws section headers of its
+  own.
+- `useListScrubber({ pinnedHeader: { height } })`: `pinnedHeaderProps` carry the pinned header's height and
+  placement. Over a SectionList it sits on the list's own headers; over a flat list it takes its own space at
+  the top, the scrubber stays below it (no `insets.top` needed), and it names the rows just below it.
+  `PinnedSectionHeader`'s `height` is optional when the spread carries it.
+- With a top bar or a pinned header that takes its own space, the list's spread draws the space they need at
+  its top (`scrubber.ListHeader`, `scrubber.spacerHeight`), and the hook places the layout below it. Give your
+  own list header to the hook's `ListHeaderComponent`; development builds warn when the space isn't drawn.
+- `ListScrubber`'s top `insets` count as covered: screen-reader steps land below them, and labels describe the
+  rows there.
+- `sections` rebuilt on every render with the same contents count as unchanged (the development warning to
+  wrap them in `useMemo` stays).
 - `useListScrubber({ topBar: { height } })`: a bar over the top of the list that slides away as the list
   scrolls down and comes back on a scroll up. Draw it inside a view that spreads `topBarProps`;
   `scrubberProps` and `pinnedHeaderProps` keep the scrubber and a pinned header below it. During a thumb drag

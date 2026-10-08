@@ -1,5 +1,6 @@
 # FlatList: a drag that stops part way leaves the list in the middle, and the screen-reader value names the
-# section the rows show. From 28% to 45% of the screen lands around D or E, depending on the phone.
+# section the rows show. From 31% (the top of the thumb's track, below the pinned
+# header) to 45% of the screen lands around D or E, depending on the phone.
 # Expo Go: host.exp.Exponent on iOS; npm run e2e:android sets APP_ID=host.exp.exponent
 appId: ${APP_ID}
 env:
@@ -14,7 +15,7 @@ env:
     end: 50%, 56%
     duration: 800 # slow: no fling still moving the list when the thumb is grabbed
 - swipe:
-    start: 91%, 28%
+    start: 91%, 31%
     end: 91%, 45%
     duration: 800 # a thumb drag doesn't fling: no need to go slowly
 - waitForAnimationToEnd

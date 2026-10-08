@@ -17,7 +17,8 @@ const THUMB_HALF = 22;
  * card is pinned to fixed percentages of the screen, and the flows' points land on the thumb on any
  * phone, in portrait or landscape: the centre of its 44pt touch area is at x 91% (9% in right-to-left
  * layouts, where it moves to the left edge), and y 28% / 95% are inside the 48pt thumb at the top / bottom
- * of the card.
+ * of the card. Below a 32pt pinned header that takes its own space (the FlatList, FlashList, Legend List and
+ * Collapsible demos) the track starts lower: y 31% in portrait, 39% in landscape.
  * Checked on iPhone SE, 17 Pro and 17 Pro Max, and a Pixel 8 emulator.
  * Keep the flows' points in step with these numbers.
  */
