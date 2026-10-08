@@ -17,7 +17,10 @@ onFlowComplete:
 - retry:
     maxRetries: 1
     commands:
-      - runFlow: subflows/drag-to-end.yaml
+      - runFlow:
+          file: subflows/drag-to-end.yaml
+          env:
+            TOP: 39 # below the pinned header, on a short screen
       - assertVisible: '.* Zel.*'
 - assertNotVisible: Ada Abby
 # Back to the start, grabbing the thumb at 88%, not drag-to-start's 95%: in landscape that is in Android's

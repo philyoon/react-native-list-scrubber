@@ -22,7 +22,10 @@ env:
 - retry:
     maxRetries: 1
     commands:
-      - runFlow: subflows/drag-to-end.yaml
+      - runFlow:
+          file: subflows/drag-to-end.yaml
+          env:
+            TOP: 31 # below the pinned header
       - assertNotVisible: 'Mon, Oct 5'
 # Rows show no year; the screen reader value does, once the thumb hides (5 s in e2e mode)
 - extendedWaitUntil:
@@ -44,7 +47,10 @@ env:
 - retry:
     maxRetries: 1
     commands:
-      - runFlow: subflows/drag-to-end.yaml
+      - runFlow:
+          file: subflows/drag-to-end.yaml
+          env:
+            TOP: 31 # below the pinned header
       - extendedWaitUntil:
           visible:
             id: list-scrubber-a11y

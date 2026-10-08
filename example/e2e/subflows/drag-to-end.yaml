@@ -3,8 +3,10 @@
 # Callers retry the drag along with their check of where it ended: GitHub's iOS simulator now and then
 # drops a gesture.
 # Expo Go: host.exp.Exponent on iOS; npm run e2e:android sets APP_ID=host.exp.exponent
-# RTL: 1 for a right-to-left layout, with the thumb at the left edge (x 9%, not 91%). Not given a default
-# below: a subflow's own env wins over the caller's.
+# RTL: 1 for a right-to-left layout, with the thumb at the left edge (x 9%, not 91%).
+# TOP: where the thumb's track starts, as a percentage of the screen's height (default 28): 31 below a pinned
+# header that takes its own space (FlatList, FlashList, Legend List), 39 for that in landscape.
+# Neither is given a default below: a subflow's own env wins over the caller's.
 appId: ${APP_ID}
 env:
   APP_ID: host.exp.Exponent
@@ -18,7 +20,7 @@ env:
       true: ${!(typeof RTL != 'undefined' && RTL == 1)}
     commands:
       - swipe:
-          start: 91%, 28%
+          start: 91%, ${typeof TOP == 'undefined' ? 28 : TOP}%
           end: 91%, 99%
           duration: 1500 # it ends at the end of the list: on a slow emulator (CI) a faster drag's last stretch can be lost
 - runFlow:
@@ -26,7 +28,7 @@ env:
       true: ${typeof RTL != 'undefined' && RTL == 1}
     commands:
       - swipe:
-          start: 9%, 28%
+          start: 9%, ${typeof TOP == 'undefined' ? 28 : TOP}%
           end: 9%, 99%
           duration: 1500 # it ends at the end of the list: on a slow emulator (CI) a faster drag's last stretch can be lost
 - waitForAnimationToEnd

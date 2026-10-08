@@ -13,7 +13,10 @@ env:
 - retry:
     maxRetries: 1
     commands:
-      - runFlow: ../subflows/drag-to-end.yaml
+      - runFlow:
+          file: ../subflows/drag-to-end.yaml
+          env:
+            TOP: 31 # below the pinned header
       - assertVisible: '.* Zel.*'
 - assertNotVisible: Ada Abby
 - retry:
