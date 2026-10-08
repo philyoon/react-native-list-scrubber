@@ -190,17 +190,20 @@ row offsets never change, and keep how much of the header shows in a shared valu
 - Move the `PinnedSectionHeader` below the header, and give it `scrollY` plus that height: it names the
   section of the rows it covers.
 - Read `scrubber.isDragging` in the worklets that move the header: leave it as it is during a drag (big jumps
-  would show and hide it), and bring it back when the finger lifts.
+  would show and hide it) except near the top, where it must cover the list's spacer, and bring it back when
+  the finger lifts.
 - To scroll a section in below the header: `scrubber.scrollToOffset(section.offset - shown.get())`.
 
 ```tsx
 const scrubber = useListScrubber({ sections }); // listLayout(…, { listHeaderHeight: BAR + HEADER })
 const hidden = useSharedValue(0); // how much of the BAR-tall header is hidden
 const revealing = useSharedValue(false); // sliding back in after a drag
+const hiddenAtDrag = useSharedValue(0); // how much was hidden when the drag began
 useAnimatedReaction(
   () => Math.max(0, scrubber.scrollY.get()),
   (y, prev) => {
-    if (scrubber.isDragging.get()) return; // frozen during a drag, like the thumb's track
+    // During a drag: where it was, like the thumb's track; near the top, down enough to cover the spacer
+    if (scrubber.isDragging.get()) hidden.set(Math.min(hiddenAtDrag.get(), y));
     else if (revealing.get()) return; // the drag's last scroll mustn't stop the slide
     else if (prev !== null) hidden.set(Math.min(Math.max(hidden.get() + y - prev, 0), BAR, y));
   },
@@ -208,6 +211,7 @@ useAnimatedReaction(
 useAnimatedReaction(
   () => scrubber.isDragging.get(),
   (dragging, was) => {
+    if (dragging) hiddenAtDrag.set(hidden.get());
     if (!was || dragging) return;
     revealing.set(true);
     hidden.set(withTiming(0, { duration: 250, easing: Easing.out(Easing.cubic) }, () => revealing.set(false)));

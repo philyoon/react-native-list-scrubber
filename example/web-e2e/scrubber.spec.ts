@@ -176,15 +176,19 @@ test('a collapsible header: the thumb, the bubble and the pinned header follow i
   await expect.poll(async () => (await box(pinned)).y).toBeGreaterThan(top + 100);
   await expect(header(page)).toHaveValue((await rowLetter())!);
 
-  // Hidden again, then dragged back to the top: it stays hidden while the finger is down, and comes back once it
-  // lifts
+  // Hidden again, then dragged back to the top: it stays hidden while the finger is down, except at the top,
+  // where it covers the list's spacer (no blank space above the first row)
   await page.mouse.move(rows.x, rows.y);
   await page.mouse.wheel(0, 400);
   await expect.poll(async () => (await box(pinned)).y).toBeLessThanOrEqual(top + 1);
   const mid = await showThumb(page);
-  await grab(page, mid, 0);
-  await expect(page.getByText('Ada Abby')).toBeInViewport();
+  await grab(page, mid, mid.y - 150);
   expect((await box(pinned)).y).toBeLessThanOrEqual(top + 1);
+  await page.mouse.move(mid.x, 0, { steps: 10 });
+  await expect(page.getByText('Ada Abby')).toBeInViewport();
+  const atTop = await box(pinned);
+  expect(atTop.y).toBeGreaterThan(top + 100);
+  expect(await rowLetter()).toBe('A');
   await page.mouse.up();
   await expect(page.getByText('3,000 people')).toBeInViewport();
   await expect(header(page)).toHaveValue('A');

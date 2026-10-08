@@ -329,12 +329,15 @@ function CollapsibleDemo() {
   const hidden = useSharedValue(0);
   /** The header is sliding back in after a drag */
   const revealing = useSharedValue(false);
+  /** How much of the header was hidden when the current drag began */
+  const hiddenAtDrag = useSharedValue(0);
   useAnimatedReaction(
     () => Math.max(0, scrollY.get()), // pull-to-refresh and iOS bounce don't move it
     (y, prev) => {
-      // Frozen while the thumb is dragged, like the thumb's own track (big jumps would show and hide it), even at
-      // the top of the list: it comes back when the finger lifts (below). Otherwise always shown at the very top
-      if (isDragging.get()) return;
+      // Where it was while the thumb is dragged, like the thumb's own track (big jumps would show and hide it),
+      // and back when the finger lifts (below). Near the top it comes down just enough to cover the list's
+      // spacer: the space it leaves would show blank. Always shown at the very top
+      if (isDragging.get()) hidden.set(Math.min(hiddenAtDrag.get(), y));
       // The drag's last scroll can arrive as the header slides back: it mustn't stop the slide
       else if (revealing.get()) return;
       else if (prev !== null) hidden.set(Math.min(Math.max(hidden.get() + y - prev, 0), BAR, y));
@@ -344,6 +347,7 @@ function CollapsibleDemo() {
   useAnimatedReaction(
     () => isDragging.get(),
     (dragging, was) => {
+      if (dragging) hiddenAtDrag.set(hidden.get());
       if (!was || dragging) return;
       revealing.set(true);
       hidden.set(
