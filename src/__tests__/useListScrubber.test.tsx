@@ -10,11 +10,11 @@ describe('useListScrubber', () => {
       result.current.listProps.onLayout({ nativeEvent: { layout: { height: 600 } } } as never);
       result.current.listProps.onContentSizeChange(390, 12000);
     });
-    expect(result.current.viewportHeight.get()).toBe(600);
-    expect(result.current.contentHeight.get()).toBe(12000);
+    expect(result.current.scrubberProps.viewportHeight.get()).toBe(600);
+    expect(result.current.scrubberProps.contentHeight.get()).toBe(12000);
     expect(result.current.scrubberProps).toMatchObject({
-      viewportHeight: result.current.viewportHeight,
-      contentHeight: result.current.contentHeight,
+      viewportHeight: result.current.scrubberProps.viewportHeight,
+      contentHeight: result.current.scrubberProps.contentHeight,
       isDragging: result.current.isDragging, // the scrubber sets it; worklets can read it
     });
     expect(result.current.isDragging.get()).toBe(false);
@@ -41,7 +41,7 @@ describe('useListScrubber', () => {
 describe('useListScrubber details', () => {
   it('the scroll handler records the vertical offset', async () => {
     const { result } = await renderHook(() => useListScrubber());
-    (result.current.onScroll as unknown as (e: unknown) => void)({ contentOffset: { y: 321 } });
+    (result.current.listProps.onScroll as unknown as (e: unknown) => void)({ contentOffset: { y: 321 } });
     expect(result.current.scrollY.get()).toBe(321);
   });
 
@@ -62,13 +62,13 @@ it("useListScrubber calls the list's own handlers after its own", async () => {
   await act(() => {
     result.current.listProps.onLayout(layout);
     result.current.listProps.onContentSizeChange(390, 12000);
-    (result.current.onScroll as unknown as (e: unknown) => void)({ contentOffset: { y: 5 } });
+    (result.current.listProps.onScroll as unknown as (e: unknown) => void)({ contentOffset: { y: 5 } });
   });
   expect(onLayout).toHaveBeenCalledWith(layout);
   expect(onContentSizeChange).toHaveBeenCalledWith(390, 12000);
   expect(onScroll).toHaveBeenCalledWith({ contentOffset: { y: 5 } });
-  expect(result.current.viewportHeight.get()).toBe(600);
-  expect(result.current.contentHeight.get()).toBe(12000);
+  expect(result.current.scrubberProps.viewportHeight.get()).toBe(600);
+  expect(result.current.scrubberProps.contentHeight.get()).toBe(12000);
 });
 
 describe('useListScrubber({ sections })', () => {
@@ -119,7 +119,7 @@ describe('useListScrubber({ sections })', () => {
     const byHand = (
       <ListScrubber
         scrollY={scrubber.scrollY}
-        listRef={scrubber.listRef}
+        listRef={scrubber.listProps.ref}
         contentHeight={1000}
         viewportHeight={100}
         sections={people}
@@ -220,7 +220,7 @@ describe('useListScrubber({ topBar })', () => {
   async function withBar(height = 100, revealMs?: number) {
     const hook = await renderHook(() => useListScrubber({ topBar: { height, revealMs } }));
     const scroll = (y: number) =>
-      (hook.result.current.onScroll as unknown as (e: unknown) => void)({ contentOffset: { y } });
+      (hook.result.current.listProps.onScroll as unknown as (e: unknown) => void)({ contentOffset: { y } });
     /** What shows of the bar (a derived value: the mock computes it on render) */
     const visible = async () => {
       await hook.rerender({});
@@ -279,7 +279,7 @@ describe('useListScrubber({ topBar })', () => {
     scroll(100);
     mockScrollTo.mockClear();
     await lift(result);
-    expect(mockScrollTo).toHaveBeenCalledWith(result.current.listRef, 0, 0, true);
+    expect(mockScrollTo).toHaveBeenCalledWith(result.current.listProps.ref, 0, 0, true);
   });
 
   it('show() slides it back in; shown, it stays', async () => {
@@ -417,7 +417,7 @@ describe('useListScrubber({ topBar }) with a screen reader', () => {
     const hook = await renderHook(() => useListScrubber({ topBar: { height: 100 } }));
     await act(async () => {}); // the screen reader's state arrives
     const scroll = (y: number) =>
-      (hook.result.current.onScroll as unknown as (e: unknown) => void)({ contentOffset: { y } });
+      (hook.result.current.listProps.onScroll as unknown as (e: unknown) => void)({ contentOffset: { y } });
     const visible = async () => {
       await hook.rerender({});
       return hook.result.current.topBar!.visibleHeight.get();

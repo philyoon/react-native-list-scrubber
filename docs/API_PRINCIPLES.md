@@ -37,8 +37,8 @@ props), which carry every value they need to agree on. Apps don't copy values fr
 - A spread holds only props its target documents, so nothing depends on a component ignoring a prop. Where
   lists document different props, each gets its own spread (`flatListProps`, `flashListProps`…), and
   `listProps` holds what every scrollable component takes.
-- The pieces the spreads are made of (`listRef`, `scrollY`, the height shared values) are public too, for
-  wiring by hand. That's the hard path (principle 2), not the main one.
+- The pieces the spreads are made of (the list's ref, the height shared values) are public too, in the
+  spreads, for wiring by hand. That's the hard path (principle 2), not the main one.
 - App handlers are passed to the hook and called after the library's (`onScroll`, `onLayout`,
   `onContentSizeChange`), so a spread never has to be taken apart to add one.
 

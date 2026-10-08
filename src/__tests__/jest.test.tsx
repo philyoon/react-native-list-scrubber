@@ -167,7 +167,8 @@ describe('useListScrubber', () => {
   it("records the list's size and scroll, then calls the list's own handlers", async () => {
     const own = { onScroll: jest.fn(), onLayout: jest.fn(), onContentSizeChange: jest.fn() };
     const { result } = await renderHook(() => useListScrubber(own));
-    const { listProps, scrollY, contentHeight, viewportHeight } = result.current;
+    const { listProps, scrollY, scrubberProps } = result.current;
+    const { contentHeight, viewportHeight } = scrubberProps;
     await act(() => {
       listProps.onLayout(layout(600));
       listProps.onContentSizeChange(390, 2000);

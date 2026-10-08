@@ -301,8 +301,8 @@ export function useListScrubber<S extends readonly ListScrubberSection[] | undef
     [scrollY, topBar, spacerHeight, sections, pinnedHeight, ownHeaders],
   );
   return {
-    ...values,
-    onScroll: onScroll as never,
+    scrollY: values.scrollY,
+    isDragging: values.isDragging,
     topBar,
     topBarProps,
     listProps,
