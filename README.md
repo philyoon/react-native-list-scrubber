@@ -194,6 +194,10 @@ const scrubber = useListScrubber({ layout, topBar: { height: BAR }, pinnedHeader
 
 - The list's spread draws the space the bar (and a pinned header over a flat list) needs at the top of the
   list, and the hook places the layout below it.
+- For a bar whose bottom lies over the first row rather than above it (a fade, a curved edge, a search field
+  half over the list), pass `topBar: { height: BAR + EDGE, overlap: EDGE }`: the list leaves
+  `height - overlap` for it, while the bar still slides by its full `height`, and the scrubber and the pinned
+  header stay below all of it.
 - The bar follows the scroll by as much as it moves, up or down, and is always shown at the very top of the
   list. The scrubber and the pinned header stay below its visible part.
 - When a scroll ends with the bar partly shown, it settles: the list scrolls the rest of the way, so the bar

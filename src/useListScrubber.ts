@@ -21,7 +21,7 @@ import { clamp, scrollBelowBar, snapTarget } from './math';
 import { useListHeader, type ListHeaderContent } from './ListHeader';
 import type { ListScrubberLayout, ListScrubberSection, ListScrubberTopBar } from './types';
 import { useLatest } from './useLatest';
-import { useStableSections, useWarnIfUnmeasured, useWarnIfUnstable } from './validate';
+import { topBarOverlap, useStableSections, useWarnIfUnmeasured, useWarnIfUnstable } from './validate';
 
 interface BaseOptions {
   /**
@@ -34,10 +34,12 @@ interface BaseOptions {
    * LIST_SCRUBBER_DEFAULTS.topBar.revealMs). With `snap` (the default), a touch scroll that leaves it partly
    * shown settles it when the scroll ends, shown or hidden, whichever is closer; not on the web.
    * `onVisibilityChange` is called on the JS thread when it ends up shown or hidden in full, not while it's
-   * part way.
+   * part way. `overlap` is how much of its bottom lies over the first row rather than above it (a fade, a
+   * curved edge): the space the list leaves for it is `height - overlap`, and it still slides by `height`.
    */
   topBar?: {
     height: number;
+    overlap?: number;
     revealMs?: number;
     revealOnDragToTop?: boolean;
     snap?: boolean;
@@ -125,8 +127,10 @@ export function useListScrubber<
   /** Space a pinned header takes at the top of a list without section headers of its own */
   const pinnedHeight = pinnedHeader && Math.max(0, pinnedHeader.height);
   const pinnedSpace = pinnedHeight !== undefined && !ownHeaders ? pinnedHeight : 0;
+  /** How much of the bar's bottom lies over the first row: the list leaves no space for it */
+  const overlap = topBarOverlap(barHeight, options.topBar?.overlap);
   /** What the list draws at its top for the top bar and the pinned header */
-  const spacerHeight = barHeight + pinnedSpace;
+  const spacerHeight = barHeight - overlap + pinnedSpace;
   const hasLayout = layout !== undefined;
   const given = useStableSections(layout ? layout.sections : options.sections);
   // A layout's sections, placed below the spacer. The first stays at 0: it covers what's above it
