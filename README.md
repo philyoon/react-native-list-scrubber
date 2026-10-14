@@ -194,6 +194,8 @@ const scrubber = useListScrubber({ layout, topBar: { height: BAR }, pinnedHeader
 
 - The list's spread draws the space the bar (and a pinned header over a flat list) needs at the top of the
   list, and the hook places the layout below it.
+- `topBarProps` make the bar at least `height` tall, so a bar can size itself: to use its content's height,
+  measure the content (`onLayout` on the view inside) and pass that as `height`.
 - The bar follows the scroll by as much as it moves, up or down, and is always shown at the very top of the
   list. The scrubber and the pinned header stay below its visible part.
 - When a scroll ends with the bar partly shown, it settles: the list scrolls the rest of the way, so the bar

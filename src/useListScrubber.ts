@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type Component, type ComponentType } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Component,
+  type ComponentType,
+  type ReactElement,
+} from 'react';
 import { AccessibilityInfo, Platform, type LayoutChangeEvent, type ViewStyle } from 'react-native';
 import {
   Easing,
@@ -303,20 +311,20 @@ export function useListScrubber<
     const row = layout!.getItemLayout(data, index);
     return spacerHeight > 0 ? { ...row, offset: row.offset + spacerHeight } : row;
   });
-  const ListHeader = useListHeader(spacerHeight, options.ListHeaderComponent);
+  const { ListHeader, header } = useListHeader(spacerHeight, options.ListHeaderComponent);
   const hasHeader = spacerHeight > 0 || options.ListHeaderComponent !== undefined;
   // One spread per list, each with only the props that list documents
   const flatListProps = useMemo(
     () => ({
       ...listProps,
       ...(hasLayout && { getItemLayout }),
-      ...(hasHeader && { ListHeaderComponent: ListHeader }),
+      ...(hasHeader && { ListHeaderComponent: header }),
     }),
-    [listProps, hasLayout, getItemLayout, hasHeader, ListHeader],
+    [listProps, hasLayout, getItemLayout, hasHeader, header],
   );
   const headerListProps = useMemo(
-    () => ({ ...listProps, ...(hasHeader && { ListHeaderComponent: ListHeader }) }),
-    [listProps, hasHeader, ListHeader],
+    () => ({ ...listProps, ...(hasHeader && { ListHeaderComponent: header }) }),
+    [listProps, hasHeader, header],
   );
   const insets = useMemo(() => (pinnedSpace > 0 ? { top: pinnedSpace } : undefined), [pinnedSpace]);
   // With sections, they ride along (typed only then, so `labelAt` users can still spread scrubberProps)
@@ -343,7 +351,10 @@ export function useListScrubber<
     }),
     [scrollY, pinnedScrollY, pinnedSpace, topBar, sections, pinnedHeight, ownHeaders],
   );
-  const topBarLayout = useMemo((): ViewStyle => ({ ...TOP_BAR, height: barHeight }), [barHeight]);
+  // At least the bar's height, not exactly: a bar measured from its own content then lays out at its natural
+  // size on the first pass, instead of squeezed into the height it had before (0 on the first render), which
+  // on Android shrinks text and horizontal scroll views and takes several measurements to settle
+  const topBarLayout = useMemo((): ViewStyle => ({ ...TOP_BAR, minHeight: barHeight }), [barHeight]);
   const showTopBar = topBar?.show;
   const topBarProps = useMemo(
     () => ({
@@ -514,8 +525,11 @@ interface ListProps<TList extends Component<any, any>> {
 }
 
 interface HeaderListProps<TList extends Component<any, any>> extends ListProps<TList> {
-  /** With a top bar, a pinned header that takes its own space, or your own `ListHeaderComponent` */
-  ListHeaderComponent?: ComponentType;
+  /**
+   * With a top bar, a pinned header that takes its own space, or your own `ListHeaderComponent`: an element
+   * of `ListHeader`, new when the spacer's height changes, so the list draws it in the same commit
+   */
+  ListHeaderComponent?: ReactElement;
 }
 
 interface VirtualizedListProps<TList extends Component<any, any>> extends HeaderListProps<TList> {
