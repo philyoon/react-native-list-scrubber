@@ -292,6 +292,12 @@ describe('useListScrubber', () => {
 });
 
 describe('useListScrubber({ topBar })', () => {
+  it("leaves space for the bar's top only with an overlap, like the real hook", async () => {
+    const { result } = await renderHook(() => useListScrubber({ topBar: { height: 100, overlap: 16 } }));
+    expect(result.current.spacerHeight).toBe(84);
+    expect(result.current.topBar!.height).toBe(100);
+  });
+
   it('always shows the bar in full; the pinned header sits below it and names the rows there', async () => {
     let list!: ReturnType<typeof useListScrubber>;
     function Screen() {

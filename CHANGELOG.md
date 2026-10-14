@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### New
+
+- `topBar: { overlap }`: how much of the bar's bottom lies over the first row rather than above it (a fade, a
+  curved edge). The list's spacer is `height - overlap`, so the rows start below the bar's top part, while the
+  bar still slides, snaps, shows and hides by its full `height`. Development builds warn when it's outside 0
+  to `height`. Before, this took a negative margin on your own list header. Fixes #77.
+
 ### Fixed
 
 - A top bar whose height the app measures from its own content settles in one layout. `topBarProps` made the

@@ -29,6 +29,7 @@ import { labelPosition, sectionIndexAt } from './math';
 import type { ListScrubberSection } from './types';
 import { useLatest } from './useLatest';
 import type { UseListScrubberOptions, UseListScrubberResult } from './useListScrubber';
+import { topBarOverlap } from './validate';
 
 export { LIST_SCRUBBER_DEFAULTS } from './defaults';
 export { listLayout, sectionListLayout } from './layout';
@@ -175,7 +176,7 @@ export function useListScrubber<S extends readonly ListScrubberSection[] | undef
   const ownHeaders = pinnedHeader?.push ?? layout?.sectionHeaders ?? true;
   const pinnedHeight = pinnedHeader && Math.max(0, pinnedHeader.height);
   const pinnedSpace = pinnedHeight !== undefined && !ownHeaders ? pinnedHeight : 0;
-  const spacerHeight = barHeight + pinnedSpace;
+  const spacerHeight = barHeight - topBarOverlap(barHeight, options.topBar?.overlap) + pinnedSpace;
   const hasLayout = layout !== undefined;
   const given = layout ? layout.sections : options.sections;
   const sections = useMemo(
