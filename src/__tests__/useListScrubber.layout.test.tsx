@@ -1,6 +1,7 @@
 import { mockScrollTo } from './support';
 import { act, render, renderHook, screen } from '@testing-library/react-native';
-import { Text, View } from 'react-native';
+import { Profiler, useEffect, useState } from 'react';
+import { FlatList, Text, View } from 'react-native';
 import { listLayout, sectionListLayout, useListScrubber } from '../index';
 import { resetWarnings } from '../validate';
 
@@ -118,7 +119,7 @@ describe('a top bar over a layout', () => {
     const { result } = await renderHook(() => useListScrubber({ layout: flat(), topBar: { height: 100 } }));
     const r = result.current;
     for (const props of [r.flatListProps, r.sectionListProps, r.flashListProps, r.legendListProps]) {
-      expect(props.ListHeaderComponent).toBe(r.ListHeader);
+      expect(props.ListHeaderComponent?.type).toBe(r.ListHeader);
     }
     expect('ListHeaderComponent' in r.listProps).toBe(false);
     expect(r.scrollViewProps).toBe(r.listProps);
@@ -217,11 +218,43 @@ describe('the list header', () => {
     const { result } = await renderHook(() =>
       useListScrubber({ layout: flat(), ListHeaderComponent: Profile }),
     );
-    expect(result.current.flatListProps.ListHeaderComponent).toBe(result.current.ListHeader);
+    expect(result.current.flatListProps.ListHeaderComponent?.type).toBe(result.current.ListHeader);
     const { ListHeader } = result.current;
     await render(<ListHeader />);
     expect(screen.getByText('Profile')).toBeTruthy();
     expect(screen.queryByTestId('list-scrubber-spacer')).toBeNull();
+  });
+
+  it('reaches the list in the same commit as a new bar height: the rows are never drawn without it', async () => {
+    let setBar!: (height: number) => void;
+    let ownMounts = 0;
+    function Own() {
+      useEffect(() => {
+        ownMounts += 1;
+      }, []);
+      return <Text>Profile</Text>;
+    }
+    function Screen() {
+      const [bar, set] = useState(12);
+      setBar = set;
+      const scrubber = useListScrubber({ layout: flat(), topBar: { height: bar }, ListHeaderComponent: Own });
+      return (
+        <FlatList {...scrubber.flatListProps} data={names} renderItem={({ item }) => <Text>{item}</Text>} />
+      );
+    }
+    let commits = 0;
+    await render(
+      <Profiler id="screen" onRender={() => (commits += 1)}>
+        <Screen />
+      </Profiler>,
+    );
+    expect(screen.getByTestId('list-scrubber-spacer')).toHaveStyle({ height: 12 });
+    commits = 0;
+    await act(() => setBar(208));
+    expect(commits).toBe(1);
+    expect(screen.getByTestId('list-scrubber-spacer')).toHaveStyle({ height: 208 });
+    expect(ownMounts).toBe(1); // your header is kept, not remounted
+    expect(screen.getByText('Profile')).toBeTruthy();
   });
 
   it("warns when there's a spacer to draw but it never is", async () => {

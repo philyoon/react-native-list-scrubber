@@ -9,6 +9,18 @@
   bar still slides, snaps, shows and hides by its full `height`. Development builds warn when it's outside 0
   to `height`. Before, this took a negative margin on your own list header. Fixes #77.
 
+### Fixed
+
+- A top bar whose height the app measures from its own content settles in one layout. `topBarProps` made the
+  bar exactly `topBar.height` tall, so on the first render its content was laid out in a 0-high box; on
+  Android text and horizontal scroll views came out short, and the bar grew over several frames (12, 170, then
+  208 pt), the rows jumping with it. The bar is now at least `topBar.height` tall (`minHeight`), so its
+  content lays out at its natural size. A bar with a fixed `height` looks the same. Fixes #78.
+- The list's spacer follows a new `topBar.height` (or pinned header height) in the same commit as the rest of
+  the screen. It came a commit later, so a fast device could draw one frame with the first rows under the bar.
+  The list spreads' `ListHeaderComponent` is now an element of `scrubber.ListHeader`, new when the spacer's
+  height changes, rather than the component itself; your own header isn't remounted. Fixes #79.
+
 ## 0.4.0
 
 The top bar settles and can be driven from code: a scroll that leaves it partly shown snaps it shown or

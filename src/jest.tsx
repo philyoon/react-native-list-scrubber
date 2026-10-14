@@ -232,19 +232,19 @@ export function useListScrubber<S extends readonly ListScrubberSection[] | undef
   });
   // The real one: the spacer, then your own header, following them in the same render. Without its warning
   // that the spacer is never drawn: tests don't lay views out
-  const ListHeader = useListHeader(spacerHeight, options.ListHeaderComponent, false);
+  const { ListHeader, header } = useListHeader(spacerHeight, options.ListHeaderComponent, false);
   const hasHeader = spacerHeight > 0 || options.ListHeaderComponent !== undefined;
   const flatListProps = useMemo(
     () => ({
       ...listProps,
       ...(hasLayout && { getItemLayout }),
-      ...(hasHeader && { ListHeaderComponent: ListHeader }),
+      ...(hasHeader && { ListHeaderComponent: header }),
     }),
-    [listProps, hasLayout, getItemLayout, hasHeader, ListHeader],
+    [listProps, hasLayout, getItemLayout, hasHeader, header],
   );
   const headerListProps = useMemo(
-    () => ({ ...listProps, ...(hasHeader && { ListHeaderComponent: ListHeader }) }),
-    [listProps, hasHeader, ListHeader],
+    () => ({ ...listProps, ...(hasHeader && { ListHeaderComponent: header }) }),
+    [listProps, hasHeader, header],
   );
   // The mock's top bar always shows in full and stays in place, as the real one does with a screen reader on
   // (isFixed): the pinned header sits below it and names the rows there, scrollToOffset brings an offset to
@@ -259,7 +259,7 @@ export function useListScrubber<S extends readonly ListScrubberSection[] | undef
   const topBarProps = useMemo(
     () => ({
       style: [
-        { position: 'absolute', top: 0, left: 0, right: 0, height: barHeight },
+        { position: 'absolute', top: 0, left: 0, right: 0, minHeight: barHeight },
         {},
       ] as UseListScrubberResult['topBarProps']['style'],
       ...(Platform.OS === 'web' && topBar && { onFocus: topBar.show }),

@@ -350,14 +350,15 @@ describe('useListScrubber({ topBar })', () => {
     expect(pinnedHeaderProps.scrollY.get()).toBe(60 + 40); // the rows just below what shows of the bar
   });
 
-  it('topBarProps put it over the top of the list, as tall as the bar; no focus handler off the web', async () => {
+  it('topBarProps put it over the top of the list, at least as tall as the bar; no focus handler off the web', async () => {
     const { result } = await withBar(120);
+    // minHeight, not height: a bar measured from its content isn't squeezed into its previous height
     expect(result.current.topBarProps.style[0]).toEqual({
       position: 'absolute',
       top: 0,
       left: 0,
       right: 0,
-      height: 120,
+      minHeight: 120,
     });
     expect('onFocus' in result.current.topBarProps).toBe(false);
   });

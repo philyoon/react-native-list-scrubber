@@ -234,7 +234,7 @@ describe('useListScrubber', () => {
     expect(r.scrubberProps.insets).toEqual({ top: 32 });
     expect(r.pinnedHeaderProps).toMatchObject({ height: 32, push: false });
     expect(r.flatListProps.getItemLayout!(null, 1)).toEqual({ length: 64, offset: 196, index: 1 });
-    expect(r.flashListProps.ListHeaderComponent).toBe(r.ListHeader);
+    expect(r.flashListProps.ListHeaderComponent?.type).toBe(r.ListHeader);
     expect(r.scrollViewProps).toBe(r.listProps);
     const { ListHeader } = r;
     await render(<ListHeader />);
@@ -275,11 +275,9 @@ describe('useListScrubber', () => {
       }),
     );
     const { ListHeader, flatListProps, sectionListProps, legendListProps } = result.current;
-    expect([flatListProps, sectionListProps, legendListProps].map((p) => p.ListHeaderComponent)).toEqual([
-      ListHeader,
-      ListHeader,
-      ListHeader,
-    ]);
+    const spreads = [flatListProps, sectionListProps, legendListProps];
+    const headers = spreads.map((p) => p.ListHeaderComponent?.type);
+    expect(headers).toEqual([ListHeader, ListHeader, ListHeader]);
     await render(<ListHeader />);
     expect(screen.queryByTestId('list-scrubber-spacer')).toBeNull();
     expect(screen.getByTestId('list-scrubber-section-label')).toHaveTextContent('A');
@@ -310,7 +308,7 @@ describe('useListScrubber({ topBar })', () => {
     expect(list.topBar!.visibleHeight.get()).toBe(100);
     expect(list.scrubberProps.topBar).toBe(list.topBar);
     expect(list.pinnedHeaderProps.top).toBe(list.topBar!.visibleHeight);
-    expect(list.topBarProps.style[0]).toMatchObject({ position: 'absolute', height: 100 });
+    expect(list.topBarProps.style[0]).toMatchObject({ position: 'absolute', minHeight: 100 });
     expect(list.topBar!.isFixed.get()).toBe(true);
     // 450 + 100: the rows just below the bar are in M (from 500)
     await act(() =>

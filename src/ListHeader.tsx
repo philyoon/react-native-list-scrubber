@@ -3,8 +3,9 @@ import {
   isValidElement,
   useEffect,
   useLayoutEffect,
+  useMemo,
+  useReducer,
   useState,
-  useSyncExternalStore,
   type ComponentType,
   type ReactElement,
 } from 'react';
@@ -22,9 +23,16 @@ interface Content {
 /**
  * The list's header: a spacer as tall as what's drawn over the list's top (a top bar, a pinned header), then
  * your own header below it. One component for the life of the hook: a list remounts its header whenever the
- * component changes, so the latest spacer and header come from a store instead. Development builds warn when
- * there's a spacer to draw but it never is, e.g. a `ListHeaderComponent` given to the list replaced it,
- * unless `warnIfUndrawn` is false (the Jest mock: tests don't lay views out).
+ * component changes, so the latest spacer and header come from a store instead.
+ *
+ * `header`, an element of that component, is what the lists' spreads pass: a new one whenever the spacer's
+ * height changes, so the list re-renders in the same commit as the rest of the screen and the rows never show
+ * a frame without the new spacer (the element's type stays the same, so the header isn't remounted). The
+ * store is written during render for that; a header that didn't re-render with it (one rendered elsewhere,
+ * or a change to your own header alone) catches up a commit later.
+ *
+ * Development builds warn when there's a spacer to draw but it never is, e.g. a `ListHeaderComponent` given
+ * to the list replaced it, unless `warnIfUndrawn` is false (the Jest mock: tests don't lay views out).
  */
 export function useListHeader(
   spacerHeight: number,
@@ -32,10 +40,13 @@ export function useListHeader(
   warnIfUndrawn = true,
 ) {
   const [store] = useState(() => createStore({ spacerHeight, own }));
-  useLayoutEffect(() => store.set({ spacerHeight, own }), [store, spacerHeight, own]);
+  store.write({ spacerHeight, own });
+  useLayoutEffect(() => store.catchUp(), [store, spacerHeight, own]);
   const [ListHeader] = useState(() => {
     function ListHeader() {
-      const content = useSyncExternalStore(store.subscribe, store.get);
+      const [, rerender] = useReducer((n: number) => n + 1, 0);
+      useLayoutEffect(() => store.subscribe(rerender), []);
+      const content = store.read();
       return (
         <>
           {content.spacerHeight > 0 && (
@@ -51,6 +62,9 @@ export function useListHeader(
     }
     return ListHeader;
   });
+  // A new element when the height changes (see above), not on every render: that would re-render the list
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const header = useMemo(() => <ListHeader />, [ListHeader, spacerHeight]);
   useEffect(() => {
     if (!__DEV__ || !warnIfUndrawn || spacerHeight <= 0) return;
     const timer = setTimeout(() => {
@@ -65,23 +79,32 @@ export function useListHeader(
     }, UNMEASURED_AFTER_MS);
     return () => clearTimeout(timer);
   }, [store, spacerHeight, warnIfUndrawn]);
-  return ListHeader;
+  return { ListHeader, header };
 }
 
 function createStore(initial: Content) {
   let content = initial;
+  /** What the headers last rendered */
+  let shown: Content | undefined;
   const listeners = new Set<() => void>();
   const store = {
     drawn: false,
-    get: () => content,
-    set(next: Content) {
-      if (next.spacerHeight === content.spacerHeight && next.own === content.own) return;
-      content = next;
-      listeners.forEach((listener) => listener());
+    write(next: Content) {
+      if (next.spacerHeight !== content.spacerHeight || next.own !== content.own) content = next;
+    },
+    read() {
+      shown = content;
+      return content;
+    },
+    /** Re-renders the headers that didn't render the latest content */
+    catchUp() {
+      if (shown !== content) listeners.forEach((listener) => listener());
     },
     subscribe(listener: () => void) {
       listeners.add(listener);
-      return () => listeners.delete(listener);
+      return () => {
+        listeners.delete(listener);
+      };
     },
     markDrawn: () => {
       store.drawn = true;
