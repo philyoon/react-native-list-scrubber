@@ -196,3 +196,16 @@ export function useWarnIfUnmeasured(
     return () => clearInterval(id);
   }, [listRef, measured, sizes]);
 }
+
+/** `topBar.overlap`, within 0 and the bar's height; development builds warn when it isn't */
+export function topBarOverlap(height: number, overlap = 0): number {
+  const within = Math.min(Math.max(0, overlap), height);
+  if (__DEV__ && within !== overlap) {
+    warnOnce(
+      'topBarOverlap',
+      `react-native-list-scrubber: topBar.overlap (${overlap}) is outside 0 to the bar's height (${height}); ` +
+        `using ${within}.`,
+    );
+  }
+  return within;
+}

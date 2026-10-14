@@ -81,6 +81,39 @@ describe('a top bar over a layout', () => {
     expect(r.flatListProps.getItemLayout!(null, 2)).toEqual({ length: 64, offset: 228, index: 2 });
   });
 
+  it("with an overlap, leaves space for the bar's top only; it still slides by its full height", async () => {
+    const { result } = await renderHook(() =>
+      useListScrubber({ layout: flat(), topBar: { height: 100, overlap: 16 } }),
+    );
+    const r = result.current;
+    expect(r.spacerHeight).toBe(84);
+    expect(r.scrubberProps.sections).toEqual([
+      { offset: 0, label: 'A' },
+      { offset: 212, label: 'B' },
+    ]);
+    expect(r.flatListProps.getItemLayout!(null, 2)).toEqual({ length: 64, offset: 212, index: 2 });
+    expect(r.topBar!.height).toBe(100);
+    expect(r.topBar!.visibleHeight.get()).toBe(100);
+    // The pinned header and the scrubber stay below the bar's visible part, overlap and all
+    expect(r.pinnedHeaderProps.top).toBe(r.topBar!.visibleHeight);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('keeps an overlap within 0 and the height, and warns once', async () => {
+    const { result } = await renderHook(() =>
+      useListScrubber({ layout: flat(), topBar: { height: 100, overlap: 140 } }),
+    );
+    expect(result.current.spacerHeight).toBe(0);
+    const below = await renderHook(() =>
+      useListScrubber({ layout: flat(), topBar: { height: 100, overlap: -8 } }),
+    );
+    expect(below.result.current.spacerHeight).toBe(100);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0]![0]).toMatch(
+      /topBar\.overlap \(140\) is outside 0 to the bar's height \(100\)/,
+    );
+  });
+
   it('gives FlatList, SectionList, FlashList and Legend List the list header; ScrollView and listProps none', async () => {
     const { result } = await renderHook(() => useListScrubber({ layout: flat(), topBar: { height: 100 } }));
     const r = result.current;
