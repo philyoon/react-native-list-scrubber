@@ -1,6 +1,21 @@
 # Changelog
 
-## Unreleased
+## 0.5.0
+
+A top bar's first frames are steady: a bar sized from its own content settles in one layout, and the list's
+rows are never drawn under it. A bar whose bottom lies over the first row (a fade, a curved edge) takes
+`overlap`.
+
+### Upgrading from 0.4
+
+No code needs to change unless it reads a list spread's `ListHeaderComponent`. Two details behave differently:
+
+- `topBarProps` make the bar at least `topBar.height` tall rather than exactly: a bar whose content is taller
+  than `height` now grows with it instead of overflowing it. Give `height` the bar's full height, as before.
+- The list spreads' `ListHeaderComponent` (`flatListProps`, `sectionListProps`, `flashListProps`,
+  `legendListProps`) is an element of `scrubber.ListHeader` rather than the component itself, and typed
+  `ReactElement`. Spreading it is unchanged; code that renders it as a component, e.g.
+  `<props.ListHeaderComponent />`, renders `<scrubber.ListHeader />` instead.
 
 ### New
 
