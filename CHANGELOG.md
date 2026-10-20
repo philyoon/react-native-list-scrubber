@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- A section label (the bubble's, the pinned header's, `CurrentSectionLabel`) gets a new native text field
+  whenever its labels change, e.g. after a search, and the new field starts on the current label. Seen once on
+  Android: a label stopped taking new text and stayed on an old section until the app restarted; whatever the
+  cause, it can no longer outlive the sections it was showing. New sections with the same labels (the list
+  measured its rows again) keep the field. Mitigates #83.
+
 ## 0.5.0
 
 A top bar's first frames are steady: a bar sized from its own content settles in one layout, and the list's
