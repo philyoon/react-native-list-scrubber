@@ -1,6 +1,15 @@
 # Changelog
 
-## Unreleased
+## 0.5.1
+
+Steadier under load: a continuous thumb drag no longer piles up scrolls on the JS thread, and a section label
+can't stay stuck on an old section.
+
+### Upgrading from 0.5.0
+
+No code needs to change. One detail behaves differently: after the finger lifts from the thumb, `isDragging`
+stays true until the list reaches where the finger lifted, at most 500 ms. Code that reacts when a drag ends
+runs that much later.
 
 ### Fixed
 
