@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- A continuous thumb drag no longer piles up scrolls on the JS thread. Each scroll makes the list render rows
+  on JS; where that takes longer than a frame, the drag queued scrolls faster than JS got through them, JS
+  fell to a few frames per second, and rows stayed blank until the finger stopped. The thumb and the bubble
+  still follow the finger on the UI thread, while the list scrolls once JS is ready, to where the finger is
+  now, never to a stale position. "Ready" is paced: JS first earns back the time its long frames took, so it
+  stays at least about half free (on an Android phone, a 20 s drag went from 13-37 to 33-54 JS frames per
+  second, in a development build). A fast device still scrolls the list every frame. When the finger lifts,
+  the list goes straight to where it lifted, and the drag (`isDragging`) lasts until the list reports that
+  spot, so a top bar doesn't take the final jump for a scroll up. Fixes #84.
+
 ## 0.5.0
 
 A top bar's first frames are steady: a bar sized from its own content settles in one layout, and the list's
