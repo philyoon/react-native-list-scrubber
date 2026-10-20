@@ -110,10 +110,14 @@ export const baseProps = {
   accessibilityLabel: 'Scroll position',
 };
 
+/** The scroll position of the latest setup() (its own, or the one passed in) */
+let setupScrollY: SharedValue<number> | undefined;
+
 export function setup(props: Partial<ListScrubberProps> = {}) {
+  setupScrollY = (props as { scrollY?: SharedValue<number> }).scrollY ?? sharedZero();
   return render(
     <ListScrubber
-      scrollY={sharedZero()}
+      scrollY={setupScrollY}
       listRef={(() => null) as never}
       contentHeight={1000}
       viewportHeight={100}
@@ -142,8 +146,22 @@ beforeEach(() => {
   mockClosures.length = 0;
 });
 
-/** The two reactions of the latest render: [scroll → fade, opacity → visible] */
-export const reactions = () => mockReactions.slice(-2) as [Reaction, Reaction];
+/**
+ * The auto-hide's two reactions of the latest render: [scroll → fade, opacity → visible]. The drag's
+ * comes after them (see listArrives)
+ */
+export const reactions = () => mockReactions.slice(-3, -1) as [Reaction, Reaction];
+
+/**
+ * The list reports the scrubber's last scroll, as a real list does a frame after the finger lifts: moves
+ * `scrollY` (setup's by default) there and runs the drag's reaction, which ends a drag waiting for it
+ */
+export function listArrives(scrollY = setupScrollY!) {
+  const to = mockScrollTo.mock.calls.at(-1)?.[2] as number | undefined;
+  if (to !== undefined) scrollY.set(to);
+  const arrived = mockReactions.at(-1)!;
+  arrived.react(arrived.prepare(), null);
+}
 
 /**
  * A section label as drawn: the text its native field shows (set from the UI thread) and its style.

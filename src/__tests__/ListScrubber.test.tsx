@@ -7,6 +7,7 @@ import {
   reactions,
   sectionText,
   setup,
+  listArrives,
   sharedFlag,
   sharedZero,
 } from './support';
@@ -321,7 +322,11 @@ describe('while the finger is down', () => {
       pan().onUpdate({ translationY });
     });
   };
-  const release = () => act(async () => pan().onFinalize({}));
+  const release = () =>
+    act(async () => {
+      pan().onFinalize({});
+      listArrives();
+    });
   const style = (id: string) =>
     StyleSheet.flatten(screen.getByTestId(id, { includeHiddenElements: true }).props.style);
   const bar = () =>
@@ -396,6 +401,67 @@ describe('while the finger is down', () => {
     expect(screen.getByText(`at ${Math.round(newest)}`, { includeHiddenElements: true })).toBeTruthy();
     await act(() => jest.advanceTimersByTime(20)); // nothing newer: the handshake stands down
     expect(dragCalls()).toHaveLength(2);
+  });
+
+  // #84: each scroll makes the list render rows on JS; a busy JS thread mustn't build up a queue of them
+  it('while JS is busy, the list scrolls to the first and the newest drag frame, not every frame', async () => {
+    await setup();
+    const scrolls = () => mockScrollTo.mock.calls.map((call) => call[2] as number);
+    await act(async () => {
+      pan().onBegin({});
+      for (let y = 1; y <= 10; y++) pan().onUpdate({ translationY: y * 5 });
+    });
+    expect(scrolls()).toEqual([(5 / 52) * 900]); // the first frame; the rest wait for JS to have a frame
+    // JS had a frame: the list goes to the finger's newest spot
+    await act(() => jest.advanceTimersByTime(20));
+    expect(scrolls()).toHaveLength(2);
+    expect(scrolls()[1]).toBeCloseTo((50 / 52) * 900);
+    await act(() => jest.advanceTimersByTime(20)); // nothing newer: the handshake stands down
+    expect(scrolls()).toHaveLength(2);
+    await act(async () => pan().onUpdate({ translationY: 30 })); // and the next frame scrolls at once
+    expect(scrolls()).toHaveLength(3);
+  });
+
+  it('scrolls to where the finger lifts at once, even with a scroll in flight', async () => {
+    await setup();
+    const scrolls = () => mockScrollTo.mock.calls.map((call) => call[2] as number);
+    await act(async () => {
+      pan().onBegin({});
+      pan().onUpdate({ translationY: 5 });
+      pan().onUpdate({ translationY: 20 });
+      pan().onEnd({ translationY: 52 });
+    });
+    expect(scrolls()).toEqual([(5 / 52) * 900, 900]);
+    await act(() => jest.advanceTimersByTime(20)); // the earlier frame isn't sent after the end
+    expect(scrolls()).toEqual([(5 / 52) * 900, 900]);
+  });
+
+  it("doesn't scroll after the scrubber is gone, even with a scroll waiting", async () => {
+    const view = await setup();
+    await act(async () => {
+      pan().onBegin({});
+      pan().onUpdate({ translationY: 5 });
+      pan().onUpdate({ translationY: 20 }); // waits for JS
+    });
+    expect(mockScrollTo).toHaveBeenCalledTimes(1);
+    await view.unmount();
+    await act(() => jest.advanceTimersByTime(500));
+    expect(mockScrollTo).toHaveBeenCalledTimes(1);
+  });
+
+  it('a new drag scrolls at once, even before JS acknowledged the last one', async () => {
+    await setup();
+    await act(async () => {
+      pan().onBegin({});
+      pan().onUpdate({ translationY: 5 });
+      pan().onFinalize({});
+      pan().onBegin({});
+      pan().onUpdate({ translationY: 10 });
+    });
+    expect(mockScrollTo.mock.calls.map((call) => call[2] as number)).toEqual([
+      (5 / 52) * 900,
+      (10 / 52) * 900,
+    ]);
   });
 
   it('picks the font size by label length', async () => {
@@ -628,8 +694,8 @@ describe('API options', () => {
     await setup({ contentHeight, viewportHeight });
     // Content shorter than the viewport: nothing to scrub
     expect(screen.queryByTestId('list-scrubber-a11y', { includeHiddenElements: true })).toBeNull();
-    // Each render adds the two height mirrors, then the two fade reactions
-    const contentMirror = mockReactions.at(-4)!;
+    // Each render adds the two height mirrors, the two fade reactions, then the drag's
+    const contentMirror = mockReactions.at(-5)!;
     contentHeight.set(1000);
     expect(contentMirror.prepare()).toBe(1000);
     await act(async () => contentMirror.react(1000, 80));
@@ -739,6 +805,34 @@ describe('API options', () => {
     const isDragging = { get: jest.fn(() => false), set: jest.fn() } as unknown as SharedValue<boolean>;
     await setup({ isDragging });
     await drag(20);
+    // Still dragging after the finger lifts, until the list reports where it lifted
+    expect((isDragging.set as jest.Mock).mock.calls).toEqual([[true]]);
+    await act(async () => listArrives());
+    expect((isDragging.set as jest.Mock).mock.calls).toEqual([[true], [false]]);
+  });
+
+  // #84: the list reports the final scroll after the finger lifts; a top bar that follows scrolls while not
+  // dragging would take that one jump for a scroll up and slide in
+  it("after the finger lifts, isDragging lasts until the list reports that spot, or 500 ms if it doesn't", async () => {
+    const isDragging = { get: jest.fn(() => false), set: jest.fn() } as unknown as SharedValue<boolean>;
+    await setup({ isDragging });
+    await drag(20);
+    await act(() => jest.advanceTimersByTime(480));
+    expect((isDragging.set as jest.Mock).mock.calls).toEqual([[true]]);
+    await act(() => jest.advanceTimersByTime(40));
+    expect((isDragging.set as jest.Mock).mock.calls).toEqual([[true], [false]]);
+    await act(async () => listArrives()); // too late: nothing more
+    expect((isDragging.set as jest.Mock).mock.calls).toEqual([[true], [false]]);
+  });
+
+  it('a touch that never moves the thumb ends at once', async () => {
+    const isDragging = { get: jest.fn(() => false), set: jest.fn() } as unknown as SharedValue<boolean>;
+    await setup({ isDragging });
+    const handlers = (getByGestureTestId('list-scrubber') as unknown as { handlers: Handlers }).handlers;
+    await act(async () => {
+      handlers.onBegin({});
+      handlers.onFinalize({});
+    });
     expect((isDragging.set as jest.Mock).mock.calls).toEqual([[true], [false]]);
   });
 
