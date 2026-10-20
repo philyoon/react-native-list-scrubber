@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- A section label (the bubble's, the pinned header's, `CurrentSectionLabel`) gets a new native text field
+  whenever its labels change, e.g. after a search, and the new field starts on the current label. Seen once on
+  Android: a label stopped taking new text and stayed on an old section until the app restarted; whatever the
+  cause, it can no longer outlive the sections it was showing. New sections with the same labels (the list
+  measured its rows again) keep the field. Mitigates #83.
 - A continuous thumb drag no longer piles up scrolls on the JS thread. Each scroll makes the list render rows
   on JS; where that takes longer than a frame, the drag queued scrolls faster than JS got through them, JS
   fell to a few frames per second, and rows stayed blank until the finger stopped. The thumb and the bubble
