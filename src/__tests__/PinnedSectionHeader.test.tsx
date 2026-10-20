@@ -20,6 +20,51 @@ it('CurrentSectionLabel shows the section at the top of the list', async () => {
   expect(sectionText('list-scrubber-section-label-text')).toMatchObject({ text: 'M', style: { height: 20 } });
 });
 
+describe("CurrentSectionLabel's text field", () => {
+  const all = [
+    { offset: 0, label: 'A' },
+    { offset: 500, label: 'M' },
+  ];
+  const label = (sections: { offset: number; label: string }[]) => {
+    const scrollY = sharedZero();
+    scrollY.set(620);
+    return <CurrentSectionLabel scrollY={scrollY} height={20} sections={sections} />;
+  };
+  const field = () => sectionText('list-scrubber-section-label-text').field;
+
+  // On Android a text field can stop taking text set from the UI thread (issue #83): a new one per set of
+  // labels can't carry that over to new sections
+  it('is a new one for new labels, starting on the current label', async () => {
+    const view = await render(label(all));
+    const first = field();
+    await view.rerender(label([{ offset: 0, label: 'A' }]));
+    expect(field()).not.toBe(first);
+    expect(sectionText('list-scrubber-section-label-text').text).toBe('A');
+    expect(field().props.animatedProps.defaultValue).toBe('A');
+  });
+
+  it('is a new one for as many labels as before, but different ones (another sort)', async () => {
+    const view = await render(label(all));
+    const first = field();
+    await view.rerender(
+      label([
+        { offset: 0, label: 'Z' },
+        { offset: 500, label: 'Q' },
+      ]),
+    );
+    expect(field()).not.toBe(first);
+    expect(sectionText('list-scrubber-section-label-text').text).toBe('Q');
+  });
+
+  it('stays the same while the labels do, e.g. when the list measures its rows again', async () => {
+    const view = await render(label(all));
+    const first = field();
+    await view.rerender(label(all.map((s) => ({ ...s, offset: s.offset * 1.1 }))));
+    expect(field()).toBe(first);
+    expect(sectionText('list-scrubber-section-label-text').text).toBe('M');
+  });
+});
+
 describe('usePinnedSectionHeaderStyle', () => {
   const sections = [
     { offset: 0, label: 'A' },

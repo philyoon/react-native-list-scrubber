@@ -53,18 +53,9 @@ export const SectionText = memo(function SectionText({
   maxFontSizeMultiplier: number;
   testID: string;
 }) {
-  // Each worklet is restarted, and everything it captures copied to the UI thread again, whenever a captured
-  // value changes identity. So they capture only props (the helpers are module functions): a render with
-  // the same labels copies nothing, though `labels` can be thousands of strings.
-  const animatedProps = useAnimatedProps(() => {
-    const text = labelAt(labels, index.get());
-    // `defaultValue` too, as Reanimated's own PerformanceMonitor does: the field keeps it if it remounts
-    return { text, defaultValue: text } as Partial<TextInputProps>;
-  });
-  const fontSize = useAnimatedStyle(() => {
-    const size = fontSizeFor(fontSizes, labelAt(labels, index.get()));
-    return size === undefined ? {} : { fontSize: size };
-  });
+  // The labels as they were while their text stays the same, so new sections with the same labels (the list
+  // measured its rows again, and the offsets moved) don't remount the field below
+  const sameLabels = useSameLabels(labels);
   const fontScale = useWindowDimensions().fontScale;
   // The widest of the labels measured so far, valid only for the text style it was measured with (compared
   // by reference). Labels only add to it: a list that grows a page at a time measures just the new page.
@@ -90,15 +81,13 @@ export const SectionText = memo(function SectionText({
     [measure, measureNow, unmeasured],
   );
   // A new view per batch: a view that stays mounted reports its layout again only if its size changes
-  const key = batchKey(sizers);
+  const key = keyOf(sizers);
   const onMeasured = (width: number) =>
     setMeasured({
       width: Math.max(Math.ceil(width), valid?.width ?? 0),
       labels: new Set([...(valid?.labels ?? []), ...sizers]),
       textInputs,
     });
-  const first = labels[0] ?? '';
-
   return (
     // Fills its parent: with sizeToLabels the parent sizes to this view's content (the measured width, or
     // the copies being measured), and a wider parent (e.g. a minWidth) widens the field with it
@@ -126,36 +115,84 @@ export const SectionText = memo(function SectionText({
           ))}
         </View>
       )}
-      <AnimatedTextInput
-        testID={testID}
-        editable={false}
-        // Display only: no caret, menu, focus or touches; screen readers read the list (or the scrubber's
-        // own control) instead, so it stays out of their way too. A text field is focusable: on web it was a
-        // Tab stop, and read out, until `focusable` and `aria-hidden` said otherwise
-        focusable={false}
-        aria-hidden
-        caretHidden
-        contextMenuHidden
-        selectTextOnFocus={false}
-        scrollEnabled={false}
-        pointerEvents="none"
-        accessible={false}
-        importantForAccessibility="no"
-        underlineColorAndroid="transparent"
+      {/* A new field for each set of labels. On Android a text field can stop taking text set from the UI
+          thread (seen once: a label stuck until the app restarted); a new field can't carry that over to new
+          sections, e.g. after a search. Its first render shows the current label, so there's no flash */}
+      <LabelField
+        key={keyOf(sameLabels)}
+        index={index}
+        labels={sameLabels}
+        height={height}
+        style={style}
+        fontSizes={fontSizes}
         maxFontSizeMultiplier={maxFontSizeMultiplier}
-        defaultValue={first}
-        animatedProps={animatedProps}
-        style={[
-          styles.input,
-          { height },
-          style,
-          fontSizes && { fontSize: fontSizeFor(fontSizes, first) },
-          fontSize,
-        ]}
+        testID={testID}
       />
     </View>
   );
 });
+
+/** The read-only native text field that shows the label at `index` */
+function LabelField({
+  index,
+  labels,
+  height,
+  style,
+  fontSizes,
+  maxFontSizeMultiplier,
+  testID,
+}: {
+  index: SharedValue<number>;
+  labels: readonly string[];
+  height: number;
+  style: TextStyle | undefined;
+  fontSizes: FontSizes | undefined;
+  maxFontSizeMultiplier: number;
+  testID: string;
+}) {
+  // Each worklet is restarted, and everything it captures copied to the UI thread again, whenever a captured
+  // value changes identity. So they capture only props (the helpers are module functions): a render with
+  // the same labels copies nothing, though `labels` can be thousands of strings.
+  const animatedProps = useAnimatedProps(() => {
+    const text = labelAt(labels, index.get());
+    // `defaultValue` too, as Reanimated's own PerformanceMonitor does: the field keeps it if it remounts
+    return { text, defaultValue: text } as Partial<TextInputProps>;
+  });
+  const fontSize = useAnimatedStyle(() => {
+    const size = fontSizeFor(fontSizes, labelAt(labels, index.get()));
+    return size === undefined ? {} : { fontSize: size };
+  });
+  const first = labels[0] ?? '';
+  return (
+    <AnimatedTextInput
+      testID={testID}
+      editable={false}
+      // Display only: no caret, menu, focus or touches; screen readers read the list (or the scrubber's
+      // own control) instead, so it stays out of their way too. A text field is focusable: on web it was a
+      // Tab stop, and read out, until `focusable` and `aria-hidden` said otherwise
+      focusable={false}
+      aria-hidden
+      caretHidden
+      contextMenuHidden
+      selectTextOnFocus={false}
+      scrollEnabled={false}
+      pointerEvents="none"
+      accessible={false}
+      importantForAccessibility="no"
+      underlineColorAndroid="transparent"
+      maxFontSizeMultiplier={maxFontSizeMultiplier}
+      defaultValue={first}
+      animatedProps={animatedProps}
+      style={[
+        styles.input,
+        { height },
+        style,
+        fontSizes && { fontSize: fontSizeFor(fontSizes, first) },
+        fontSize,
+      ]}
+    />
+  );
+}
 
 type FontSizes = { short: number; long: number; shortMaxLength: number };
 
@@ -182,12 +219,21 @@ const NO_LABELS: readonly string[] = [];
 /** Labels laid out per commit while the app is idle */
 const MEASURE_BATCH = 200;
 
-const batchKeys = new WeakMap<readonly string[], number>();
-let batches = 0;
-/** A key unique to each batch of labels measured (each batch is a new array) */
-function batchKey(batch: readonly string[]): number {
-  let key = batchKeys.get(batch);
-  if (key === undefined) batchKeys.set(batch, (key = ++batches));
+/** `labels`, or the earlier array while it holds the same labels */
+function useSameLabels(labels: readonly string[]): readonly string[] {
+  const [kept, setKept] = useState(labels);
+  if (kept === labels) return kept;
+  if (kept.length === labels.length && kept.every((label, i) => label === labels[i])) return kept;
+  setKept(labels);
+  return labels;
+}
+
+const keys = new WeakMap<readonly string[], number>();
+let lastKey = 0;
+/** A key unique to an array of labels (a batch to measure, or the labels themselves), by identity */
+function keyOf(labels: readonly string[]): number {
+  let key = keys.get(labels);
+  if (key === undefined) keys.set(labels, (key = ++lastKey));
   return key;
 }
 
