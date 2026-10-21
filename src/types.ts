@@ -14,6 +14,11 @@ export interface ListScrubberTopBar {
    * too short to hide it (its scroll range is shorter than the bar)
    */
   isFixed: SharedValue<boolean>;
+  /**
+   * How much of its bottom lies over the first row (`topBar.overlap`, pt; 0 when left out): the rows start
+   * that much above its bottom edge, which the scrubber's track allows for once the bar is hidden
+   */
+  overlap?: number;
 }
 
 /**

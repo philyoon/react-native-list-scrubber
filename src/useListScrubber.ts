@@ -281,6 +281,9 @@ export function useListScrubber<
     [barHeight, revealMs, revealOnDragToTop, snap, barStaysPut, barFixed],
   );
   const barVisible = useDerivedValue(() => barHeight - barHidden.get());
+  // Where the rows come out from under the bar's solid part: its bottom edge, less the `overlap` that lies
+  // over the rows. A pinned header sits there, the overlap over its top as over the first row's
+  const rowsTop = useDerivedValue(() => Math.max(0, barVisible.get() - overlap));
   const isFixed = useDerivedValue(barStaysPut);
   const topBarStyle = useAnimatedStyle(() => ({ transform: [{ translateY: -barHidden.get() }] }));
   const topBar = useMemo(
@@ -288,6 +291,7 @@ export function useListScrubber<
       barHeight > 0
         ? {
             height: barHeight,
+            overlap,
             visibleHeight: barVisible,
             isFixed,
             show: () => scheduleOnUI(revealTopBar, barHidden, barSliding, revealMs),
@@ -299,6 +303,7 @@ export function useListScrubber<
         : undefined,
     [
       barHeight,
+      overlap,
       barVisible,
       isFixed,
       barFixed,
@@ -315,7 +320,7 @@ export function useListScrubber<
    * What a pinned header below the top bar names: the rows just below the bar's visible part or, over a list
    * without section headers of its own, the rows just below the pinned header itself
    */
-  const pinnedScrollY = useDerivedValue(() => scrollY.get() + barVisible.get() + pinnedSpace);
+  const pinnedScrollY = useDerivedValue(() => scrollY.get() + rowsTop.get() + pinnedSpace);
   // Stable identities: the list and the scrubber get the same props on every render.
   // Which of the list's handlers have run, for the development warning below
   const measured = useRef({ onLayout: false, onContentSizeChange: false });
@@ -387,10 +392,10 @@ export function useListScrubber<
     () => ({
       scrollY: topBar || pinnedSpace > 0 ? pinnedScrollY : scrollY,
       sections: sections ?? NO_SECTIONS,
-      ...(topBar && { top: topBar.visibleHeight }),
+      ...(topBar && { top: rowsTop }),
       ...(pinnedHeight !== undefined && { height: pinnedHeight, push: ownHeaders }),
     }),
-    [scrollY, pinnedScrollY, pinnedSpace, topBar, sections, pinnedHeight, ownHeaders],
+    [scrollY, pinnedScrollY, pinnedSpace, topBar, rowsTop, sections, pinnedHeight, ownHeaders],
   );
   // At least the bar's height, not exactly: a bar measured from its own content then lays out at its natural
   // size on the first pass, instead of squeezed into the height it had before (0 on the first render), which

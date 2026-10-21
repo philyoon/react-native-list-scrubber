@@ -538,8 +538,9 @@ npx expo start
 
 It opens in Expo Go and has one screen per list type, plus an Index screen (a tappable A–Z bar above a
 SectionList that jumps with `scrollToSection`) and a Collapsible screen (a top bar that slides away, with a
-pinned header). It uses the library source from `../src`. `npm run web` opens it in the browser instead (Expo
-web); CI builds that web bundle on every push.
+pinned header, a soft bottom edge over the rows (`overlap`), and a search that filters the list). It uses the
+library source from `../src`. `npm run web` opens it in the browser instead (Expo web); CI builds that web
+bundle on every push.
 
 ### End-to-end tests
 

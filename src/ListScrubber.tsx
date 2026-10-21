@@ -228,9 +228,16 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
    */
   const track = useDerivedValue(() => {
     const shown = topBar ? clamp(topBar.visibleHeight.get(), 0, railHeight) : 0;
-    const start = topBar ? clamp(topBar.height - topBar.visibleHeight.get(), 0, maxScroll) : 0;
+    // The track's top stands for where the rows come out from under the bar: below its hidden part, but no
+    // lower than where the rows start, which with an `overlap` is above the bar's bottom edge. Hidden in
+    // full, the bar covers nothing, and the first row's top would otherwise stay above the list
+    const hidden = topBar ? topBar.height - topBar.visibleHeight.get() : 0;
+    const rowsTop = topBar ? topBar.height - (topBar.overlap ?? 0) : 0;
+    const start = topBar ? clamp(Math.min(hidden, rowsTop), 0, maxScroll) : 0;
     const travel = Math.max(0, railHeight - shown - m.thumbLength);
-    return { top: shown, travel, start, cover: shown + railTop };
+    // Labels describe the rows below the bar's solid part (an `overlap` lies over them) and the top inset
+    const covered = Math.max(0, shown - (topBar?.overlap ?? 0));
+    return { top: shown, travel, start, cover: covered + railTop };
   });
 
   const ownDragging = useSharedValue(false);

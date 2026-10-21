@@ -95,8 +95,9 @@ describe('a top bar over a layout', () => {
     expect(r.flatListProps.getItemLayout!(null, 2)).toEqual({ length: 64, offset: 212, index: 2 });
     expect(r.topBar!.height).toBe(100);
     expect(r.topBar!.visibleHeight.get()).toBe(100);
-    // The pinned header and the scrubber stay below the bar's visible part, overlap and all
-    expect(r.pinnedHeaderProps.top).toBe(r.topBar!.visibleHeight);
+    expect(r.scrubberProps.topBar!.overlap).toBe(16); // the scrubber's track allows for it
+    // A pinned header sits where the rows come out from under the bar's solid part: the overlap lies over it
+    expect(r.pinnedHeaderProps.top!.get()).toBe(84);
     expect(warn).not.toHaveBeenCalled();
   });
 
@@ -113,6 +114,19 @@ describe('a top bar over a layout', () => {
     expect(warn.mock.calls[0]![0]).toMatch(
       /topBar\.overlap \(140\) is outside 0 to the bar's height \(100\)/,
     );
+  });
+
+  it('with an overlap, a pinned header that takes space sits in the space left for it, under the overlap', async () => {
+    const { result } = await renderHook(() =>
+      useListScrubber({ layout: flat(), topBar: { height: 100, overlap: 16 }, pinnedHeader: { height: 32 } }),
+    );
+    const r = result.current;
+    expect(r.spacerHeight).toBe(84 + 32);
+    // Right where the space for it starts, below the bar's solid part: the overlap lies over its top
+    expect(r.pinnedHeaderProps.top!.get()).toBe(84);
+    // It names the rows just below itself, where the layout's rows start
+    expect(r.pinnedHeaderProps.scrollY.get()).toBe(116);
+    expect(r.flatListProps.getItemLayout!(null, 0).offset).toBe(116);
   });
 
   it('gives FlatList, SectionList, FlashList and Legend List the list header; ScrollView and listProps none', async () => {

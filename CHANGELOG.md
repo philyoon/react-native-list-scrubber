@@ -4,6 +4,13 @@
 
 ### Fixed
 
+- With `topBar: { overlap }`, dragging the thumb to the top while the bar is hidden reaches the first row's
+  top. The track's top stood for the bar's full height, so the first `overlap` points of the rows (a card's
+  rounded top, the first row's padding) stayed above the list. The scrubber gets the overlap from
+  `scrubberProps.topBar.overlap`. Fixes #91.
+- With `topBar: { overlap }` and a pinned header that takes its own space (over a flat list), the pinned
+  header sits in the space the list leaves for it, under the bar's overlapping edge. It sat `overlap` points
+  lower, over the first row's top, and named the rows that much further down; the scrubber's labels likewise.
 - A top bar left partly shown when a thumb drag catches the list mid-scroll settles when the drag ends. A
   touch scroll's momentum could end during the drag, where snap waits, and the bar then stayed half open. Now,
   with `snap`, a drag that ends with the bar partly shown slides it out if the list is scrolled far enough for

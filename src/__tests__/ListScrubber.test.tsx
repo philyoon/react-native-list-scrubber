@@ -783,6 +783,20 @@ describe('API options', () => {
       expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 455, false);
     });
 
+    // #91: with an overlap the rows start `overlap` above the bar's bottom edge, which covers them only
+    // while some of the bar shows
+    it('with an overlap, the top of the track is where the rows start once the bar is hidden', async () => {
+      const top = async (visible: number) => {
+        mockScrollTo.mockClear();
+        await setup({ topBar: { height: 30, overlap: 8, visibleHeight: shared(visible), isFixed: fixed } });
+        await drag(-100);
+        return mockScrollTo.mock.calls.at(-1)![2] as number;
+      };
+      expect(await top(0)).toBe(22); // hidden in full: the rows start at 30 − 8, not 30
+      expect(await top(4)).toBe(22); // its edge partly shows: still no lower than the rows' start
+      expect(await top(20)).toBe(10); // 10 hidden: the edge covers the rows' top, as without an overlap
+    });
+
     it('hiding more than the list scrolls: the track stands for the end of the list alone', async () => {
       await setup({
         scrollY: shared(900),
