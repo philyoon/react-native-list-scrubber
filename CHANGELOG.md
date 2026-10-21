@@ -1,6 +1,14 @@
 # Changelog
 
-## Unreleased
+## 0.5.2
+
+A top bar over a list too short to hide it stays in place instead of sliding out and springing back on every
+swipe.
+
+### Upgrading from 0.5.1
+
+No code needs to change. `topBar.isFixed` is now also true on a list too short to hide the bar, not only with
+a screen reader on, and `hide()` leaves the bar there.
 
 ### Fixed
 
