@@ -152,7 +152,9 @@ export function useListScrubber<
   const revealMs = options.topBar?.revealMs ?? LIST_SCRUBBER_DEFAULTS.topBar.revealMs;
   const revealOnDragToTop =
     options.topBar?.revealOnDragToTop ?? LIST_SCRUBBER_DEFAULTS.topBar.revealOnDragToTop;
-  const snap = barHeight > 0 && (options.topBar?.snap ?? LIST_SCRUBBER_DEFAULTS.topBar.snap);
+  // Not on the web: a page has no touch scrolls to settle, and a mouse or key scroll stops where it means to
+  const snap =
+    barHeight > 0 && Platform.OS !== 'web' && (options.topBar?.snap ?? LIST_SCRUBBER_DEFAULTS.topBar.snap);
   useWarnIfUnstable(userOnScroll);
   const listRef = useAnimatedRef<TList>();
   const scrollY = useSharedValue(0);

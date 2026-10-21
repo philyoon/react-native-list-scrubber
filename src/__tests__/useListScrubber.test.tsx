@@ -613,6 +613,19 @@ describe('useListScrubber({ topBar })', () => {
       expect(mockTimings.at(-1)).toMatchObject({ to: 100 }); // scrolled far enough: it slides out
     });
 
+    it('not on the web, where a drag that ends leaves the bar as it was', async () => {
+      const os = jest.replaceProperty(Platform, 'OS', 'web');
+      const { result, scroll, visible } = await measured();
+      scroll(300);
+      scroll(240); // 40 hidden
+      result.current.isDragging.set(true);
+      scroll(900);
+      await lift(result);
+      expect(mockTimings).toHaveLength(0);
+      expect(await visible()).toBe(60);
+      os.restore();
+    });
+
     it('near the top, a bar left partly shown by a drag slides back in', async () => {
       const { result, swipe, handlers, scroll } = await measured();
       swipe([300, 240], 1.5);
