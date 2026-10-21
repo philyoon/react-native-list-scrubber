@@ -58,6 +58,9 @@ test.beforeEach(({ page }) => {
 });
 test.afterEach(() => expect(messages).toEqual([]));
 
+/** The Collapsible demo's bar edge, which lies over the rows' top (`topBar.overlap`) */
+const EDGE = 12;
+
 test('drags to the end of the list and back', async ({ page }) => {
   await open(page, 'FlatList');
   await expect(page.getByText('Ada Abby')).toBeInViewport();
@@ -150,12 +153,12 @@ test('a collapsible header: the thumb, the bubble and the pinned header follow i
   // The top of the list: where the header is when it shows in full
   const top = (await box(bar)).y;
 
-  // Scrolled a little: the header is partly hidden, the pinned header sits right below what's left of it,
-  // and the thumb starts below both
+  // Scrolled a little: the header is partly hidden, the pinned header sits right below what's left of its
+  // solid part, under its soft bottom edge (the demo's `overlap`), and the thumb starts below both
   const thumb = await showThumb(page);
   const shown = await box(bar);
   const below = await box(pinned);
-  expect(below.y).toBeCloseTo(shown.y + shown.height, 0);
+  expect(below.y).toBeCloseTo(shown.y + shown.height - EDGE, 0);
   expect(thumb.y - 24).toBeGreaterThanOrEqual(below.y + below.height - 1);
   await expect(header(page)).toHaveValue((await rowLetter())!);
 
