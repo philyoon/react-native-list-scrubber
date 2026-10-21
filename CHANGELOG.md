@@ -1,6 +1,17 @@
 # Changelog
 
-## Unreleased
+## 0.5.3
+
+A top bar with `overlap` lines up with the rows below it, and a bar left partly shown by a thumb drag settles.
+
+### Upgrading from 0.5.2
+
+No code needs to change. `ListScrubberTopBar` has an optional `overlap`, which the hook's `topBar` carries to
+the scrubber. Two details behave differently:
+
+- With `overlap` and a pinned header that takes its own space, the pinned header sits `overlap` points higher
+  than before, in the space the list leaves for it, under the bar's edge.
+- On the web, `snap` is off at the source, as documented: a page has no touch scrolls to settle.
 
 ### Fixed
 
