@@ -152,7 +152,9 @@ export function useListScrubber<
   const revealMs = options.topBar?.revealMs ?? LIST_SCRUBBER_DEFAULTS.topBar.revealMs;
   const revealOnDragToTop =
     options.topBar?.revealOnDragToTop ?? LIST_SCRUBBER_DEFAULTS.topBar.revealOnDragToTop;
-  const snap = barHeight > 0 && (options.topBar?.snap ?? LIST_SCRUBBER_DEFAULTS.topBar.snap);
+  // Not on the web: a page has no touch scrolls to settle, and a mouse or key scroll stops where it means to
+  const snap =
+    barHeight > 0 && Platform.OS !== 'web' && (options.topBar?.snap ?? LIST_SCRUBBER_DEFAULTS.topBar.snap);
   useWarnIfUnstable(userOnScroll);
   const listRef = useAnimatedRef<TList>();
   const scrollY = useSharedValue(0);
@@ -256,16 +258,27 @@ export function useListScrubber<
   // With revealOnDragToTop: a drag that ended at the top of the thumb's track is at the first row, below
   // the space the hidden bar left; when the finger lifts, the list scrolls back to the very top and the bar
   // slides in with it. Otherwise, and anywhere else, the bar stays as the drag left it, as after any scroll
-  // down: a scroll up brings it back
+  // down: a scroll up brings it back.
+  // With snap, a bar the drag left partly shown settles: a touch scroll's momentum can end while the thumb
+  // holds the list, and snap waits for the drag. The list stays where the drag left it: the bar slides out
+  // if the list is scrolled far enough for it to hide (that only uncovers rows), else back in
   useAnimatedReaction(
     () => isDragging.get(),
     (dragging, was) => {
-      if (!revealOnDragToTop || !was || dragging || barHeight <= 0) return;
-      if (barHidden.get() <= 0 || scrollY.get() > barHidden.get() + 0.5) return;
-      scrollTo(listRef, 0, 0, true);
-      revealTopBar(barHidden, barSliding, revealMs);
+      if (!was || dragging || barHeight <= 0) return;
+      const hidden = barHidden.get();
+      if (revealOnDragToTop && hidden > 0 && scrollY.get() <= hidden + 0.5) {
+        scrollTo(listRef, 0, 0, true);
+        revealTopBar(barHidden, barSliding, revealMs);
+        return;
+      }
+      if (!snap || hidden < 0.5 || hidden > barHeight - 0.5 || barStaysPut() || barSliding.get()) return;
+      if (scrollY.get() >= barHeight) {
+        const bar = { height: barHeight, hidden: barHidden, fixed: barFixed, revealing: barSliding };
+        hideTopBar(listRef, scrollY, contentHeight, viewportHeight, bar, revealMs);
+      } else revealTopBar(barHidden, barSliding, revealMs);
     },
-    [barHeight, revealMs, revealOnDragToTop],
+    [barHeight, revealMs, revealOnDragToTop, snap, barStaysPut, barFixed],
   );
   const barVisible = useDerivedValue(() => barHeight - barHidden.get());
   // Where the rows come out from under the bar's solid part: its bottom edge, less the `overlap` that lies
