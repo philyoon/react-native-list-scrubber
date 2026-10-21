@@ -2,7 +2,7 @@
 import { AnimatedLegendList } from '@legendapp/list/reanimated';
 import * as Haptics from 'expo-haptics';
 import { FlashList } from '@shopify/flash-list';
-import { useMemo, type ComponentType } from 'react';
+import { useMemo, useState, type ComponentType } from 'react';
 import {
   Platform,
   Pressable,
@@ -296,22 +296,35 @@ function LegendListDemo() {
 
 /** The top bar's height */
 const BAR = 120;
+/** The bar's soft bottom edge, which lies over the top of the pinned header and the rows (`overlap`) */
+const EDGE = 12;
 
 // A top bar (title, count, search field) over the list that slides away as it scrolls down and comes back on
 // a scroll up: useListScrubber's `topBar`. The list's spread draws the space the bar and the pinned letter
-// header need at its top; scrubberProps and pinnedHeaderProps keep both below the bar's visible part.
+// header need at its top; scrubberProps and pinnedHeaderProps keep both below the bar. Its soft bottom edge
+// lies over them (`overlap`), and the search filters the list: a short one, too short to hide the bar,
+// leaves it in place.
 function CollapsibleDemo() {
   const colors = useColors();
+  const [query, setQuery] = useState('');
+  const contacts = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return q ? CONTACTS.filter((c) => c.name.toLowerCase().includes(q)) : CONTACTS;
+  }, [query]);
   const layout = useMemo(
-    () => listLayout(CONTACTS, { sectionLabel: (c) => c.last[0]!.toUpperCase(), itemHeight: ROW }),
-    [],
+    () => listLayout(contacts, { sectionLabel: (c) => c.last[0]!.toUpperCase(), itemHeight: ROW }),
+    [contacts],
   );
-  const scrubber = useListScrubber({ layout, topBar: { height: BAR }, pinnedHeader: { height: HEADER } });
+  const scrubber = useListScrubber({
+    layout,
+    topBar: { height: BAR + EDGE, overlap: EDGE },
+    pinnedHeader: { height: HEADER },
+  });
   return (
     <>
       <Animated.FlatList
         {...scrubber.flatListProps}
-        data={CONTACTS}
+        data={contacts}
         keyExtractor={(c) => c.id}
         renderItem={({ item }) => <ContactRow item={item} colors={colors} />}
         {...FAST_FILL}
@@ -324,13 +337,22 @@ function CollapsibleDemo() {
       <Animated.View {...scrubber.topBarProps} testID="collapsible-header">
         <View style={[styles.bar, { backgroundColor: colors.card }]}>
           <Text style={{ color: colors.text, fontSize: 22, fontWeight: '800' }}>Contacts</Text>
-          <Text style={{ color: colors.secondary }}>3,000 people</Text>
+          <Text style={{ color: colors.secondary }}>{peopleCount(contacts.length)}</Text>
           <TextInput
             placeholder="Search"
             placeholderTextColor={colors.secondary}
+            value={query}
+            onChangeText={setQuery}
+            autoCorrect={false}
             style={[styles.search, { backgroundColor: colors.header, color: colors.text }]}
             testID="collapsible-search"
           />
+        </View>
+        {/* The soft edge: the card's colour fading out over the rows' top */}
+        <View style={styles.edge} pointerEvents="none">
+          {EDGE_STEPS.map((opacity) => (
+            <View key={opacity} style={{ flex: 1, backgroundColor: colors.card, opacity }} />
+          ))}
         </View>
       </Animated.View>
       <Scrubber scrubber={scrubber} />
@@ -384,6 +406,14 @@ export const DEMOS: { name: string; hint: string; Component: ComponentType }[] =
   { name: 'Collapsible', hint: 'A top bar that slides away as you scroll', Component: CollapsibleDemo },
 ];
 
+/** Opacities of the edge's strips, top to bottom: a fade without a gradient library */
+const EDGE_STEPS = [0.85, 0.6, 0.35, 0.12];
+
+/** "3,000 people" */
+function peopleCount(n: number) {
+  return `${String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',')} ${n === 1 ? 'person' : 'people'}`;
+}
+
 const styles = StyleSheet.create({
   row: {
     height: ROW,
@@ -397,7 +427,8 @@ const styles = StyleSheet.create({
   avatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   rowText: { fontSize: 16, fontWeight: '500' },
   header: { height: HEADER, justifyContent: 'center', paddingHorizontal: 16 },
-  bar: { flex: 1, paddingHorizontal: 16, paddingTop: 12, gap: 4 },
+  bar: { height: BAR, paddingHorizontal: 16, paddingTop: 12, gap: 4 },
+  edge: { height: EDGE },
   search: { height: 36, borderRadius: 10, paddingHorizontal: 12, marginTop: 8 },
   index: { flexGrow: 0, borderBottomWidth: StyleSheet.hairlineWidth },
   indexContent: { paddingHorizontal: 8, paddingVertical: 4 },

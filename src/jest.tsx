@@ -96,7 +96,8 @@ export function ListScrubber<S extends ListScrubberSection = ListScrubberSection
 }: ListScrubberProps<S>) {
   const y = useValue(scrollY);
   /** The top bar's visible part and the top inset (a pinned header): the value describes the rows below */
-  const cover = useValue(topBar?.visibleHeight ?? 0) + (insets?.top ?? 0);
+  const cover =
+    Math.max(0, useValue(topBar?.visibleHeight ?? 0) - (topBar?.overlap ?? 0)) + (insets?.top ?? 0);
   const contentHeight = useValue(contentHeightProp);
   const viewportHeight = useValue(viewportHeightProp);
   const maxScroll = contentHeight - viewportHeight;
@@ -176,7 +177,8 @@ export function useListScrubber<S extends readonly ListScrubberSection[] | undef
   const ownHeaders = pinnedHeader?.push ?? layout?.sectionHeaders ?? true;
   const pinnedHeight = pinnedHeader && Math.max(0, pinnedHeader.height);
   const pinnedSpace = pinnedHeight !== undefined && !ownHeaders ? pinnedHeight : 0;
-  const spacerHeight = barHeight - topBarOverlap(barHeight, options.topBar?.overlap) + pinnedSpace;
+  const overlap = topBarOverlap(barHeight, options.topBar?.overlap);
+  const spacerHeight = barHeight - overlap + pinnedSpace;
   const hasLayout = layout !== undefined;
   const given = layout ? layout.sections : options.sections;
   const sections = useMemo(
@@ -254,8 +256,8 @@ export function useListScrubber<S extends readonly ListScrubberSection[] | undef
     const visibleHeight = sharedValue(barHeight);
     const show = () => visibleHeight.set(barHeight);
     const hide = () => {};
-    return { height: barHeight, visibleHeight, isFixed: sharedValue(true), show, hide };
-  }, [barHeight]);
+    return { height: barHeight, overlap, visibleHeight, isFixed: sharedValue(true), show, hide };
+  }, [barHeight, overlap]);
   const topBarProps = useMemo(
     () => ({
       style: [
@@ -280,10 +282,10 @@ export function useListScrubber<S extends readonly ListScrubberSection[] | undef
     () => ({
       scrollY: spacerHeight > 0 ? offsetBy(scrollY, spacerHeight) : scrollY,
       sections: sections ?? NO_SECTIONS,
-      ...(topBar && { top: topBar.visibleHeight }),
+      ...(topBar && { top: sharedValue(barHeight - overlap) }),
       ...(pinnedHeight !== undefined && { height: pinnedHeight, push: ownHeaders }),
     }),
-    [scrollY, topBar, spacerHeight, sections, pinnedHeight, ownHeaders],
+    [scrollY, topBar, barHeight, overlap, spacerHeight, sections, pinnedHeight, ownHeaders],
   );
   return {
     scrollY: values.scrollY,

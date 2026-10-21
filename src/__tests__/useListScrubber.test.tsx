@@ -355,7 +355,7 @@ describe('useListScrubber({ topBar })', () => {
     expect(await visible()).toBe(40);
     const { topBar, scrubberProps, pinnedHeaderProps } = result.current;
     expect(scrubberProps.topBar).toBe(topBar);
-    expect(pinnedHeaderProps.top).toBe(topBar!.visibleHeight);
+    expect(pinnedHeaderProps.top!.get()).toBe(topBar!.visibleHeight.get()); // no overlap: right below it
     expect(pinnedHeaderProps.scrollY.get()).toBe(60 + 40); // the rows just below what shows of the bar
   });
 

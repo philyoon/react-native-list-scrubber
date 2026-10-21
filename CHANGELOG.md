@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- With `topBar: { overlap }`, dragging the thumb to the top while the bar is hidden reaches the first row's
+  top. The track's top stood for the bar's full height, so the first `overlap` points of the rows (a card's
+  rounded top, the first row's padding) stayed above the list. The scrubber gets the overlap from
+  `scrubberProps.topBar.overlap`. Fixes #91.
+- With `topBar: { overlap }` and a pinned header that takes its own space (over a flat list), the pinned
+  header sits in the space the list leaves for it, under the bar's overlapping edge. It sat `overlap` points
+  lower, over the first row's top, and named the rows that much further down; the scrubber's labels likewise.
+
 ## 0.5.2
 
 A top bar over a list too short to hide it stays in place instead of sliding out and springing back on every
