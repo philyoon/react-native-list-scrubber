@@ -256,16 +256,27 @@ export function useListScrubber<
   // With revealOnDragToTop: a drag that ended at the top of the thumb's track is at the first row, below
   // the space the hidden bar left; when the finger lifts, the list scrolls back to the very top and the bar
   // slides in with it. Otherwise, and anywhere else, the bar stays as the drag left it, as after any scroll
-  // down: a scroll up brings it back
+  // down: a scroll up brings it back.
+  // With snap, a bar the drag left partly shown settles: a touch scroll's momentum can end while the thumb
+  // holds the list, and snap waits for the drag. The list stays where the drag left it: the bar slides out
+  // if the list is scrolled far enough for it to hide (that only uncovers rows), else back in
   useAnimatedReaction(
     () => isDragging.get(),
     (dragging, was) => {
-      if (!revealOnDragToTop || !was || dragging || barHeight <= 0) return;
-      if (barHidden.get() <= 0 || scrollY.get() > barHidden.get() + 0.5) return;
-      scrollTo(listRef, 0, 0, true);
-      revealTopBar(barHidden, barSliding, revealMs);
+      if (!was || dragging || barHeight <= 0) return;
+      const hidden = barHidden.get();
+      if (revealOnDragToTop && hidden > 0 && scrollY.get() <= hidden + 0.5) {
+        scrollTo(listRef, 0, 0, true);
+        revealTopBar(barHidden, barSliding, revealMs);
+        return;
+      }
+      if (!snap || hidden < 0.5 || hidden > barHeight - 0.5 || barStaysPut() || barSliding.get()) return;
+      if (scrollY.get() >= barHeight) {
+        const bar = { height: barHeight, hidden: barHidden, fixed: barFixed, revealing: barSliding };
+        hideTopBar(listRef, scrollY, contentHeight, viewportHeight, bar, revealMs);
+      } else revealTopBar(barHidden, barSliding, revealMs);
     },
-    [barHeight, revealMs, revealOnDragToTop],
+    [barHeight, revealMs, revealOnDragToTop, snap, barStaysPut, barFixed],
   );
   const barVisible = useDerivedValue(() => barHeight - barHidden.get());
   const isFixed = useDerivedValue(barStaysPut);

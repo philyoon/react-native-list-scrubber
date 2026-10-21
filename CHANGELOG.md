@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- A top bar left partly shown when a thumb drag catches the list mid-scroll settles when the drag ends. A
+  touch scroll's momentum could end during the drag, where snap waits, and the bar then stayed half open. Now,
+  with `snap`, a drag that ends with the bar partly shown slides it out if the list is scrolled far enough for
+  it to hide, else back in, without moving the list.
+
 ## 0.5.2
 
 A top bar over a list too short to hide it stays in place instead of sliding out and springing back on every

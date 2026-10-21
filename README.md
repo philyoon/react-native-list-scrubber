@@ -208,7 +208,9 @@ const scrubber = useListScrubber({ layout, topBar: { height: BAR }, pinnedHeader
 - When a scroll ends with the bar partly shown, it settles: the list scrolls the rest of the way, so the bar
   ends up shown if less than half of it was hidden, and hidden otherwise (shown, if the list can't scroll far
   enough down to hide it). Only after a scroll by touch, not a thumb drag or scrolling from code, and not on
-  the web. `topBar: { height: BAR, snap: false }` leaves it where the scroll left it.
+  the web. If a touch scroll's momentum ends while the thumb holds the list, the bar settles when the drag
+  ends, without moving the list: out if the list is scrolled far enough, else back in.
+  `topBar: { height: BAR, snap: false }` leaves it where the scroll left it.
 - During a thumb drag the bar stays as it was, so big jumps don't show and hide it. The drag reaches the first
   row, not the empty space a hidden bar leaves above it. After the drag the bar stays as the drag left it, and
   a scroll up brings it back.

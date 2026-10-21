@@ -599,6 +599,31 @@ describe('useListScrubber({ topBar })', () => {
       expect(mockScrollTo).toHaveBeenCalledTimes(1);
     });
 
+    // A touch scroll's momentum can end during a thumb drag that caught the list mid-flight: snap waits for
+    // the drag, then settles the bar where the drag left the list, without scrolling it
+    it('a momentum that ends during a thumb drag: the bar settles when the drag ends', async () => {
+      const { result, swipe, handlers, scroll, visible } = await measured();
+      swipe([300, 240], 1.5); // 40 hidden; momentum follows
+      result.current.isDragging.set(true); // the thumb catches the list
+      handlers().onMomentumEnd();
+      scroll(900); // the drag's scroll: the bar stays as it was
+      expect(await visible()).toBe(60);
+      await lift(result);
+      expect(mockScrollTo).not.toHaveBeenCalled(); // the list stays where the drag left it
+      expect(mockTimings.at(-1)).toMatchObject({ to: 100 }); // scrolled far enough: it slides out
+    });
+
+    it('near the top, a bar left partly shown by a drag slides back in', async () => {
+      const { result, swipe, handlers, scroll } = await measured();
+      swipe([300, 240], 1.5);
+      result.current.isDragging.set(true);
+      handlers().onMomentumEnd();
+      scroll(50); // the drag ends near the top: not scrolled far enough to hide it
+      await lift(result);
+      expect(mockScrollTo).not.toHaveBeenCalled();
+      expect(mockTimings.at(-1)).toMatchObject({ to: 0 }); // nothing hidden: it slides in
+    });
+
     it('not after scrolling from code, during a thumb drag, while fixed or sliding in, or when off', async () => {
       const { result, swipe, handlers, scroll } = await measured();
       scroll(300);
