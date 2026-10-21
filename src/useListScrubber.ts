@@ -175,6 +175,28 @@ export function useListScrubber<
     barPinned.set(screenReader);
     if (screenReader) scheduleOnUI(revealTopBar, barHidden, barSliding, revealMs);
   }, [screenReader, barPinned, barHidden, barSliding, revealMs]);
+  // The bar also stays in place on a list that can't scroll far enough to hide it (its scroll range is
+  // shorter than the bar): following the scroll there, it slid partly out and then back in at the end of
+  // every swipe. Read where it's needed, from the list's current sizes
+  const { barStaysPut, barFixed } = useMemo(() => {
+    const staysPut = () => {
+      'worklet';
+      const range = contentHeight.get() - viewportHeight.get();
+      return barPinned.get() || (barHeight > 0 && range < barHeight - 0.5);
+    };
+    return { barStaysPut: staysPut, barFixed: { get: staysPut } };
+  }, [barPinned, barHeight, contentHeight, viewportHeight]);
+  // If the list gets that short while the bar is partly hidden (e.g. a search leaves a few rows), the bar
+  // slides back in
+  useAnimatedReaction(
+    barStaysPut,
+    (fixed, was) => {
+      if (fixed && !was && barHidden.get() > 0 && !barSliding.get()) {
+        revealTopBar(barHidden, barSliding, revealMs);
+      }
+    },
+    [barStaysPut, revealMs],
+  );
   /** A touch scroll is under way (snap): set when the finger starts it, cleared once the bar is settled */
   const touchScrolling = useSharedValue(false);
   // Snap: when a touch scroll ends with the bar partly shown, the list scrolls the rest of the way, so the
@@ -185,7 +207,7 @@ export function useListScrubber<
     'worklet';
     if (!touchScrolling.get()) return;
     touchScrolling.set(false);
-    if (barPinned.get() || barSliding.get() || isDragging.get()) return;
+    if (barStaysPut() || barSliding.get() || isDragging.get()) return;
     const maxScroll = Math.max(0, contentHeight.get() - viewportHeight.get());
     const to = snapTarget(barHeight, barHidden.get(), scrollY.get(), maxScroll);
     if (to !== undefined) scrollTo(listRef, 0, to, true);
@@ -198,7 +220,7 @@ export function useListScrubber<
         // the very top. Pull-to-refresh and iOS's bounce (negative offsets) don't move it. During a drag it
         // stays as it was (big jumps would show and hide it); while it slides back in,
         // the drag's last scroll mustn't stop it
-        if (barHeight > 0 && !barPinned.get() && !isDragging.get() && !barSliding.get()) {
+        if (barHeight > 0 && !barStaysPut() && !isDragging.get() && !barSliding.get()) {
           const now = Math.max(0, y);
           const delta = now - Math.max(0, scrollY.get());
           barHidden.set(clamp(barHidden.get() + delta, 0, Math.min(barHeight, now)));
@@ -246,6 +268,7 @@ export function useListScrubber<
     [barHeight, revealMs, revealOnDragToTop],
   );
   const barVisible = useDerivedValue(() => barHeight - barHidden.get());
+  const isFixed = useDerivedValue(barStaysPut);
   const topBarStyle = useAnimatedStyle(() => ({ transform: [{ translateY: -barHidden.get() }] }));
   const topBar = useMemo(
     () =>
@@ -253,10 +276,10 @@ export function useListScrubber<
         ? {
             height: barHeight,
             visibleHeight: barVisible,
-            isFixed: barPinned,
+            isFixed,
             show: () => scheduleOnUI(revealTopBar, barHidden, barSliding, revealMs),
             hide: () => {
-              const bar = { height: barHeight, hidden: barHidden, fixed: barPinned, revealing: barSliding };
+              const bar = { height: barHeight, hidden: barHidden, fixed: barFixed, revealing: barSliding };
               scheduleOnUI(hideTopBar, listRef, scrollY, contentHeight, viewportHeight, bar, revealMs);
             },
           }
@@ -264,7 +287,8 @@ export function useListScrubber<
     [
       barHeight,
       barVisible,
-      barPinned,
+      isFixed,
+      barFixed,
       barHidden,
       barSliding,
       revealMs,
@@ -370,7 +394,7 @@ export function useListScrubber<
     [topBarLayout, topBarStyle, showTopBar],
   );
   const scrollToOffset = useLatest((offset: number, { animated = false }: ScrollOptions = {}) => {
-    const bar = { height: barHeight, hidden: barHidden, fixed: barPinned, revealing: barSliding };
+    const bar = { height: barHeight, hidden: barHidden, fixed: barFixed, revealing: barSliding };
     const to = offset - pinnedSpace; // the pinned header covers the top below the bar for good
     scheduleOnUI(scrollToVisible, listRef, scrollY, contentHeight, viewportHeight, bar, to, animated);
   });
@@ -417,7 +441,7 @@ function scrollToVisible(
   bar: {
     height: number;
     hidden: SharedValue<number>;
-    fixed: SharedValue<boolean>;
+    fixed: { get(): boolean };
     revealing: SharedValue<boolean>;
   },
   offset: number,
@@ -478,7 +502,7 @@ function hideTopBar(
   bar: {
     height: number;
     hidden: SharedValue<number>;
-    fixed: SharedValue<boolean>;
+    fixed: { get(): boolean };
     revealing: SharedValue<boolean>;
   },
   durationMs: number,

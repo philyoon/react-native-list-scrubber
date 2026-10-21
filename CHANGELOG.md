@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- A top bar over a list too short to hide it (the list scrolls less than the bar is tall) stays in place, and
+  only the rows move. Following the scroll there, it slid partly out during every swipe and snapped back in
+  when the swipe ended. If the list gets that short while the bar is partly hidden (e.g. a search leaves a few
+  rows), the bar slides back in. `topBar.isFixed` is true then too, and `hide()` leaves the bar. Fixes #88.
+
 ## 0.5.1
 
 Steadier under load: a continuous thumb drag no longer piles up scrolls on the JS thread, and a section label

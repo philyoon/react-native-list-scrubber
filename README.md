@@ -202,6 +202,9 @@ const scrubber = useListScrubber({ layout, topBar: { height: BAR }, pinnedHeader
   header stay below all of it.
 - The bar follows the scroll by as much as it moves, up or down, and is always shown at the very top of the
   list. The scrubber and the pinned header stay below its visible part.
+- On a list too short to hide it (it scrolls less than the bar is tall), the bar stays in place and only the
+  rows move. If the list gets that short while the bar is partly hidden, e.g. after a search, it slides back
+  in.
 - When a scroll ends with the bar partly shown, it settles: the list scrolls the rest of the way, so the bar
   ends up shown if less than half of it was hidden, and hidden otherwise (shown, if the list can't scroll far
   enough down to hide it). Only after a scroll by touch, not a thumb drag or scrolling from code, and not on
