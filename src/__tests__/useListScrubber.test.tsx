@@ -3,6 +3,14 @@ import { act, renderHook } from '@testing-library/react-native';
 import { AccessibilityInfo, Platform } from 'react-native';
 import { LIST_SCRUBBER_DEFAULTS, ListScrubber, useListScrubber } from '../index';
 
+/** The list lays out as a real one does: a 600 pt viewport over 12,000 pt of rows, long enough for any bar */
+function measure(list: ReturnType<typeof useListScrubber>) {
+  return act(() => {
+    list.listProps.onLayout({ nativeEvent: { layout: { height: 600 } } } as never);
+    list.listProps.onContentSizeChange(390, 12000);
+  });
+}
+
 describe('useListScrubber', () => {
   it('measures the list from its layout and content size', async () => {
     const { result } = await renderHook(() => useListScrubber());
@@ -224,6 +232,7 @@ describe('useListScrubber({ topBar })', () => {
   };
   async function withBar(height = 100, bar: BarOptions = {}) {
     const hook = await renderHook(() => useListScrubber({ topBar: { height, ...bar } }));
+    await measure(hook.result.current);
     const scroll = (y: number) =>
       (hook.result.current.listProps.onScroll as unknown as (e: unknown) => void)({ contentOffset: { y } });
     /** What shows of the bar (a derived value: the mock computes it on render) */
@@ -390,7 +399,8 @@ describe('useListScrubber({ topBar })', () => {
     const uiFrame = () => act(() => jest.advanceTimersByTime(20));
 
     it('brings an offset to just below the bar, where it will be once it has followed the scroll', async () => {
-      const { result, scroll } = await measured();
+      const { result, scroll, rerender } = await measured();
+      await rerender({}); // isFixed is derived: it follows the list's sizes on a render
       expect(result.current.topBar!.isFixed.get()).toBe(false);
       // Down from the top: scrolling 500 hides the bar, so the offset lands at the very top
       result.current.scrollToOffset(500);
@@ -441,7 +451,7 @@ describe('useListScrubber({ topBar })', () => {
       expect(await visible()).toBe(10);
     });
 
-    it('near the top, scrolls the list down by what shows, as far as it can; the bar follows', async () => {
+    it('near the top, scrolls the list down by what shows; the bar follows', async () => {
       const { result, scroll } = await withBar();
       const measure = (content: number) =>
         act(() => {
@@ -453,26 +463,70 @@ describe('useListScrubber({ topBar })', () => {
       result.current.topBar!.hide();
       await uiFrame();
       expect(mockScrollTo).toHaveBeenLastCalledWith(result.current.listProps.ref, 0, 100, true);
-      await measure(650); // scrolls up to 50
+      await measure(650); // scrolls up to 50: too short to hide the bar, which stays in place
+      mockScrollTo.mockClear();
       result.current.topBar!.hide();
       await uiFrame();
-      expect(mockScrollTo).toHaveBeenLastCalledWith(result.current.listProps.ref, 0, 50, true);
+      expect(mockScrollTo).not.toHaveBeenCalled();
     });
 
     it('leaves it when it stays in place or is hidden already', async () => {
       const { result, scroll } = await withBar();
-      scroll(500);
-      result.current.topBar!.isFixed.set(true);
-      scroll(450);
+      const content = (height: number) =>
+        act(() => result.current.listProps.onContentSizeChange(390, height));
+      await content(650); // too short to hide the bar: it stays in place
+      scroll(30);
       const timings = mockTimings.length;
       result.current.topBar!.hide();
       await uiFrame();
-      result.current.topBar!.isFixed.set(false);
+      await content(12000);
       scroll(1000);
       result.current.topBar!.hide();
       await uiFrame();
       expect(mockTimings).toHaveLength(timings);
       expect(mockScrollTo).not.toHaveBeenCalled();
+    });
+  });
+
+  // #88: following the scroll there, the bar slid partly out, then snapped back in at the end of every swipe
+  describe('on a list too short to hide it (its scroll range is shorter than the bar)', () => {
+    type Handlers = { onBeginDrag: () => void; onEndDrag: (e: unknown) => void };
+    async function shortList() {
+      const bar = await withBar(100);
+      const content = (height: number) =>
+        act(() => bar.result.current.listProps.onContentSizeChange(390, height));
+      await content(660); // scrolls up to 60
+      return { ...bar, content };
+    }
+
+    it('stays in place: a swipe moves the rows only, with nothing to snap back', async () => {
+      const { result, scroll, visible, rerender } = await shortList();
+      const handlers = result.current.listProps.onScroll as unknown as Handlers;
+      handlers.onBeginDrag();
+      scroll(30);
+      scroll(60);
+      handlers.onEndDrag({ velocity: { x: 0, y: 0 } });
+      expect(await visible()).toBe(100);
+      expect(mockScrollTo).not.toHaveBeenCalled();
+      await rerender({});
+      expect(result.current.topBar!.isFixed.get()).toBe(true);
+    });
+
+    it('a list that gets that short while the bar is partly hidden brings it back', async () => {
+      const { result, scroll, visible, content } = await shortList();
+      await content(12000);
+      scroll(60);
+      expect(await visible()).toBe(40);
+      await content(660); // e.g. a search leaves a few rows
+      // The hook's reaction to whether the bar stays in place (before the visibility's and the drag's)
+      const reaction = mockReactions.at(-3)!;
+      await act(async () => reaction.react(reaction.prepare(), false));
+      expect(mockTimings.at(-1)).toMatchObject({ to: 0 }); // nothing hidden: slides back in
+      // Only when it starts staying in place, not again while it does
+      const slides = mockTimings.length;
+      await act(async () => reaction.react(reaction.prepare(), true));
+      expect(mockTimings).toHaveLength(slides);
+      expect(result.current.topBar!.height).toBe(100);
     });
   });
 
@@ -553,9 +607,11 @@ describe('useListScrubber({ topBar })', () => {
       result.current.isDragging.set(true);
       swipe([300, 240]);
       result.current.isDragging.set(false);
-      result.current.topBar!.isFixed.set(true);
-      swipe([300, 240]);
-      result.current.topBar!.isFixed.set(false);
+      const content = (height: number) =>
+        act(() => result.current.listProps.onContentSizeChange(390, height));
+      await content(650); // too short to hide the bar: it stays in place
+      swipe([40, 30]);
+      await content(2000);
       result.current.topBar!.show();
       await act(() => jest.advanceTimersByTime(20)); // sliding in until its animation ends
       swipe([300, 240]);
@@ -594,6 +650,7 @@ describe('useListScrubber({ topBar }) with a screen reader', () => {
 
   async function withBar() {
     const hook = await renderHook(() => useListScrubber({ topBar: { height: 100 } }));
+    await measure(hook.result.current);
     await act(async () => {}); // the screen reader's state arrives
     const scroll = (y: number) =>
       (hook.result.current.listProps.onScroll as unknown as (e: unknown) => void)({ contentOffset: { y } });

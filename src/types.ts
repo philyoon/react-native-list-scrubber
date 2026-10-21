@@ -9,7 +9,10 @@ export interface ListScrubberTopBar {
   height: number;
   /** How much of it shows now (pt), on the UI thread */
   visibleHeight: SharedValue<number>;
-  /** True while it stays in place as the list scrolls (with a screen reader on), on the UI thread */
+  /**
+   * True while it stays in place as the list scrolls, on the UI thread: with a screen reader on, or on a list
+   * too short to hide it (its scroll range is shorter than the bar)
+   */
   isFixed: SharedValue<boolean>;
 }
 
