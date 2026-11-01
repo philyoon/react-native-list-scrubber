@@ -57,7 +57,7 @@ jobs:
           echo "MAESTRO_DEVICE=$udid" >> "$GITHUB_ENV"
       # CocoaPods' downloads, under the inputs expo prebuild generates the Podfile from (Podfile.lock doesn't exist
       # until then)
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/Library/Caches/CocoaPods
           key: cocoapods-${{ hashFiles('example/package-lock.json', 'example/app.json') }}
@@ -65,7 +65,7 @@ jobs:
       - run: echo "XCODE=$(xcodebuild -version | head -1 | tr -d ' ')" >> "$GITHUB_ENV"
       # ExpoModulesJSI's framework, built into node_modules by a build phase (about 1 min), which npm ci removes.
       # The build script skips slices whose source hash matches.
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v6
         id: jsi-cache
         with:
           path: &jsi-cache example/node_modules/expo-modules-jsi/apple/Products
@@ -93,16 +93,16 @@ jobs:
         env:
           NO_INSTALL: 1
           E2E_DERIVED_DATA: ${{ runner.temp }}/DerivedData
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@v6
         if: github.event_name != 'pull_request' && steps.jsi-cache.outputs.cache-hit != 'true'
         with:
           path: *jsi-cache
           key: expo-jsi-${{ env.XCODE }}-${{ hashFiles('example/package-lock.json') }}
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 17
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         id: maestro-cache
         with:
           path: ~/.maestro
@@ -124,7 +124,7 @@ jobs:
           sh scripts/e2e.sh ios e2e/lists.yaml e2e/passthrough.yaml e2e/collapsible.yaml e2e/flatlist.yaml
           e2e/middle.yaml e2e/scrollview.yaml e2e/index.yaml e2e/accessibility.yaml e2e/large-text
         working-directory: example
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: e2e-ios
@@ -140,13 +140,13 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: example/package-lock.json
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 17
       - run: npm --prefix example ci
       # Gradle's downloads and its build cache (e2e-build.sh builds with --build-cache), under the native inputs
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v6
         id: gradle-cache
         with:
           path: &gradle-cache |
@@ -161,14 +161,14 @@ jobs:
         env:
           # The CI emulator's architecture only
           ANDROID_ARCH: x86_64
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@v6
         if: github.event_name != 'pull_request' && steps.gradle-cache.outputs.cache-hit != 'true'
         with:
           path: *gradle-cache
           key:
             android-gradle-${{ hashFiles('example/package-lock.json', 'example/app.json',
             'example/scripts/e2e-build.sh') }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: android-app
           path: example/android/app/build/outputs/apk/release/app-release.apk
@@ -192,7 +192,7 @@ jobs:
             flows: e2e/landscape.yaml e2e/scrollview.yaml e2e/index.yaml e2e/accessibility.yaml e2e/large-text
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 17
@@ -201,7 +201,7 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         id: maestro-cache
         with:
           path: ~/.maestro
@@ -210,12 +210,12 @@ jobs:
         if: steps.maestro-cache.outputs.cache-hit != 'true'
         run: curl -fsSL https://get.maestro.mobile.dev | bash
       - run: echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: android-app
           path: example
       # The emulator boots from a snapshot kept between runs (the emulator action's recommended setup)
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         id: avd-cache
         with:
           path: |
@@ -252,7 +252,7 @@ jobs:
           script: |
             adb install -r app-release.apk
             sh scripts/e2e.sh android ${{ matrix.shard.flows }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: e2e-android-${{ matrix.shard.name }}
