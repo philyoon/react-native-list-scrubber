@@ -199,7 +199,7 @@ export function useListScrubber<
         revealTopBar(barHidden, barSliding, revealMs);
       }
     },
-    [barStaysPut, revealMs],
+    webDeps([barStaysPut, revealMs]),
   );
   /** A touch scroll is under way (snap): set when the finger starts it, cleared once the bar is settled */
   const touchScrolling = useSharedValue(false);
@@ -271,7 +271,7 @@ export function useListScrubber<
         settle();
       },
     },
-    [userOnScroll, barHeight, snap, barFixed, revealMs],
+    webDeps([userOnScroll, barHeight, snap, barFixed, revealMs]),
   );
   // onVisibilityChange: called when the bar ends up shown or hidden in full; it starts shown
   const onVisibilityChange = useLatest(options.topBar?.onVisibilityChange ?? ignore);
@@ -286,7 +286,7 @@ export function useListScrubber<
       lastVisibility.set(visibility);
       scheduleOnRN(onVisibilityChange, visibility);
     },
-    [barHeight],
+    webDeps([barHeight]),
   );
   // With revealOnDragToTop: a drag that ended at the top of the thumb's track is at the first row, below
   // the space the hidden bar left; when the finger lifts, the list scrolls back to the very top and the bar
@@ -311,7 +311,7 @@ export function useListScrubber<
         hideTopBar(listRef, codeScroll, scrollY, contentHeight, viewportHeight, bar, revealMs);
       } else revealTopBar(barHidden, barSliding, revealMs);
     },
-    [barHeight, revealMs, revealOnDragToTop, snap, barStaysPut, barFixed],
+    webDeps([barHeight, revealMs, revealOnDragToTop, snap, barStaysPut, barFixed]),
   );
   const barVisible = useDerivedValue(() => barHeight - barHidden.get());
   // Where the rows come out from under the bar's solid part: its bottom edge, less the `overlap` that lies
@@ -608,6 +608,14 @@ function hideTopBar(
 }
 
 function ignore() {}
+
+/**
+ * A worklet hook's dependency array, on the web only: there, without Reanimated's Babel plugin, it's what
+ * updates the worklet. On iOS and Android the plugin does that, and Reanimated warns about any array it gets
+ */
+function webDeps<T extends unknown[]>(deps: T): T | undefined {
+  return Platform.OS === 'web' ? deps : undefined;
+}
 
 /** Where the top bar sits: over the top of the list, as wide as it */
 const TOP_BAR: ViewStyle = { position: 'absolute', top: 0, left: 0, right: 0 };
