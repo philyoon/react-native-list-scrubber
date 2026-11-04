@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- With Reanimated 4.7 on iOS and Android, a development build no longer logs "Dependencies should only be used
+  on the web and are always ignored on native" when a list using `useListScrubber` mounts. The hook now passes
+  its worklet hooks' dependency arrays on the web only, where they're used.
+
 ## 0.5.4
 
 A top bar no longer slides back in when rows are deleted at the end of the list, and a swipe up at the end
