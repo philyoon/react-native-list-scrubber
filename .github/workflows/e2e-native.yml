@@ -249,7 +249,10 @@ jobs:
             -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           working-directory: example
           # Each line runs in its own shell
+          # No "isn't responding" dialogs: the CI emulator's launcher can stall and its dialog then covers the app,
+          # so Maestro can't see the app behind it
           script: |
+            adb shell settings put global hide_error_dialogs 1
             adb install -r app-release.apk
             sh scripts/e2e.sh android ${{ matrix.shard.flows }}
       - uses: actions/upload-artifact@v7
