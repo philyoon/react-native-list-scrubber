@@ -11,7 +11,7 @@ jest.useFakeTimers({ doNotFake: ['queueMicrotask'] });
 
 export const mockScrollTo = jest.fn();
 type ScrollHandlers = Partial<
-  Record<'onScroll' | 'onBeginDrag' | 'onEndDrag' | 'onMomentumEnd', (e: unknown) => void>
+  Record<'onScroll' | 'onBeginDrag' | 'onEndDrag' | 'onMomentumBegin' | 'onMomentumEnd', (e: unknown) => void>
 >;
 export type Reaction = { prepare: () => unknown; react: (cur: unknown, prev: unknown) => void };
 export const mockReactions: Reaction[] = [];
@@ -70,6 +70,7 @@ jest.mock('react-native-reanimated', () => {
         return Object.assign(call('onScroll'), {
           onBeginDrag: call('onBeginDrag'),
           onEndDrag: call('onEndDrag'),
+          onMomentumBegin: call('onMomentumBegin'),
           onMomentumEnd: call('onMomentumEnd'),
         });
       }, []);

@@ -25,7 +25,7 @@ import {
 } from 'react-native-reanimated';
 import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
 import { LIST_SCRUBBER_DEFAULTS } from './defaults';
-import { clamp, scrollBelowBar, snapTarget } from './math';
+import { clamp, scrollBelowBar, slidesOutAtEnd, snapTarget } from './math';
 import { useListHeader, type ListHeaderContent } from './ListHeader';
 import type { ListScrubberLayout, ListScrubberSection, ListScrubberTopBar } from './types';
 import { useLatest } from './useLatest';
@@ -40,7 +40,9 @@ interface BaseOptions {
    * `revealOnDragToTop`, a drag that ends at the top of the list brings it back when the finger lifts, and
    * the list scrolls to the very top with it. It slides in over `revealMs` (default:
    * LIST_SCRUBBER_DEFAULTS.topBar.revealMs). With `snap` (the default), a touch scroll that leaves it partly
-   * shown settles it when the scroll ends, shown or hidden, whichever is closer; not on the web.
+   * shown settles it when the scroll ends, shown or hidden, whichever is closer (at the end of the list,
+   * where it can't scroll far enough to hide it, a swipe up slides it out in place); not on the web. A scroll
+   * up the list makes by itself (its content got shorter) leaves it as it is.
    * `onVisibilityChange` is called on the JS thread when it ends up shown or hidden in full, not while it's
    * part way. `overlap` is how much of its bottom lies over the first row rather than above it (a fade, a
    * curved edge): the space the list leaves for it is `height - overlap`, and it still slides by `height`.
@@ -201,6 +203,12 @@ export function useListScrubber<
   );
   /** A touch scroll is under way (snap): set when the finger starts it, cleared once the bar is settled */
   const touchScrolling = useSharedValue(false);
+  /** How much of the bar was hidden when the finger started the touch scroll */
+  const hiddenAtTouch = useSharedValue(0);
+  /** A finger or the momentum it left moves the list */
+  const touchMoving = useSharedValue(false);
+  /** Where a scroll the hook started from code (snap, scrollToOffset, hide()) is going; NaN when none is */
+  const codeScroll = useSharedValue(NaN);
   // Snap: when a touch scroll ends with the bar partly shown, the list scrolls the rest of the way, so the
   // bar and the rows move together as they did during the scroll. Only after a touch: scrolling from code
   // (scrollToSection, the thumb) already lands where it means to. The end is the finger lifting without
@@ -211,8 +219,16 @@ export function useListScrubber<
     touchScrolling.set(false);
     if (barStaysPut() || barSliding.get() || isDragging.get()) return;
     const maxScroll = Math.max(0, contentHeight.get() - viewportHeight.get());
-    const to = snapTarget(barHeight, barHidden.get(), scrollY.get(), maxScroll);
-    if (to !== undefined) scrollTo(listRef, 0, to, true);
+    const hidden = barHidden.get();
+    const y = scrollY.get();
+    // At the end of the list a swipe up can't scroll far enough to hide the bar: it slides out in place
+    if (slidesOutAtEnd(barHeight, hidden, y, maxScroll, hiddenAtTouch.get())) {
+      const bar = { height: barHeight, hidden: barHidden, fixed: barFixed, revealing: barSliding };
+      hideTopBar(listRef, codeScroll, scrollY, contentHeight, viewportHeight, bar, revealMs);
+      return;
+    }
+    const to = snapTarget(barHeight, hidden, y, maxScroll);
+    if (to !== undefined) scrollListTo(listRef, codeScroll, y, to, true);
   };
   const onScroll = useAnimatedScrollHandler(
     {
@@ -221,24 +237,41 @@ export function useListScrubber<
         // The top bar follows the scroll by as much as it moves, up or down, within its height, and shows at
         // the very top. Pull-to-refresh and iOS's bounce (negative offsets) don't move it. During a drag it
         // stays as it was (big jumps would show and hide it); while it slides back in,
-        // the drag's last scroll mustn't stop it
+        // the drag's last scroll mustn't stop it.
+        // A scroll up that no finger, momentum or scroll of the hook's own explains is the list moving by
+        // itself: its content got shorter (rows deleted at the end) or its viewport taller, and it clamped
+        // its offset. The bar stays as it is then, only never over the space above the rows. Not on the web,
+        // where a wheel or key scroll comes with no touch events
         if (barHeight > 0 && !barStaysPut() && !isDragging.get() && !barSliding.get()) {
           const now = Math.max(0, y);
           const delta = now - Math.max(0, scrollY.get());
-          barHidden.set(clamp(barHidden.get() + delta, 0, Math.min(barHeight, now)));
+          const byItself =
+            delta < 0 && Platform.OS !== 'web' && !touchMoving.get() && isNaN(codeScroll.get());
+          barHidden.set(clamp(barHidden.get() + (byItself ? 0 : delta), 0, Math.min(barHeight, now)));
         }
+        if (Math.abs(y - codeScroll.get()) < 1) codeScroll.set(NaN);
         scrollY.set(y);
         userOnScroll?.(e);
       },
       onBeginDrag: () => {
+        touchMoving.set(true);
+        codeScroll.set(NaN);
+        hiddenAtTouch.set(barHidden.get());
         if (snap) touchScrolling.set(true);
       },
       onEndDrag: (e) => {
-        if (!e.velocity?.y) settle();
+        if (e.velocity?.y) return;
+        touchMoving.set(false);
+        settle();
       },
-      onMomentumEnd: () => settle(),
+      // iOS bounces back from an overscroll as momentum, even after a lift with no velocity
+      onMomentumBegin: () => touchMoving.set(true),
+      onMomentumEnd: () => {
+        touchMoving.set(false);
+        settle();
+      },
     },
-    [userOnScroll, barHeight, snap],
+    [userOnScroll, barHeight, snap, barFixed, revealMs],
   );
   // onVisibilityChange: called when the bar ends up shown or hidden in full; it starts shown
   const onVisibilityChange = useLatest(options.topBar?.onVisibilityChange ?? ignore);
@@ -268,14 +301,14 @@ export function useListScrubber<
       if (!was || dragging || barHeight <= 0) return;
       const hidden = barHidden.get();
       if (revealOnDragToTop && hidden > 0 && scrollY.get() <= hidden + 0.5) {
-        scrollTo(listRef, 0, 0, true);
+        scrollListTo(listRef, codeScroll, scrollY.get(), 0, true);
         revealTopBar(barHidden, barSliding, revealMs);
         return;
       }
       if (!snap || hidden < 0.5 || hidden > barHeight - 0.5 || barStaysPut() || barSliding.get()) return;
       if (scrollY.get() >= barHeight) {
         const bar = { height: barHeight, hidden: barHidden, fixed: barFixed, revealing: barSliding };
-        hideTopBar(listRef, scrollY, contentHeight, viewportHeight, bar, revealMs);
+        hideTopBar(listRef, codeScroll, scrollY, contentHeight, viewportHeight, bar, revealMs);
       } else revealTopBar(barHidden, barSliding, revealMs);
     },
     [barHeight, revealMs, revealOnDragToTop, snap, barStaysPut, barFixed],
@@ -297,7 +330,16 @@ export function useListScrubber<
             show: () => scheduleOnUI(revealTopBar, barHidden, barSliding, revealMs),
             hide: () => {
               const bar = { height: barHeight, hidden: barHidden, fixed: barFixed, revealing: barSliding };
-              scheduleOnUI(hideTopBar, listRef, scrollY, contentHeight, viewportHeight, bar, revealMs);
+              scheduleOnUI(
+                hideTopBar,
+                listRef,
+                codeScroll,
+                scrollY,
+                contentHeight,
+                viewportHeight,
+                bar,
+                revealMs,
+              );
             },
           }
         : undefined,
@@ -311,6 +353,7 @@ export function useListScrubber<
       barSliding,
       revealMs,
       listRef,
+      codeScroll,
       scrollY,
       contentHeight,
       viewportHeight,
@@ -414,7 +457,8 @@ export function useListScrubber<
   const scrollToOffset = useLatest((offset: number, { animated = false }: ScrollOptions = {}) => {
     const bar = { height: barHeight, hidden: barHidden, fixed: barFixed, revealing: barSliding };
     const to = offset - pinnedSpace; // the pinned header covers the top below the bar for good
-    scheduleOnUI(scrollToVisible, listRef, scrollY, contentHeight, viewportHeight, bar, to, animated);
+    const list = { ref: listRef, codeScroll };
+    scheduleOnUI(scrollToVisible, list, scrollY, contentHeight, viewportHeight, bar, to, animated);
   });
   const scrollToSection = useLatest((index: number, scrollOptions?: ScrollOptions) => {
     const section = sections?.[index];
@@ -447,12 +491,30 @@ export function useListScrubber<
 }
 
 /**
+ * Scrolls the list from code, from `from` to `to`, marking the scroll as the hook's own in `codeScroll` until
+ * it gets there: the top bar follows it as it follows a touch scroll. Defined first: a worklet captures the
+ * worklets it calls when it's defined
+ */
+function scrollListTo(
+  listRef: AnimatedRef<any>,
+  codeScroll: SharedValue<number>,
+  from: number,
+  to: number,
+  animated: boolean,
+) {
+  'worklet';
+  // Already there, no scroll event comes to clear it
+  codeScroll.set(Math.abs(to - from) < 1 ? NaN : to);
+  scrollTo(listRef, 0, to, animated);
+}
+
+/**
  * Scrolls so content offset `offset` comes to the top of the list's visible part, below a top bar where it
  * will be once it has followed the scroll; within the list's range, read on the UI thread where the sizes and
  * the bar are current
  */
 function scrollToVisible(
-  listRef: AnimatedRef<any>,
+  list: { ref: AnimatedRef<any>; codeScroll: SharedValue<number> },
   scrollY: SharedValue<number>,
   contentHeight: SharedValue<number>,
   viewportHeight: SharedValue<number>,
@@ -474,7 +536,8 @@ function scrollToVisible(
     hidden: revealing ? 0 : bar.hidden.get(),
     fixed: revealing || bar.fixed.get(),
   };
-  scrollTo(listRef, 0, scrollBelowBar(offset, scrollY.get(), state, maxScroll).scroll, animated);
+  const y = scrollY.get();
+  scrollListTo(list.ref, list.codeScroll, y, scrollBelowBar(offset, y, state, maxScroll).scroll, animated);
 }
 
 /**
@@ -514,6 +577,7 @@ function revealTopBar(hidden: SharedValue<number>, revealing: SharedValue<boolea
  */
 function hideTopBar(
   listRef: AnimatedRef<any>,
+  codeScroll: SharedValue<number>,
   scrollY: SharedValue<number>,
   contentHeight: SharedValue<number>,
   viewportHeight: SharedValue<number>,
@@ -531,7 +595,8 @@ function hideTopBar(
   if (fixed.get() || shows < 0.5) return;
   const y = Math.max(0, scrollY.get());
   if (y < height) {
-    scrollTo(listRef, 0, Math.min(y + shows, Math.max(0, contentHeight.get() - viewportHeight.get())), true);
+    const to = Math.min(y + shows, Math.max(0, contentHeight.get() - viewportHeight.get()));
+    scrollListTo(listRef, codeScroll, y, to, true);
     return;
   }
   revealing.set(true);
