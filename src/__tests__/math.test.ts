@@ -1,5 +1,5 @@
 import { sectionIndexAt } from '../index';
-import { labelPosition, scrollBelowBar, snapTarget } from '../math';
+import { labelPosition, scrollBelowBar, slidesOutAtEnd, snapTarget } from '../math';
 
 describe('label helpers', () => {
   it('labelPosition reads the top at the start and the last pixel at the end', () => {
@@ -79,5 +79,30 @@ describe('snapTarget', () => {
   it('leaves a bar shown or hidden in full', () => {
     expect(snapTarget(100, 0, 500, 1400)).toBeUndefined();
     expect(snapTarget(100, 100, 500, 1400)).toBeUndefined();
+  });
+});
+
+describe('slidesOutAtEnd', () => {
+  // A 100 bar; the list scrolls up to 1,400
+  it('slides out a bar a swipe up left partly shown at the end, where scrolling the rest is not possible', () => {
+    expect(slidesOutAtEnd(100, 30, 1400, 1400, 0)).toBe(true); // less than half hidden: still out
+    expect(slidesOutAtEnd(100, 70, 1400, 1400, 20)).toBe(true);
+    expect(slidesOutAtEnd(100, 30, 1380, 1400, 0)).toBe(true); // 20 short of the end: 70 would be needed
+  });
+  it('not after a swipe down, which shows it as snap does', () => {
+    expect(slidesOutAtEnd(100, 30, 1400, 1400, 30)).toBe(false);
+    expect(slidesOutAtEnd(100, 30, 1400, 1400, 100)).toBe(false);
+  });
+  it('not where the list can scroll the rest of the way: the half rule applies', () => {
+    expect(slidesOutAtEnd(100, 70, 1300, 1400, 0)).toBe(false);
+    expect(slidesOutAtEnd(100, 30, 1330, 1400, 0)).toBe(false); // exactly enough room
+  });
+  it('not scrolled less than its height, where sliding it out would uncover the space above the rows', () => {
+    expect(slidesOutAtEnd(100, 30, 90, 150, 0)).toBe(false);
+    expect(slidesOutAtEnd(100, 30, 100, 150, 0)).toBe(true);
+  });
+  it('leaves a bar shown or hidden in full', () => {
+    expect(slidesOutAtEnd(100, 0, 1400, 1400, 0)).toBe(false);
+    expect(slidesOutAtEnd(100, 100, 1400, 1400, 0)).toBe(false);
   });
 });

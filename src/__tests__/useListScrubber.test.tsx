@@ -235,12 +235,15 @@ describe('useListScrubber({ topBar })', () => {
     await measure(hook.result.current);
     const scroll = (y: number) =>
       (hook.result.current.listProps.onScroll as unknown as (e: unknown) => void)({ contentOffset: { y } });
+    /** A finger starts a touch scroll: the bar follows a scroll up only then, or during the hook's own */
+    const touch = () =>
+      (hook.result.current.listProps.onScroll as unknown as { onBeginDrag: () => void }).onBeginDrag();
     /** What shows of the bar (a derived value: the mock computes it on render) */
     const visible = async () => {
       await hook.rerender({});
       return hook.result.current.topBar!.visibleHeight.get();
     };
-    return { ...hook, scroll, visible };
+    return { ...hook, scroll, touch, visible };
   }
   /** The finger lifts from the thumb: the hook's reaction to isDragging */
   const lift = (result: Hook) =>
@@ -251,8 +254,9 @@ describe('useListScrubber({ topBar })', () => {
     });
 
   it('slides away as the list scrolls down, comes back on a scroll up, and shows at the top', async () => {
-    const { scroll, visible } = await withBar();
+    const { scroll, touch, visible } = await withBar();
     expect(await visible()).toBe(100);
+    touch();
     scroll(60);
     expect(await visible()).toBe(40);
     scroll(300);
@@ -268,7 +272,7 @@ describe('useListScrubber({ topBar })', () => {
   });
 
   it('stays as it is during a drag, and after one that ends anywhere but the top', async () => {
-    const { result, scroll, visible } = await withBar(100, { revealOnDragToTop: true });
+    const { result, scroll, touch, visible } = await withBar(100, { revealOnDragToTop: true });
     // Shown in full when the drag starts: nothing to bring back
     result.current.isDragging.set(true);
     await lift(result);
@@ -283,6 +287,7 @@ describe('useListScrubber({ topBar })', () => {
     expect(mockTimings).toHaveLength(timings); // at the end of the list it doesn't come back
     expect(await visible()).toBe(0);
     expect(mockScrollTo).not.toHaveBeenCalled(); // the list stays where the drag left it
+    touch();
     scroll(650); // a scroll up brings it back, as always
     expect(await visible()).toBe(50);
   });
@@ -431,11 +436,84 @@ describe('useListScrubber({ topBar })', () => {
     });
   });
 
+  // Rows deleted at the end of the list: the content gets shorter, and the list clamps its offset up
+  describe('when the list moves by itself', () => {
+    type Handlers = {
+      onEndDrag: (e: unknown) => void;
+      onMomentumBegin: () => void;
+      onMomentumEnd: () => void;
+    };
+    async function atTheEnd() {
+      const bar = await withBar();
+      const handlers = () => bar.result.current.listProps.onScroll as unknown as Handlers;
+      bar.touch();
+      bar.scroll(1000);
+      handlers().onEndDrag({ velocity: { x: 0, y: 0 } }); // the finger lifts: hidden in full
+      return { ...bar, handlers };
+    }
+
+    it('a scroll up that no touch explains leaves it as it is, only never over the space above the rows', async () => {
+      const { scroll, touch, visible } = await atTheEnd();
+      scroll(940);
+      scroll(880);
+      expect(await visible()).toBe(0);
+      scroll(60); // near the top: it shows as much as it must
+      expect(await visible()).toBe(40);
+      scroll(900); // a scroll down still hides it
+      expect(await visible()).toBe(0);
+      touch(); // a touch scroll up still brings it back
+      scroll(850);
+      expect(await visible()).toBe(50);
+    });
+
+    it("follows a touch scroll's momentum, and iOS's bounce back after a lift with no velocity", async () => {
+      const { scroll, touch, visible, handlers } = await atTheEnd();
+      touch();
+      handlers().onEndDrag({ velocity: { x: 0, y: -1.5 } }); // momentum follows
+      scroll(900);
+      expect(await visible()).toBe(100);
+      handlers().onMomentumEnd();
+      scroll(1000);
+      scroll(950);
+      expect(await visible()).toBe(0); // over
+      touch();
+      scroll(1100);
+      handlers().onEndDrag({ velocity: { x: 0, y: 0 } });
+      handlers().onMomentumBegin(); // the bounce back
+      scroll(1000);
+      expect(await visible()).toBe(100);
+    });
+
+    it("follows the hook's own scrolls, until they get where they're going", async () => {
+      const { result, scroll, visible } = await atTheEnd();
+      result.current.scrollToOffset(500); // up: lands at 400, the bar shown
+      await act(() => jest.advanceTimersByTime(20));
+      expect(mockScrollTo).toHaveBeenLastCalledWith(expect.anything(), 0, 400, false);
+      scroll(700);
+      expect(await visible()).toBe(100);
+      scroll(400);
+      scroll(1000); // down, as always
+      expect(await visible()).toBe(0);
+      scroll(950); // there already: this one is the list's own
+      expect(await visible()).toBe(0);
+    });
+
+    it('on the web it follows every scroll: a wheel or key scroll has no touch events', async () => {
+      const os = jest.replaceProperty(Platform, 'OS', 'web');
+      const { scroll, visible } = await withBar();
+      scroll(1000);
+      scroll(940);
+      expect(await visible()).toBe(60);
+      os.restore();
+    });
+  });
+
   describe('hide()', () => {
     const uiFrame = () => act(() => jest.advanceTimersByTime(20)); // hide() runs on the UI thread
 
     it("slides it out over `revealMs` where rows are under it; meanwhile scrolls don't move it", async () => {
-      const { result, scroll, visible } = await withBar(100, { revealMs: 300 });
+      const { result, scroll, touch, visible } = await withBar(100, { revealMs: 300 });
+      touch();
       scroll(500);
       scroll(450);
       expect(await visible()).toBe(50);
@@ -532,8 +610,9 @@ describe('useListScrubber({ topBar })', () => {
 
   describe('onVisibilityChange', () => {
     /** Runs the hook's reaction to how much of the bar is hidden (registered just before the drag's) */
-    const settle = (hook: { scroll: (y: number) => void }, y: number) =>
+    const settle = (hook: { scroll: (y: number) => void; touch: () => void }, y: number) =>
       act(async () => {
+        hook.touch();
         hook.scroll(y);
         const reaction = mockReactions.at(-2)!;
         reaction.react(reaction.prepare(), undefined);
@@ -635,6 +714,48 @@ describe('useListScrubber({ topBar })', () => {
       await lift(result);
       expect(mockScrollTo).not.toHaveBeenCalled();
       expect(mockTimings.at(-1)).toMatchObject({ to: 0 }); // nothing hidden: it slides in
+    });
+
+    // Less than half a bar of rows below it, a swipe up can't scroll far enough to hide it: snapping back
+    // would end every swipe up where it started
+    describe('at the end of the list', () => {
+      /** The list scrolls up to `maxScroll`; the bar is shown in full at `y` */
+      async function shownAt(y: number, maxScroll: number) {
+        const hook = await measured();
+        await act(() => hook.result.current.listProps.onContentSizeChange(390, maxScroll + 600));
+        hook.scroll(y); // down from the top, which needs no touch: hidden
+        hook.result.current.topBar!.show();
+        await act(() => jest.advanceTimersByTime(20));
+        await act(async () => mockTimings.at(-1)!.done!());
+        expect(await hook.visible()).toBe(100);
+        mockScrollTo.mockClear();
+        return hook;
+      }
+
+      it('a swipe up slides it out in place: the list stays', async () => {
+        const { swipe, visible } = await shownAt(1200, 1230);
+        const slides = mockTimings.length;
+        swipe([1230]); // to the end: 30 hidden, less than half
+        expect(mockScrollTo).not.toHaveBeenCalled();
+        expect(mockTimings).toHaveLength(slides + 1);
+        expect(mockTimings.at(-1)).toMatchObject({ to: 100, duration: 250 });
+        expect(await visible()).toBe(0);
+      });
+
+      it('a swipe down shows it, as everywhere', async () => {
+        const { result, swipe } = await shownAt(1200, 1230);
+        swipe([1230], 1.5); // 30 hidden; momentum follows, and another swipe catches it
+        swipe([1220]); // 20 hidden: less than when it began
+        expect(mockScrollTo).toHaveBeenCalledWith(result.current.listProps.ref, 0, 1200, true);
+      });
+
+      it('scrolled less than its height, it shows, as before: sliding out would uncover blank space', async () => {
+        const { result, swipe } = await shownAt(60, 150);
+        const slides = mockTimings.length;
+        swipe([90]); // 30 hidden, 60 short of the end
+        expect(mockScrollTo).toHaveBeenCalledWith(result.current.listProps.ref, 0, 60, true);
+        expect(mockTimings).toHaveLength(slides);
+      });
     });
 
     it('not after scrolling from code, during a thumb drag, while fixed or sliding in, or when off', async () => {

@@ -202,13 +202,20 @@ const scrubber = useListScrubber({ layout, topBar: { height: BAR }, pinnedHeader
   header stay below all of it.
 - The bar follows the scroll by as much as it moves, up or down, and is always shown at the very top of the
   list. The scrubber and the pinned header stay below its visible part.
+- When the list moves up by itself, the bar stays as it is: rows deleted at the end make the content shorter
+  and the list pulls its offset back, and a hidden bar sliding back in there would cover the rows above. A
+  scroll up comes back with the bar only when a finger, its momentum or the hook (`scrollToSection`,
+  `scrollToOffset`, `hide()`, snap) moves the list; even then, near the top it shows as much as it must so it
+  never covers the space above the rows. Not on the web, where a wheel or key scroll has no touch events.
 - On a list too short to hide it (it scrolls less than the bar is tall), the bar stays in place and only the
   rows move. If the list gets that short while the bar is partly hidden, e.g. after a search, it slides back
   in.
 - When a scroll ends with the bar partly shown, it settles: the list scrolls the rest of the way, so the bar
   ends up shown if less than half of it was hidden, and hidden otherwise (shown, if the list can't scroll far
   enough down to hide it). Only after a scroll by touch, not a thumb drag or scrolling from code, and not on
-  the web. If a touch scroll's momentum ends while the thumb holds the list, the bar settles when the drag
+  the web. At the end of the list, where it can't scroll far enough to hide the bar, a swipe up slides the bar
+  out in place, without moving the list, once the list is scrolled at least the bar's height; a swipe down
+  shows it. If a touch scroll's momentum ends while the thumb holds the list, the bar settles when the drag
   ends, without moving the list: out if the list is scrolled far enough, else back in.
   `topBar: { height: BAR, snap: false }` leaves it where the scroll left it.
 - During a thumb drag the bar stays as it was, so big jumps don't show and hide it. The drag reaches the first

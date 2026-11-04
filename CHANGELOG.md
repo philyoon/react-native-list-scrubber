@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- On a list screen with a collapsing top bar, deleting rows at the end of the list no longer slides the hidden
+  bar back in. The content got shorter, the list pulled its offset back, and the bar followed that offset
+  change as if it were a scroll up, by one row per delete, until it covered the rows above the end. Now, on
+  iOS and Android, a scroll up that comes from no touch, momentum or scroll of the hook's own
+  (`scrollToSection`, `scrollToOffset`, `hide()`, snap) leaves the bar as it is, only never over the space
+  above the rows. That includes an app's own `scrollTo` / `scrollToIndex` calls on the list: use the hook's
+  `scrollToOffset` or `scrollToSection` to have the bar follow them.
+- With `snap`, a swipe up at the end of the list hides a bar it left partly shown. With less than half a bar
+  of rows below it, the list couldn't scroll far enough to hide it, so snap scrolled back and showed it, and
+  every swipe up ended where it started. Now, when the list is scrolled at least the bar's height, the bar
+  slides out in place without moving the list; a swipe down still shows it.
+
 ## 0.5.3
 
 A top bar with `overlap` lines up with the rows below it, and a bar left partly shown by a thumb drag settles.

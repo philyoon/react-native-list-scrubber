@@ -67,6 +67,26 @@ export function snapTarget(height: number, hidden: number, y: number, maxScroll:
   return hidden < height / 2 || y + shows > maxScroll ? Math.max(0, y - hidden) : y + shows;
 }
 
+/**
+ * Whether a touch scroll that ended at the end of the list, with a top bar `height` tall partly hidden,
+ * should slide the bar out in place instead of snapping. There the list can't scroll the rest of the way to
+ * hide it (snapTarget would scroll back and show it, so every swipe up would end where it started). It slides
+ * out when the touch pushed the content up (more of the bar is hidden than when it began, `hiddenBefore`) and
+ * the list is scrolled at least the bar's height, so sliding it out only uncovers rows, never the space above
+ * them.
+ */
+export function slidesOutAtEnd(
+  height: number,
+  hidden: number,
+  y: number,
+  maxScroll: number,
+  hiddenBefore: number,
+): boolean {
+  'worklet';
+  if (hidden < 0.5 || hidden > height - 0.5) return false;
+  return y >= height && y + height - hidden > maxScroll && hidden > hiddenBefore + 0.5;
+}
+
 /** Index of the section that contains `y`, given ascending section start offsets. */
 export function sectionIndexAt(starts: readonly number[], y: number): number {
   'worklet';
