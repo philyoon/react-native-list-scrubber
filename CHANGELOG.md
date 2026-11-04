@@ -1,6 +1,17 @@
 # Changelog
 
-## Unreleased
+## 0.5.4
+
+A top bar no longer slides back in when rows are deleted at the end of the list, and a swipe up at the end
+hides it instead of bouncing back.
+
+### Upgrading from 0.5.3
+
+No code needs to change. One detail behaves differently: on iOS and Android, a scroll up that comes from no
+touch, momentum or scroll of the hook's own (`scrollToSection`, `scrollToOffset`, `hide()`, snap) leaves the
+bar as it is. That includes an app's own `scrollTo` / `scrollToIndex` calls on the list; use the hook's
+`scrollToOffset` or `scrollToSection` to have the bar follow them. Near the top the bar still shows as much as
+it must, so it never covers the space above the rows.
 
 ### Fixed
 
