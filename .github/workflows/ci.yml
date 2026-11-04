@@ -44,7 +44,7 @@ jobs:
       - run: npm --prefix example run web:e2e
         env:
           PLAYWRIGHT_CHANNEL: chrome
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: web-e2e-traces
