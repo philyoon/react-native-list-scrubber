@@ -8,7 +8,6 @@ const config = getDefaultConfig(__dirname);
 
 config.watchFolders = [root];
 config.resolver.nodeModulesPaths = [path.resolve(__dirname, 'node_modules')];
-config.resolver.disableHierarchicalLookup = true;
 config.resolver.blockList = [new RegExp(`^${path.join(root, 'node_modules').replace(/[/\\.]/g, '\\$&')}/.*`)];
 config.resolver.resolveRequest = (context, moduleName, platform) =>
   moduleName === 'react-native-list-scrubber'
