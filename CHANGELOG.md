@@ -1,6 +1,15 @@
 # Changelog
 
-## Unreleased
+## 0.5.5
+
+On Android with Gesture Handler 3, grabbing a thumb that sits outside the scrubber's box no longer fails while
+the list under it still coasts from a flick. Reanimated 4.7's "Dependencies should only be used on the web"
+warning is gone.
+
+### Upgrading from 0.5.4
+
+No code needs to change. With Gesture Handler 3 installed, the thumb's drag now uses its gesture hooks
+(`usePanGesture`) instead of `Gesture.Pan()`; with Gesture Handler 2 it's as before.
 
 ### Fixed
 
