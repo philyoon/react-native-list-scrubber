@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
-import { Gesture } from 'react-native-gesture-handler';
+import * as RNGH from 'react-native-gesture-handler';
 import {
   scrollTo,
   useAnimatedReaction,
@@ -136,7 +136,7 @@ export function useScrubGesture({
     setTimeout(() => scheduleOnUI(endRelease, releasing, dragging), RELEASE_TIMEOUT_MS);
   });
 
-  const pan = useMemo(
+  const callbacks = useMemo(
     () => {
       /**
        * Moves the thumb and scrolls the list to where the finger is: translationY from where the drag
@@ -175,56 +175,53 @@ export function useScrubGesture({
           }
         }
       };
-      return (
-        Gesture.Pan()
-          .withTestId(testID)
-          .enabled(enabled && maxTravel > 0 && maxScroll > 0)
-          .minDistance(0)
-          .onBegin(() => {
-            const { travel, start, cover } = track.get();
-            dragTrack.set(track.get());
-            dragging.set(true);
-            const range = maxScroll - start;
-            startTop.set(range > 0 ? clamp(((scrollY.get() - start) / range) * travel, 0, travel) : 0);
-            dragTop.set(startTop.get());
-            if (offsets.length) {
-              const y = labelPosition(
-                clamp(scrollY.get(), 0, maxScroll),
-                contentHeight,
-                viewportHeight,
-                cover,
-              );
-              sectionIdx.set(sectionIndexAt(offsets, y));
-            }
-            offsetWaiting.set(false);
-            // A new drag scrolls at once, even if an earlier one's last scroll was never acknowledged, and a
-            // drag that ends without moving ends at once
-            scrollInFlight.set(false);
-            scrollWaiting.set(false);
-            releasing.set(false);
-            latestScroll.set(scrollY.get());
-            opacity.set(withTiming(1, { duration: fadeMs }));
-            scheduleOnRN(onBegin);
-          })
-          .onUpdate((e) => {
-            move(e.translationY);
-          })
-          // Again with the finger's final position: the last stretch of a drag can come only with the finger
-          // lifting, with no move event for it (seen with injected touches on a slow emulator, where a drag
-          // to the end of the list stopped a few percent short)
-          .onEnd((e) => {
-            move(e.translationY, true);
-          })
-          .onFinalize(() => {
-            if (Math.abs(scrollY.get() - latestScroll.get()) < 1) dragging.set(false);
-            else {
-              releasing.set(true);
-              scheduleOnRN(releaseTimeout);
-            }
-            opacity.set(withDelay(hideAfterMs, withTiming(0, { duration: fadeMs })));
-            scheduleOnRN(onEnd);
-          })
-      );
+      return {
+        testID,
+        enabled: enabled && maxTravel > 0 && maxScroll > 0,
+        onBegin: () => {
+          'worklet';
+          const { travel, start, cover } = track.get();
+          dragTrack.set(track.get());
+          dragging.set(true);
+          const range = maxScroll - start;
+          startTop.set(range > 0 ? clamp(((scrollY.get() - start) / range) * travel, 0, travel) : 0);
+          dragTop.set(startTop.get());
+          if (offsets.length) {
+            const y = labelPosition(clamp(scrollY.get(), 0, maxScroll), contentHeight, viewportHeight, cover);
+            sectionIdx.set(sectionIndexAt(offsets, y));
+          }
+          offsetWaiting.set(false);
+          // A new drag scrolls at once, even if an earlier one's last scroll was never acknowledged, and a
+          // drag that ends without moving ends at once
+          scrollInFlight.set(false);
+          scrollWaiting.set(false);
+          releasing.set(false);
+          latestScroll.set(scrollY.get());
+          opacity.set(withTiming(1, { duration: fadeMs }));
+          scheduleOnRN(onBegin);
+        },
+        onUpdate: (e: { translationY: number }) => {
+          'worklet';
+          move(e.translationY);
+        },
+        // Again with the finger's final position: the last stretch of a drag can come only with the finger
+        // lifting, with no move event for it (seen with injected touches on a slow emulator, where a drag
+        // to the end of the list stopped a few percent short)
+        onEnd: (e: { translationY: number }) => {
+          'worklet';
+          move(e.translationY, true);
+        },
+        onFinalize: () => {
+          'worklet';
+          if (Math.abs(scrollY.get() - latestScroll.get()) < 1) dragging.set(false);
+          else {
+            releasing.set(true);
+            scheduleOnRN(releaseTimeout);
+          }
+          opacity.set(withDelay(hideAfterMs, withTiming(0, { duration: fadeMs })));
+          scheduleOnRN(onEnd);
+        },
+      };
     },
     // Shared values and refs are stable; the rest is what the worklets read.
     [
@@ -263,8 +260,44 @@ export function useScrubGesture({
     ],
   );
 
+  const pan = usePan(callbacks);
+
   return { pan, dragTop, dragTrack, sectionIdx };
 }
+
+type PanCallbacks = {
+  testID: string;
+  enabled: boolean;
+  onBegin: () => void;
+  onUpdate: (e: { translationY: number }) => void;
+  onEnd: (e: { translationY: number }) => void;
+  onFinalize: () => void;
+};
+
+/**
+ * Gesture Handler 3's hook API, when installed: on Android its gestures aren't cancelled when a native view
+ * under the thumb takes the touch (a coasting list does, to stop its fling), as the older API's gestures are
+ * (#102). Gesture Handler 2 has only the older API. Which one is fixed for the app's lifetime, so usePan
+ * always calls the same hooks. Not named usePanGesture: the worklets Babel plugin rewrites calls by that
+ * name, and the callbacks are worklets already.
+ */
+const useHookPan: ((config: object) => unknown) | undefined = (RNGH as any).usePanGesture;
+
+const usePan: (callbacks: PanCallbacks) => any = useHookPan
+  ? ({ onEnd, ...rest }) => useHookPan({ ...rest, minDistance: 0, onDeactivate: onEnd })
+  : ({ testID, enabled, onBegin, onUpdate, onEnd, onFinalize }) =>
+      useMemo(
+        () =>
+          RNGH.Gesture.Pan()
+            .withTestId(testID)
+            .enabled(enabled)
+            .minDistance(0)
+            .onBegin(onBegin)
+            .onUpdate(onUpdate)
+            .onEnd(onEnd)
+            .onFinalize(onFinalize),
+        [testID, enabled, onBegin, onUpdate, onEnd, onFinalize],
+      );
 
 /** JS finished one onDragOffset call: send the newest offset if frames came in meanwhile, else stand by */
 function ackOffset(

@@ -392,6 +392,51 @@ function ScrollViewDemo() {
   );
 }
 
+// The scrubber in a box inset from the list's sides, its thumb pushed out of the box into the margin beside
+// it (a negative edgeOffset), over the full-width list. On Android a touch on the thumb then also reaches the
+// list underneath, and a list still coasting from a flick takes it to stop: with Gesture Handler 2 that
+// cancels the drag (#102). Long, so a flick barely moves the thumb: e2e/coasting.sh grabs it near the top of
+// its track while the list coasts
+const LINE = 96;
+const LINES = Array.from({ length: 1200 }, (_, i) => i + 1);
+function TranscriptDemo() {
+  const colors = useColors();
+  const scrubber = useListScrubber({});
+  return (
+    <>
+      <Animated.ScrollView {...scrubber.scrollViewProps}>
+        {LINES.map((n) => (
+          <View key={n} style={{ height: LINE, paddingHorizontal: 20, paddingVertical: 10 }}>
+            <Text numberOfLines={3} style={{ color: colors.text, fontSize: 15, lineHeight: 22 }}>
+              <Text style={{ fontWeight: '700' }}>Line {n}</Text>{' '}
+              {LOREM.repeat(3).slice((n * 37) % 120, ((n * 37) % 120) + 170)}
+            </Text>
+          </View>
+        ))}
+      </Animated.ScrollView>
+      <View style={styles.inset} pointerEvents="box-none">
+        <ListScrubber
+          {...scrubber.scrubberProps}
+          labelAt={(offset) => `Line ${Math.floor(offset / LINE) + 1}`}
+          colors={{
+            thumb: colors.thumb,
+            thumbActive: colors.accent,
+            bubble: colors.bubble,
+            bubbleText: colors.bubbleText,
+          }}
+          accessibilityLabel="Scroll position"
+          side={WEB_SIDE}
+          // Pushed out of its box, past the list's edge, and the thumb drawn in the middle of its touch area
+          edgeOffset={-INSET - 12}
+          metrics={{ thumbEdgeGap: 19 }}
+          timing={E2E ? E2E_TIMING : undefined}
+          onDragStart={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+        />
+      </View>
+    </>
+  );
+}
+
 export const DEMOS: { name: string; hint: string; Component: ComponentType }[] = [
   { name: 'FlatList', hint: '3,000 contacts A–Z, pinned letter header', Component: FlatListDemo },
   {
@@ -402,6 +447,7 @@ export const DEMOS: { name: string; hint: string; Component: ComponentType }[] =
   { name: 'FlashList', hint: 'Positions are estimates until rows are measured', Component: FlashListDemo },
   { name: 'Legend List', hint: '4,000 entries by month, exact sizes', Component: LegendListDemo },
   { name: 'ScrollView', hint: '60 chapters', Component: ScrollViewDemo },
+  { name: 'Transcript', hint: '1,200 lines, the thumb in the margin beside them', Component: TranscriptDemo },
   { name: 'Index', hint: 'Tap a letter to jump: scrollToSection', Component: IndexDemo },
   { name: 'Collapsible', hint: 'A top bar that slides away as you scroll', Component: CollapsibleDemo },
 ];
@@ -414,7 +460,11 @@ function peopleCount(n: number) {
   return `${String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',')} ${n === 1 ? 'person' : 'people'}`;
 }
 
+/** The scrubber's box in the Transcript demo: in from the list's sides by this much (pt) */
+const INSET = 20;
+
 const styles = StyleSheet.create({
+  inset: { ...StyleSheet.absoluteFill, left: INSET, right: INSET },
   row: {
     height: ROW,
     flexDirection: 'row',

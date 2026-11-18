@@ -185,7 +185,8 @@ jobs:
       matrix:
         shard:
           - name: lists
-            flows: e2e/lists.yaml e2e/passthrough.yaml
+            # e2e/coasting.sh: Android only, driven with adb (not a Maestro flow)
+            flows: e2e/lists.yaml e2e/passthrough.yaml e2e/coasting.sh
           - name: drags
             flows: e2e/collapsible.yaml e2e/flatlist.yaml e2e/middle.yaml
           - name: more
