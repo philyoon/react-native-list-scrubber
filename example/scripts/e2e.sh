@@ -1,6 +1,6 @@
 #!/bin/sh
-# Runs the Maestro flows in e2e/:
-#   e2e.sh ios|android [flow…]     all flows by default, or just the ones given (e.g. e2e/index.yaml)
+# Runs the Maestro flows in e2e/, and the checks there that aren't flows (e2e/*.sh, driven with adb):
+#   e2e.sh ios|android [flow…]     all of them by default, or just the ones given (e.g. e2e/index.yaml)
 # in Expo Go, against Metro in e2e mode (npm run e2e:start, kept running); or with E2E_APP=build, in the example
 # built as an app of its own (scripts/e2e-build.sh, which installs it), with no Metro or Expo Go.
 # First it runs e2e/setup/expo-go.yaml, which gets past the screens a fresh device can show.
@@ -12,7 +12,7 @@
 set -e
 platform="$1"
 [ $# -gt 0 ] && shift
-[ $# -eq 0 ] && set -- e2e e2e/large-text
+[ $# -eq 0 ] && set -- e2e e2e/large-text e2e/coasting.sh
 
 adb_() { adb ${MAESTRO_DEVICE:+-s "$MAESTRO_DEVICE"} "$@"; }
 sim="${MAESTRO_DEVICE:-booted}"
@@ -65,11 +65,13 @@ case "$platform" in
     ;;
 esac
 
-# Split the flows: e2e/large-text needs the text size changed around it
+# Split the flows: e2e/large-text needs the text size changed around it, and checks (*.sh) aren't flows
 normal=''
 large=''
+checks=''
 for flow in "$@"; do
   case "$flow" in
+    *.sh) checks="$checks $flow" ;;
     *large-text*) large="$large $flow" ;;
     *) normal="$normal $flow" ;;
   esac
@@ -130,6 +132,9 @@ if [ -n "$normal" ]; then
   # shellcheck disable=SC2086 # flow paths have no spaces
   run $normal || { status=1; on_screen; }
 fi
+for check in $checks; do
+  sh "$check" "$platform" "$app" "$link" || status=1
+done
 if [ -n "$large" ]; then
   large_text_on
   trap large_text_off EXIT

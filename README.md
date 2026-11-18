@@ -346,7 +346,8 @@ Optional:
   [Right-to-left layouts](#right-to-left-layouts).
 - `edgeOffset`: moves the scrubber in from that edge, or out with a negative value. Default: `0`. The thumb is
   drawn `metrics.thumbEdgeGap` (3pt) from the edge, in the margin most lists leave beside their rows, and its
-  44pt touch area reaches into the list, so it usually needs no offset.
+  44pt touch area reaches into the list, so it usually needs no offset. With Gesture Handler 2 on Android, a
+  negative one over a list can cancel drags; see [Troubleshooting](#troubleshooting).
 - `insets`: `{ top, bottom }` space the thumb stays out of, e.g. under a pinned header or above a toolbar.
   What's under the top one counts as covered: screen-reader steps land below it and labels describe the rows
   there. `scrubberProps` sets it for a pinned header that takes its own space.
@@ -420,10 +421,12 @@ The scrubber places everything with `left` and `right`, never with flex alignmen
 
 ## Compatibility
 
-Tested in the example app (Expo SDK 57, React Native 0.86, Reanimated 4.5, Gesture Handler 2.32): by hand on
+Tested in the example app (Expo SDK 58, React Native 0.88, Reanimated 4.7, Gesture Handler 3.3): by hand on
 iOS, and with the [end-to-end tests](#end-to-end-tests) on iOS and Android, which drag the thumb to both ends
-of FlatList, SectionList, FlashList, Legend List and ScrollView. The pinned header, push and section bubble
-were also checked by hand on Android, in the app this library came from:
+of FlatList, SectionList, FlashList, Legend List and ScrollView. Gesture Handler 3 has a newer gesture API,
+which the scrubber uses when it's there; with Gesture Handler 2 it uses the older one (tested with 2.32 up to
+0.5.4). The pinned header, push and section bubble were also checked by hand on Android, in the app this
+library came from:
 
 - **FlatList + `getItemLayout`**: exact. Bubble, pinned header and rows agree in every frame.
 - **ScrollView**: exact.
@@ -490,6 +493,14 @@ hidden thumb lets touches through to the list, so it can only be grabbed once sh
 
 **Dragging the thumb does nothing.** The app root needs `GestureHandlerRootView`. If the list doesn't move but
 the thumb does, the list's `ref` was replaced (see above).
+
+**On Android, grabbing the thumb gives the haptic but it doesn't move**, mostly right after a flick, while the
+list still coasts. That's Gesture Handler 2 with the thumb outside the box the scrubber is in (a negative
+`edgeOffset`, or a scrubber in a box narrower than the list) and the list underneath it. Android then sends
+the touch to the list as well, the coasting list takes it to stop its fling, and Gesture Handler 2 cancels the
+drag. With Gesture Handler 3 the scrubber uses its newer gesture API, which the list can't cancel. On Gesture
+Handler 2, keep the thumb inside the scrubber's box, or end the list before the thumb's column (e.g. a
+`marginRight` on the list as wide as the margin the thumb sits in).
 
 **The bubble or the pinned header shows the wrong section.** The `offset`s don't match where the sections
 really are. Item separators must be counted in the row heights, and `listHeaderHeight` is your own list
@@ -608,6 +619,10 @@ outlast the default on a slow device. A link like `exp://127.0.0.1:8081/--/?demo
 demo. The scripts first run `example/e2e/setup/expo-go.yaml`, which gets Expo Go past the screens it can show
 on a fresh device, so each flow only waits for the app. The flows in `example/e2e/large-text` run at the
 largest text size, which the scripts set on the device first and restore afterwards.
+
+One check isn't a Maestro flow: `example/e2e/coasting.sh` (Android only) grabs the thumb while the list still
+coasts from a flick, which Maestro can't do (each of its swipes takes seconds, longer than a fling). It drives
+the emulator with adb, and `e2e.sh` runs it after the flows.
 
 ### Web tests
 

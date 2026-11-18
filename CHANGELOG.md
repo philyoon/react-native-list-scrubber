@@ -4,6 +4,10 @@
 
 ### Fixed
 
+- On Android with Gesture Handler 3, a drag on a thumb placed outside the scrubber's box (a negative
+  `edgeOffset`) over a list is no longer cancelled when the list is still coasting from a flick: the haptic
+  fired but the thumb stayed put (#102). The scrubber now uses Gesture Handler 3's gesture hooks when they're
+  there. With Gesture Handler 2, keep the thumb inside its box on Android; see Troubleshooting in the README.
 - With Reanimated 4.7 on iOS and Android, a development build no longer logs "Dependencies should only be used
   on the web and are always ignored on native" when a list using `useListScrubber` mounts. The hook now passes
   its worklet hooks' dependency arrays on the web only, where they're used.
