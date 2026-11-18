@@ -9,7 +9,8 @@
       "react-native-list-scrubber": ["../src/index.ts"],
       "react": ["./node_modules/@types/react"],
       "react/*": ["./node_modules/@types/react/*"],
-      "react-native": ["./node_modules/react-native"],
+      // Its types file itself: since 0.88 react-native names it only in "exports", which paths don't read
+      "react-native": ["./node_modules/react-native/types_generated/index.d.ts"],
       "react-native/*": ["./node_modules/react-native/*"],
       "react-native-reanimated": ["./node_modules/react-native-reanimated"],
       "react-native-worklets": ["./node_modules/react-native-worklets"],
